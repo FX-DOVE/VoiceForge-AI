@@ -13,9 +13,14 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { authApi } from "@/lib/api";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api/client";
 
 export default function ForgotPasswordPage() {
   const [isSent, setIsSent] = useState(false);
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden px-8">
@@ -66,9 +71,18 @@ export default function ForgotPasswordPage() {
            {!isSent ? (
              <form 
                className="flex flex-col gap-8"
-               onSubmit={(e) => {
+               onSubmit={async (e) => {
                  e.preventDefault();
-                 setIsSent(true);
+                 setSubmitting(true);
+                 try {
+                   await authApi.forgotPassword(email);
+                   setIsSent(true);
+                   toast.success("If that email exists, we sent reset instructions.");
+                 } catch (err) {
+                   toast.error(err instanceof ApiError ? err.message : "Request failed.");
+                 } finally {
+                   setSubmitting(false);
+                 }
                }}
              >
                 <div className="flex flex-col gap-3">
@@ -78,13 +92,15 @@ export default function ForgotPasswordPage() {
                       <Input 
                         type="email" 
                         placeholder="name@company.com" 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         required 
                         className="h-14 pl-12 bg-white/5 border-white/10 rounded-2xl focus:ring-primary/20 text-white placeholder:text-on-surface-variant/50"
                       />
                    </div>
                 </div>
-                <Button className="h-14 bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold text-lg shadow-[0_0_30px_rgba(59,130,246,0.2)] group">
-                   Send Reset Link
+                <Button type="submit" disabled={submitting} className="h-14 bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold text-lg shadow-[0_0_30px_rgba(59,130,246,0.2)] group">
+                   {submitting ? "Sending..." : "Send Reset Link"}
                    <ArrowRight className="ml-2 size-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
              </form>

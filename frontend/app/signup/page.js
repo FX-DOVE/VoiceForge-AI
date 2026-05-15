@@ -13,14 +13,31 @@ import {
 } from "lucide-react";
 import { GithubIcon as Github, GoogleIcon as Google } from "@/components/ui/icons";
 import { useState } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api/client";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { register } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
-    router.push("/dashboard");
+    setSubmitting(true);
+    try {
+      await register({ email, password, name });
+      toast.success("Account created successfully.");
+      router.push("/dashboard");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Sign up failed.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -125,6 +142,8 @@ export default function SignupPage() {
                     id="name"
                     className="h-14 bg-surface-container/30 border-white/10 rounded-2xl focus:ring-primary/20 transition-all placeholder:text-outline" 
                     placeholder="Enter your full name" 
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     required
                   />
                 </div>
@@ -136,6 +155,8 @@ export default function SignupPage() {
                     type="email"
                     className="h-14 bg-surface-container/30 border-white/10 rounded-2xl focus:ring-primary/20 transition-all placeholder:text-outline" 
                     placeholder="name@example.com" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
@@ -148,6 +169,8 @@ export default function SignupPage() {
                       type={showPassword ? "text" : "password"}
                       className="h-14 bg-surface-container/30 border-white/10 rounded-2xl focus:ring-primary/20 transition-all placeholder:text-outline pr-12" 
                       placeholder="Create a strong password" 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       required
                     />
                     <button 
@@ -160,8 +183,8 @@ export default function SignupPage() {
                   </div>
                 </div>
 
-                <Button className="w-full h-14 bg-primary hover:bg-primary/90 text-on-primary rounded-full text-lg font-bold shadow-[0_0_24px_rgba(59,130,246,0.15)] mt-4">
-                  Sign Up
+                <Button type="submit" disabled={submitting} className="w-full h-14 bg-primary hover:bg-primary/90 text-on-primary rounded-full text-lg font-bold shadow-[0_0_24px_rgba(59,130,246,0.15)] mt-4">
+                  {submitting ? "Creating account..." : "Sign Up"}
                 </Button>
               </form>
 

@@ -33,7 +33,8 @@ async function register({ email, password, name }) {
     });
   }
 
-  const user = await User.create({ email, password, name: name || "" });
+  const role = config.adminEmail && email.toLowerCase() === config.adminEmail ? "admin" : "user";
+  const user = await User.create({ email, password, name: name || "", role });
   const tokens = buildAuthPayload(user);
   await persistRefreshToken(user._id, tokens.refreshToken);
   return tokens;

@@ -5,73 +5,54 @@ import Link from "next/link";
 import { Bell, CheckCircle2, AlertCircle, Mic, CreditCard, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { notificationsApi } from "@/lib/api";
 
-const SAMPLE_NOTIFICATIONS = [
-  {
-    id: 1,
-    type: "success",
-    icon: CheckCircle2,
-    title: "Voice clone ready",
-    message: "“Podcast Host” finished training and is ready to use.",
-    time: "2m ago",
-    href: "/cloning/library",
-    unread: true,
-  },
-  {
-    id: 2,
-    type: "info",
-    icon: Mic,
-    title: "Generation complete",
-    message: "Your 0:42 voiceover for “Brand Promo” is ready to download.",
-    time: "1h ago",
-    href: "/history",
-    unread: true,
-  },
-  {
-    id: 3,
-    type: "warning",
-    icon: AlertCircle,
-    title: "Generation expiring soon",
-    message: "An audio file from yesterday will be deleted in 12 hours.",
-    time: "5h ago",
-    href: "/history",
-    unread: true,
-  },
-  {
-    id: 4,
-    type: "billing",
-    icon: CreditCard,
-    title: "Invoice paid",
-    message: "October Pro subscription was charged successfully.",
-    time: "Yesterday",
-    href: "/billing",
-    unread: false,
-  },
-  {
-    id: 5,
-    type: "promo",
-    icon: Sparkles,
-    title: "New voices added",
-    message: "8 new community voices were published this week.",
-    time: "2d ago",
-    href: "/voices",
-    unread: false,
-  },
-];
+const TYPE_ICONS = {
+  clone_ready: CheckCircle2,
+  success: CheckCircle2,
+  info: Mic,
+  warning: AlertCircle,
+  billing: CreditCard,
+  promo: Sparkles,
+};
 
 const TYPE_STYLES = {
   success: "bg-green-500/10 text-green-400",
+  clone_ready: "bg-green-500/10 text-green-400",
   info: "bg-primary/10 text-primary",
   warning: "bg-orange-500/10 text-orange-400",
   billing: "bg-purple-500/10 text-purple-400",
   promo: "bg-yellow-500/10 text-yellow-400",
 };
 
+function mapNotification(n) {
+  const Icon = TYPE_ICONS[n.type] || Mic;
+  return {
+    id: n.id,
+    type: n.type,
+    icon: Icon,
+    title: n.title,
+    message: n.message,
+    time: n.createdAt
+      ? new Date(n.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+      : "",
+    href: n.type === "clone_ready" ? "/studio" : "/history",
+    unread: !n.read,
+  };
+}
+
 export function NotificationsBell({ className }) {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState(SAMPLE_NOTIFICATIONS);
+  const [items, setItems] = useState([]);
   const ref = useRef(null);
   const unreadCount = items.filter((n) => n.unread).length;
+
+  useEffect(() => {
+    notificationsApi
+      .list()
+      .then((data) => setItems((data.notifications || []).map(mapNotification)))
+      .catch(() => setItems([]));
+  }, [open]);
 
   useEffect(() => {
     function onClick(e) {
@@ -86,8 +67,13 @@ export function NotificationsBell({ className }) {
     setItems((prev) => prev.map((n) => ({ ...n, unread: false })));
   }
 
-  function markRead(id) {
+  async function markRead(id) {
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)));
+    try {
+      await notificationsApi.markRead(id);
+    } catch {
+      /* ignore */
+    }
   }
 
   return (
@@ -139,7 +125,7 @@ export function NotificationsBell({ className }) {
               {items.length === 0 ? (
                 <div className="flex flex-col items-center text-center gap-2 py-12 px-6">
                   <Bell className="size-8 text-on-surface-variant opacity-40" />
-                  <p className="text-sm text-on-surface-variant">You're all caught up.</p>
+                  <p className="text-sm text-on-surface-variant">You&apos;re all caught up.</p>
                 </div>
               ) : (
                 <ul className="flex flex-col">
@@ -166,9 +152,7 @@ export function NotificationsBell({ className }) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-bold text-white truncate">
-                              {n.title}
-                            </p>
+                            <p className="text-sm font-bold text-white truncate">{n.title}</p>
                             {n.unread && (
                               <span className="size-2 rounded-full bg-primary shrink-0 mt-1.5" />
                             )}

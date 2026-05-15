@@ -1,26 +1,70 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { TopNavBar } from "@/components/layout/top-nav-bar";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { PlayCircle, Mic, MemoryStick, Languages, Play } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { PlayCircle, Mic, MemoryStick, Languages, Play, Pause, Loader2 } from "lucide-react";
+import { voicesApi } from "@/lib/api";
+import { toast } from "sonner";
 
 export default function LandingPage() {
+  const audioRef = useRef(null);
+  const [playingSlug, setPlayingSlug] = useState(null);
+  const [loadingSlug, setLoadingSlug] = useState(null);
+
+  async function handleListen(slug) {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (playingSlug === slug) {
+      audio.pause();
+      setPlayingSlug(null);
+      return;
+    }
+
+    audio.pause();
+    setPlayingSlug(null);
+    setLoadingSlug(slug);
+
+    try {
+      const data = await voicesApi.preview(slug);
+      const url = data.url;
+
+      await new Promise((resolve, reject) => {
+        const onReady = () => { audio.removeEventListener("canplay", onReady); audio.removeEventListener("error", onFail); resolve(); };
+        const onFail = (e) => { audio.removeEventListener("canplay", onReady); audio.removeEventListener("error", onFail); reject(e); };
+        audio.addEventListener("canplay", onReady);
+        audio.addEventListener("error", onFail);
+        audio.src = url;
+        audio.load();
+      });
+
+      setLoadingSlug(null);
+      setPlayingSlug(slug);
+      await audio.play();
+    } catch (err) {
+      console.error("[Preview]", err);
+      setLoadingSlug(null);
+      setPlayingSlug(null);
+      toast.error("Could not play voice preview. Please try again.");
+    }
+  }
+
   const voiceSamples = [
     { 
-      name: "Antoni", 
+      name: "Antoni", slug: "antoni",
       style: "Professional, Deep", 
       img: "https://lh3.googleusercontent.com/aida-public/AB6AXuDvtHzWYW9YJzgO_ZRR1_fwvCYGCE5I40t2H_nT91mQWjl56adu0N2kKqLKgfU22nQqPBKuyL7MynP0811hmBL_xZoZcRzkWWHjhOihdPB4D1vsB7r7HQ1uebjx6KJpiFk8b233ysRamZ8A1_4j6OZSVzwJxGQ3HSOIoI-9LbJy59tXbu1ZnPsIov4A9Wr-sOI1wxo-VQgvxkEfwpwYOfkopYZZKxqnm60BoQtEUSzdBX8TCAtr3a3Yh-rhnnUB3QygZepRyo6kmV4" 
     },
     { 
-      name: "Bella", 
+      name: "Bella", slug: "bella",
       style: "Conversational, Soft", 
       img: "https://lh3.googleusercontent.com/aida-public/AB6AXuB3yNFip8ipSMpdIPkUH62nYg3INJqnyq-TYzXmHVpq2mOblZtDXHU7mUH1kXIcEzeU5pRbk3z-co0NZdouUqZgenIC9CzOzcm5vLxPv0lyWdcorypmqjNiZ3qvEICSkYGilD3I1zDIz1izW8Zm7PoIN3ureDYiW40G2tgkmnpZJ-c9TnPGMtnE9rBFdlUpNQ6Afj9F73PyJ4EwL_Oe6BCfIO4ADZkfAvfNYgv2mangcbceP0efVAGn8Xg8Zw4QpXbT9mXIlNaWaFQ" 
     },
     { 
-      name: "Rachel", 
+      name: "Rachel", slug: "rachel",
       style: "Energetic, Clear", 
       img: "https://lh3.googleusercontent.com/aida-public/AB6AXuA2tgjHbZwPadn9cw8gkAsLy3BUQBYyoxAwGgVkLfOyM6HiZjVInAwRHZ1aW_apmv2jonV32Kt8XI9EP_naAtJe1iDk6A52iZXSjIl74mKvtM5bE3JvRw-3eomYwDnOaX0BKJRV8tVDFyzjtxOYVMLzTEQwVedzcpD_GEraL1Ox2JLl2XK43bwHtKAixzquKTfrV3kd_0LWxm1NRbjHKQCnRksMEV-1EyqOpag-yGBjGHJgwuPMkiQrwlqxgRbyI15wJl86LQg2tMA" 
     }
@@ -66,9 +110,19 @@ export default function LandingPage() {
               <Button className="h-14 px-10 bg-primary hover:bg-primary/90 text-on-primary rounded-full text-lg font-bold shadow-[0_0_30px_rgba(59,130,246,0.3)]" asChild>
                 <Link href="/signup">Start Free</Link>
               </Button>
-              <Button variant="outline" className="h-14 px-10 rounded-full border-white/10 hover:bg-white/5 text-lg font-bold">
-                <PlayCircle className="mr-2 size-6" />
-                Listen to Demo
+              <Button
+                variant="outline"
+                onClick={() => handleListen("antoni")}
+                className="h-14 px-10 rounded-full border-white/10 hover:bg-white/5 text-lg font-bold"
+              >
+                {loadingSlug === "antoni" ? (
+                  <Loader2 className="mr-2 size-6 animate-spin" />
+                ) : playingSlug === "antoni" ? (
+                  <Pause className="mr-2 size-6" />
+                ) : (
+                  <PlayCircle className="mr-2 size-6" />
+                )}
+                {playingSlug === "antoni" ? "Playing..." : loadingSlug === "antoni" ? "Loading..." : "Listen to Demo"}
               </Button>
             </div>
           </motion.div>
@@ -91,8 +145,14 @@ export default function LandingPage() {
         {/* Voice Samples */}
         <section className="w-full max-w-container-max px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
           <h2 className="text-4xl font-bold text-white mb-12 tracking-tight">Voice Samples</h2>
+          {/* hidden shared audio element */}
+          <audio ref={audioRef} onEnded={() => setPlayingSlug(null)} className="hidden" />
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {voiceSamples.map((v, i) => (
+            {voiceSamples.map((v, i) => {
+              const isPlaying = playingSlug === v.slug;
+              const isLoading = loadingSlug === v.slug;
+              return (
               <motion.div
                 key={v.name}
                 initial={{ opacity: 0, y: 20 }}
@@ -110,13 +170,28 @@ export default function LandingPage() {
                       <h3 className="text-2xl font-bold text-white">{v.name}</h3>
                       <p className="text-primary font-bold uppercase tracking-widest text-[10px]">{v.style}</p>
                    </div>
-                   <Button variant="outline" className="w-full h-12 rounded-full border-white/10 hover:bg-primary hover:text-on-primary hover:border-primary transition-all font-bold">
-                      <Play className="mr-2 size-4 fill-current" />
-                      Listen
+                   <Button
+                     variant="outline"
+                     onClick={() => handleListen(v.slug)}
+                     disabled={isLoading}
+                     className={`w-full h-12 rounded-full border-white/10 transition-all font-bold ${
+                       isPlaying
+                         ? "bg-primary text-on-primary border-primary"
+                         : "hover:bg-primary hover:text-on-primary hover:border-primary"
+                     }`}
+                   >
+                     {isLoading ? (
+                       <Loader2 className="mr-2 size-4 animate-spin" />
+                     ) : isPlaying ? (
+                       <Pause className="mr-2 size-4 fill-current" />
+                     ) : (
+                       <Play className="mr-2 size-4 fill-current" />
+                     )}
+                     {isLoading ? "Loading..." : isPlaying ? "Pause" : "Listen"}
                    </Button>
                 </div>
               </motion.div>
-            ))}
+            )})}
           </div>
         </section>
 

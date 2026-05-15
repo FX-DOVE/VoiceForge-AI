@@ -23,4 +23,19 @@ const systemHealth = asyncHandler(async (req, res) => {
   sendSuccess(res, data);
 });
 
-module.exports = { dashboard, users, systemHealth };
+const billing = asyncHandler(async (req, res) => {
+  const data = await adminService.getBilling();
+  sendSuccess(res, data);
+});
+
+const updateUser = asyncHandler(async (req, res) => {
+  const data = await adminService.updateUser(req.params.id, req.body);
+  sendSuccess(res, data);
+});
+
+const settings = asyncHandler(async (req, res) => {
+  const data = await adminService.getSettings();
+  sendSuccess(res, data);
+});
+
+module.exports = { dashboard, users, systemHealth, billing, updateUser, settings };

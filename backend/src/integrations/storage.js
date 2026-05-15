@@ -60,10 +60,11 @@ async function uploadBuffer(buffer, { folder, filename, mimeType }) {
   fs.writeFileSync(localPath, buffer);
 
   const relative = `/uploads/${folder}/${path.basename(key)}`;
+  const absoluteUrl = `${config.serverUrl}${relative}`;
   return {
     storageKey: key,
-    url: relative,
-    downloadUrl: relative,
+    url: absoluteUrl,
+    downloadUrl: absoluteUrl,
     localPath,
   };
 }

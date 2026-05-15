@@ -1,0 +1,13 @@
+{
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "services": [
+      {
+        "name": "frontend",
+        "rootDirectory": "frontend"
+      },
+      {
+        "name": "backend",
+        "rootDirectory": "backend"
+      }
+    ]
+  }

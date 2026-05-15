@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useAuth } from "@/contexts/auth-context";
 
 const navItems = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -26,14 +27,9 @@ const navItems = [
 
 function Sidebar({ pathname, onClose }) {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const handleSignOut = () => {
-    try {
-      document.cookie = "vf_session=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
-      if (typeof window !== "undefined") {
-        window.localStorage?.removeItem("vf_session");
-        window.sessionStorage?.removeItem("vf_session");
-      }
-    } catch {}
+    logout();
     onClose?.();
     router.push("/login");
   };
@@ -94,8 +90,8 @@ function Sidebar({ pathname, onClose }) {
             <Users className="size-5 text-on-surface" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white truncate">Admin User</p>
-            <p className="text-xs text-on-surface-variant truncate">admin@voiceforge.ai</p>
+            <p className="text-sm font-bold text-white truncate">{user?.name || "Admin"}</p>
+            <p className="text-xs text-on-surface-variant truncate">{user?.email || ""}</p>
           </div>
           <Button
             variant="ghost"
@@ -148,7 +144,7 @@ export default function AdminLayout({ children }) {
       </AnimatePresence>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
+      <div className="flex-1 h-full flex flex-col overflow-hidden min-w-0">
         {/* Mobile Top Bar */}
         <header className="lg:hidden h-16 border-b border-white/5 bg-background/80 backdrop-blur-md flex items-center justify-between px-6 shrink-0 relative z-30">
           <div className="flex items-center gap-2">

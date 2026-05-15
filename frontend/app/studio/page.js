@@ -1,22 +1,114 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, Bolt, Play, Settings2, Trash2, History, Info, Mic } from "lucide-react";
-import { studioVoices } from "@/lib/mock-data";
+import { Bolt, Play, Pause, Loader2, Settings2, Trash2, History, Info, Mic, Crown, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { voicesApi, ttsApi } from "@/lib/api";
+import { getMediaUrl } from "@/lib/api/config";
+import { ApiError } from "@/lib/api/client";
+
 export default function StudioPage() {
   const [text, setText] = useState("");
   const [speed, setSpeed] = useState(1);
   const [stability, setStability] = useState(75);
-  const [selectedVoice, setSelectedVoice] = useState(studioVoices[0].name);
+  const [voices, setVoices] = useState([]);
+  const [selectedSlug, setSelectedSlug] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [lastAudioUrl, setLastAudioUrl] = useState(null);
+  const [previewingSlug, setPreviewingSlug] = useState(null);
+  const [loadingPreviewSlug, setLoadingPreviewSlug] = useState(null);
+  const previewAudioRef = useRef(null);
+  const generatedAudioRef = useRef(null);
   const maxChars = 5000;
   const count = text.length;
 
+  async function handlePreview(slug, e) {
+    e.stopPropagation();
+    const audio = previewAudioRef.current;
+    if (!audio) return;
+
+    if (previewingSlug === slug) {
+      audio.pause();
+      setPreviewingSlug(null);
+      return;
+    }
+
+    audio.pause();
+    setPreviewingSlug(null);
+    setLoadingPreviewSlug(slug);
+
+    try {
+      const data = await voicesApi.preview(slug);
+      const url = data.url;
+
+      await new Promise((resolve, reject) => {
+        const onReady = () => {
+          audio.removeEventListener("canplay", onReady);
+          audio.removeEventListener("error", onFail);
+          resolve();
+        };
+        const onFail = (e) => {
+          audio.removeEventListener("canplay", onReady);
+          audio.removeEventListener("error", onFail);
+          reject(new Error(e?.message || "Audio load error"));
+        };
+        // Register BEFORE setting src — prevents any race condition
+        audio.addEventListener("canplay", onReady);
+        audio.addEventListener("error", onFail);
+        audio.src = url;
+        audio.load();
+      });
+
+      setLoadingPreviewSlug(null);
+      setPreviewingSlug(slug);
+      await audio.play();
+    } catch (err) {
+      console.error("[Preview]", err);
+      setLoadingPreviewSlug(null);
+      setPreviewingSlug(null);
+      toast.error("Could not load voice preview.");
+    }
+  }
+
+  useEffect(() => {
+    voicesApi
+      .list()
+      .then((data) => {
+        const list = data.voices || [];
+        setVoices(list);
+        if (list.length) setSelectedSlug(list[0].slug || list[0].id);
+      })
+      .catch(() => toast.error("Could not load voices."));
+  }, []);
+
   const speedLabel = useMemo(() => `${speed.toFixed(1)}x`, [speed]);
   const stabilityLabel = useMemo(() => `${stability}%`, [stability]);
+  const selectedVoice = voices.find((v) => (v.slug || v.id) === selectedSlug);
+
+  async function handleGenerate() {
+    if (!text.trim() || !selectedSlug) return;
+    setGenerating(true);
+    try {
+      const data = await ttsApi.generate({
+        text,
+        voiceSlug: selectedSlug,
+        speed,
+        stability: stability / 100,
+      });
+      const url = getMediaUrl(data.generation?.playbackUrl || data.generation?.audioUrl);
+      setLastAudioUrl(url);
+      toast.success("Audio generated successfully.");
+      setTimeout(() => {
+        generatedAudioRef.current?.play().catch(() => {});
+      }, 100);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Generation failed.");
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   return (
     <>
@@ -108,6 +200,13 @@ export default function StudioPage() {
             </div>
           </div>
 
+          {/* Hidden audio element for voice previews */}
+          <audio
+            ref={previewAudioRef}
+            onEnded={() => setPreviewingSlug(null)}
+            className="hidden"
+          />
+
           {/* Right Column: Voice Selection & Action (Sticky on Desktop) */}
           <div className="w-full lg:w-[400px] lg:sticky lg:top-[100px] space-y-6">
             <div className="glass-panel flex flex-col border-white/10 h-full max-h-[700px]">
@@ -116,51 +215,123 @@ export default function StudioPage() {
                 <History className="size-4 text-neutral-500 cursor-pointer hover:text-white transition-colors" />
               </div>
               
-              <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
-                {studioVoices.map((v) => (
-                  <button
-                    key={v.name}
-                    onClick={() => setSelectedVoice(v.name)}
-                    className={`group w-full flex items-center justify-between p-3 rounded-xl transition-all border ${
-                      selectedVoice === v.name 
-                      ? "bg-blue-600/10 border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.1)]" 
-                      : "bg-white/[0.02] border-white/5 hover:border-white/10 hover:bg-white/[0.04]"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="relative size-12 shrink-0 overflow-hidden rounded-full border border-white/10">
-                        <Image src={v.img} alt={v.name} fill className="object-cover" />
+              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                {["free", "pro"].map((tier) => {
+                  const tierVoices = voices.filter(v => (v.tier || "free") === tier);
+                  if (!tierVoices.length) return null;
+                  return (
+                    <div key={tier} className="mb-4">
+                      {/* Section header */}
+                      <div className={`flex items-center gap-2 px-1 mb-2 ${
+                        tier === "free" ? "text-emerald-400" : "text-amber-400"
+                      }`}>
+                        {tier === "free" ? (
+                          <Zap className="size-3.5 fill-current" />
+                        ) : (
+                          <Crown className="size-3.5 fill-current" />
+                        )}
+                        <span className="text-[10px] font-bold uppercase tracking-widest">
+                          {tier === "free" ? "Free — Edge TTS" : "Pro — xAI Grok TTS"}
+                        </span>
+                        <span className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                          tier === "free"
+                            ? "bg-emerald-500/15 text-emerald-400"
+                            : "bg-amber-500/15 text-amber-400"
+                        }`}>
+                          {tierVoices.length} voices
+                        </span>
                       </div>
-                      <div className="text-left">
-                        <h4 className="text-sm font-bold">{v.name}</h4>
-                        <div className="flex gap-1 mt-1">
-                          {v.tags.map(tag => (
-                            <span key={tag} className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">{tag}</span>
-                          ))}
-                        </div>
+
+                      <div className="space-y-1.5">
+                        {tierVoices.map((v) => {
+                          const slug = v.slug || v.id;
+                          const isSelected = selectedSlug === slug;
+                          return (
+                          <button
+                            key={slug}
+                            onClick={() => setSelectedSlug(slug)}
+                            className={`group w-full flex items-center justify-between p-3 rounded-xl transition-all border ${
+                              isSelected
+                              ? tier === "free"
+                                ? "bg-emerald-600/10 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.08)]"
+                                : "bg-amber-600/10 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.08)]"
+                              : "bg-white/[0.02] border-white/5 hover:border-white/10 hover:bg-white/[0.04]"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="relative size-11 shrink-0 overflow-hidden rounded-full border border-white/10">
+                                {v.img ? (
+                                  <Image src={v.img} alt={v.name} fill className="object-cover" />
+                                ) : (
+                                  <div className="absolute inset-0 bg-primary/10 flex items-center justify-center text-primary font-bold text-base">
+                                    {v.name?.[0] || "V"}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-left">
+                                <div className="flex items-center gap-1.5">
+                                  <h4 className="text-sm font-bold">{v.name}</h4>
+                                  <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${
+                                    tier === "free"
+                                      ? "bg-emerald-500/20 text-emerald-400"
+                                      : "bg-amber-500/20 text-amber-400"
+                                  }`}>
+                                    {tier === "free" ? "FREE" : "PRO"}
+                                  </span>
+                                </div>
+                                <div className="flex gap-1 mt-0.5">
+                                  {(v.tags || []).slice(0, 2).map(tag => (
+                                    <span key={tag} className="text-[10px] uppercase tracking-wider font-semibold text-neutral-500">{tag}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            {isSelected ? (
+                              <div className={`size-2 rounded-full ${
+                                tier === "free"
+                                  ? "bg-emerald-400 shadow-[0_0_8px_#34d399]"
+                                  : "bg-amber-400 shadow-[0_0_8px_#fbbf24]"
+                              }`} />
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => handlePreview(slug, e)}
+                                disabled={loadingPreviewSlug === slug}
+                                className="size-7 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-60"
+                                aria-label={`Preview ${v.name}`}
+                              >
+                                {loadingPreviewSlug === slug ? (
+                                  <Loader2 className="size-3.5 text-primary animate-spin" />
+                                ) : previewingSlug === slug ? (
+                                  <Pause className="size-3.5 text-primary fill-current" />
+                                ) : (
+                                  <Play className="size-3.5 text-neutral-400 fill-current" />
+                                )}
+                              </button>
+                            )}
+                          </button>
+                        )})}
                       </div>
                     </div>
-                    {selectedVoice === v.name ? (
-                      <div className="size-2 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6]" />
-                    ) : (
-                      <Play className="size-4 text-neutral-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    )}
-                  </button>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="p-6 border-t border-white/5 bg-white/[0.01] space-y-4">
                 <Button 
                   className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl shadow-blue-900/20 group"
-                  onClick={() => toast.success("Audio generation started!")}
-                  disabled={!text}
+                  onClick={handleGenerate}
+                  disabled={!text || !selectedSlug || generating}
                 >
                   <Bolt className="size-5 mr-2 fill-current" />
-                  Generate Audio
+                  {generating ? "Generating..." : "Generate Audio"}
                 </Button>
+                {lastAudioUrl && (
+                  <audio ref={generatedAudioRef} controls src={lastAudioUrl} autoPlay className="w-full rounded-lg" />
+                )}
                 <div className="flex items-center justify-center gap-2 text-xs text-neutral-500">
                    <Info className="size-3" />
-                   <span>Estimated cost: 12 credits</span>
+                   <span>Estimated cost: {count} characters</span>
                 </div>
               </div>
             </div>

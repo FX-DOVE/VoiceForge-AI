@@ -14,13 +14,30 @@ const app = express();
 
 app.set("trust proxy", 1);
 
+const allowedOrigins = new Set([
+  config.clientUrl,
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+]);
+
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, config.clientUrl);
+      }
+    },
     credentials: true,
   })
 );
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+  })
+);
 app.use(morgan(config.env === "development" ? "dev" : "combined"));
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));

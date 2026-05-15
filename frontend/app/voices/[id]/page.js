@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useParams, useRouter, notFound } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { notFound } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -19,11 +20,10 @@ import {
   Mic,
   Sparkles,
   Languages,
-  Headphones,
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { studioVoices, findVoiceById } from "@/lib/mock-data";
+import { voicesApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_CLIPS = [
@@ -37,25 +37,37 @@ export default function VoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id;
-  const voice = findVoiceById(id);
+
+  const [voice, setVoice] = useState(null);
+  const [related, setRelated] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [notFoundState, setNotFoundState] = useState(false);
   const [activeClip, setActiveClip] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
 
-  const related = useMemo(
-    () =>
-      studioVoices
-        .filter((v) => v.id !== id)
-        .slice(0, 3),
-    [id]
-  );
+  useEffect(() => {
+    if (!id) return;
+    Promise.all([voicesApi.get(id), voicesApi.list()])
+      .then(([voiceData, listData]) => {
+        const v = voiceData?.voice ?? voiceData;
+        if (!v) { setNotFoundState(true); return; }
+        setVoice(v);
+        setRelated((listData?.voices || []).filter((r) => r.id !== id).slice(0, 3));
+      })
+      .catch(() => setNotFoundState(true))
+      .finally(() => setLoading(false));
+  }, [id]);
 
-  if (!voice) {
-    if (typeof window !== "undefined") {
-      // graceful fallback while client-side routing
-    }
-    notFound();
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-on-surface-variant animate-pulse">Loading voice...</p>
+      </div>
+    );
   }
+
+  if (notFoundState) notFound();
 
   return (
     <>
@@ -80,14 +92,20 @@ export default function VoiceDetailPage() {
 
           {/* Avatar / Cover */}
           <div className="relative size-48 sm:size-64 lg:size-80 rounded-3xl overflow-hidden shrink-0 border border-white/10 shadow-2xl mx-auto lg:mx-0">
-            <Image
-              src={voice.img}
-              alt={voice.name}
-              fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 80vw, 320px"
-              priority
-            />
+            {voice.img ? (
+              <Image
+                src={voice.img}
+                alt={voice.name}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 80vw, 320px"
+                priority
+              />
+            ) : (
+              <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                <Mic className="size-16 text-primary opacity-60" />
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setIsPlaying((p) => !p)}
@@ -323,7 +341,13 @@ export default function VoiceDetailPage() {
                 className="glass-panel rounded-2xl border-white/5 p-5 flex items-center gap-4 hover:bg-white/5 transition-colors group"
               >
                 <div className="relative size-16 rounded-2xl overflow-hidden border border-white/10 shrink-0">
-                  <Image src={v.img} alt={v.name} fill className="object-cover" sizes="64px" />
+                  {v.img ? (
+                    <Image src={v.img} alt={v.name} fill className="object-cover" sizes="64px" />
+                  ) : (
+                    <div className="absolute inset-0 bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                      {v.name?.[0] || "V"}
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-base font-bold text-white truncate">{v.name}</p>

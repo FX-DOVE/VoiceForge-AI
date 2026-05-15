@@ -1,267 +1,252 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { 
-  TrendingUp, 
-  Download, 
-  MoreVertical, 
-  Search, 
-  Filter, 
-  Receipt,
-  AlertCircle,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Wallet,
-  Building,
-  CreditCard
+import { adminApi } from "@/lib/api";
+import {
+  TrendingUp, Download, Search, Receipt, CheckCircle2,
+  CreditCard, RefreshCw, Loader2, Users, DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+
+const SPLIT_COLORS = { blue: "bg-blue-500", purple: "bg-purple-500", orange: "bg-orange-500" };
 
 export default function AdminBillingPage() {
-  const transactions = [
-    { id: "#INV-8042", customer: "Acme Corp", date: "Oct 28, 2023", amount: "$499.00", plan: "Enterprise", status: "Paid" },
-    { id: "#INV-8041", customer: "Nexus Studios", date: "Oct 28, 2023", amount: "$99.00", plan: "Pro Creator", status: "Pending" },
-    { id: "#INV-8040", customer: "Sarah Jenkins", date: "Oct 27, 2023", amount: "$29.00", plan: "Pro Plus", status: "Paid" },
-    { id: "#INV-8039", customer: "Omni Media LLC", date: "Oct 25, 2023", amount: "$499.00", plan: "Enterprise", status: "Failed" },
-    { id: "#INV-8038", customer: "Marcus Chen", date: "Oct 25, 2023", amount: "$99.00", plan: "Pro Creator", status: "Paid" },
-  ];
+  const [billing, setBilling] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [txSearch, setTxSearch] = useState("");
+
+  const load = () => {
+    setLoading(true);
+    adminApi.billing().catch(() => null).then((d) => { setBilling(d); setLoading(false); });
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const transactions = (billing?.transactions || []).filter((t) =>
+    !txSearch || t.customer.toLowerCase().includes(txSearch.toLowerCase()) || t.id.toLowerCase().includes(txSearch.toLowerCase())
+  );
+
+  const mrr = billing?.mrr ?? 0;
+  const activeSubs = billing?.activeSubscriptions ?? 0;
+  const totalUsers = billing?.totalUsers ?? 0;
+  const split = billing?.subscriptionSplit || [];
+  const stripeOk = billing?.stripeConfigured ?? false;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <header className="hidden lg:flex h-20 border-b border-white/5 bg-background/80 backdrop-blur-md sticky top-0 z-30 items-center justify-between px-10 shrink-0">
-        <div className="flex flex-col">
-          <h2 className="text-2xl font-bold text-white tracking-tight">Billing & Financials</h2>
-          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mt-1">Manage Revenue and Gateways</p>
+    <div className="h-full flex flex-col">
+      <header className="hidden lg:flex h-16 border-b border-white/[0.06] bg-background/80 backdrop-blur-md sticky top-0 z-30 items-center justify-between px-8 shrink-0">
+        <div>
+          <h2 className="text-lg font-bold text-white">Billing & Financials</h2>
+          <p className="text-[11px] text-neutral-500 uppercase tracking-widest mt-0.5">Manage Revenue and Gateways</p>
         </div>
-        <Button variant="outline" className="h-11 rounded-full border-white/10 hover:bg-white/5 font-bold">
-          <Download className="mr-2 size-4" />
-          Export CSV
-        </Button>
+        <div className="flex items-center gap-3">
+          <button onClick={load} className="size-9 rounded-full hover:bg-white/5 flex items-center justify-center text-neutral-400 hover:text-white transition-colors">
+            <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+          </button>
+          <button className="flex items-center gap-2 h-9 px-4 rounded-full border border-white/[0.08] text-xs text-neutral-400 hover:text-white hover:bg-white/5 transition-all">
+            <Download className="size-3.5" />Export CSV
+          </button>
+        </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-10 max-w-container-max mx-auto w-full flex flex-col gap-10 pb-20">
-        {/* Metrics Grid */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* MRR Card */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="lg:col-span-2 glass-panel p-8 rounded-[2rem] border-white/5 flex flex-col gap-6 relative overflow-hidden group"
-          >
-            <div className="flex justify-between items-start">
-               <div className="flex flex-col gap-2">
-                 <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Monthly Recurring Revenue</span>
-                 <div className="flex items-baseline gap-4">
-                    <h2 className="text-5xl font-bold text-white">$124,500</h2>
-                    <span className="flex items-center text-xs font-bold text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
-                      <TrendingUp className="size-3 mr-1" />
-                      +14.2%
+      {loading && !billing ? (
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="size-8 text-primary animate-spin" />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-8 flex flex-col gap-6 pb-24">
+
+          {/* Top metrics */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* MRR card */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              className="lg:col-span-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl p-7 flex flex-col gap-5 overflow-hidden relative group"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-widest mb-2">Monthly Recurring Revenue</p>
+                  <div className="flex items-baseline gap-3">
+                    <h2 className="text-5xl font-bold text-white">${mrr.toLocaleString()}</h2>
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                      <TrendingUp className="size-3" />Live
                     </span>
-                 </div>
-               </div>
-               <Button variant="ghost" size="icon" className="rounded-full hover:bg-white/5">
-                 <MoreVertical className="size-5 text-on-surface-variant" />
-               </Button>
-            </div>
-            
-            {/* Chart Simulation */}
-            <div className="mt-auto h-32 w-full relative opacity-50 group-hover:opacity-100 transition-opacity duration-700">
-               <svg className="w-full h-full" viewBox="0 0 1000 100" preserveAspectRatio="none">
-                 <defs>
-                   <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
-                     <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
-                     <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                   </linearGradient>
-                 </defs>
-                 <path d="M0,80 Q100,70 200,90 T400,60 T600,40 T800,20 T1000,0 L1000,100 L0,100 Z" fill="url(#lineGradient)" />
-                 <path d="M0,80 Q100,70 200,90 T400,60 T600,40 T800,20 T1000,0" stroke="#3b82f6" strokeWidth="3" fill="none" />
-               </svg>
-               <div className="flex justify-between text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mt-4">
-                 <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
-               </div>
-            </div>
-          </motion.div>
+                  </div>
+                  <p className="text-xs text-neutral-500 mt-2">{activeSubs} paid subscribers · {totalUsers} total users</p>
+                </div>
+                <div className="size-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                  <DollarSign className="size-6 text-emerald-400" />
+                </div>
+              </div>
+              <div className="mt-2 h-24 w-full relative opacity-40 group-hover:opacity-80 transition-opacity duration-700">
+                <svg className="w-full h-full" viewBox="0 0 1000 100" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="mrrGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M0,80 Q150,65 250,85 T500,55 T700,35 T1000,5 L1000,100 L0,100 Z" fill="url(#mrrGrad)" />
+                  <path d="M0,80 Q150,65 250,85 T500,55 T700,35 T1000,5" stroke="#10b981" strokeWidth="2.5" fill="none" />
+                </svg>
+                <div className="flex justify-between text-[10px] font-semibold text-neutral-600 uppercase tracking-widest mt-2">
+                  <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
+                </div>
+              </div>
+            </motion.div>
 
-          {/* Subscription Split */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="glass-panel p-8 rounded-[2rem] border-white/5 flex flex-col gap-6"
+            {/* Subscription Split */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+              className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-7 flex flex-col gap-5"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-widest">Subscription Split</p>
+                <Users className="size-4 text-neutral-600" />
+              </div>
+              <div>
+                <p className="text-4xl font-bold text-white">{totalUsers.toLocaleString()}</p>
+                <p className="text-xs text-neutral-500 mt-1">total registered users</p>
+              </div>
+              <div className="flex flex-col gap-4 mt-2">
+                {split.map((tier) => (
+                  <div key={tier.label} className="flex flex-col gap-1.5">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-white flex items-center gap-2">
+                        <span className={cn("size-2 rounded-full", SPLIT_COLORS[tier.color] || "bg-white/20")} />
+                        {tier.label}
+                      </span>
+                      <span className="text-neutral-500">{tier.percent}% ({tier.count})</span>
+                    </div>
+                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <div className={cn("h-full rounded-full transition-all duration-700", SPLIT_COLORS[tier.color] || "bg-white/20")} style={{ width: `${tier.percent}%` }} />
+                    </div>
+                  </div>
+                ))}
+                {split.length === 0 && <p className="text-xs text-neutral-600">No subscription data yet.</p>}
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Gateways */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
+            className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6"
           >
-            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Subscription Split</span>
-            <h2 className="text-3xl font-bold text-white">4,281 <span className="text-sm font-medium text-on-surface-variant">Active</span></h2>
-            
-            <div className="flex flex-col gap-8 mt-4">
-               {[
-                 { label: "Pro", percent: 65, count: 2782, color: "bg-blue-500" },
-                 { label: "Free", percent: 25, count: 1070, color: "bg-purple-500" },
-                 { label: "Enterprise", percent: 10, count: 429, color: "bg-orange-500" }
-               ].map((tier) => (
-                 <div key={tier.label} className="flex flex-col gap-2">
-                    <div className="flex justify-between text-xs font-bold">
-                       <span className="text-white flex items-center gap-2">
-                         <span className={cn("size-2 rounded-full", tier.color)} />
-                         {tier.label}
-                       </span>
-                       <span className="text-on-surface-variant">{tier.percent}% ({tier.count})</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                       <div className={cn("h-full rounded-full", tier.color)} style={{ width: `${tier.percent}%` }} />
-                    </div>
-                 </div>
-               ))}
+            <div className="flex items-center justify-between mb-5">
+              <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-widest">Payment Gateways</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className={cn("flex items-center gap-4 p-4 rounded-xl border transition-all", stripeOk ? "bg-emerald-500/5 border-emerald-500/20" : "bg-white/[0.02] border-white/[0.06]")}>
+                <div className="size-10 rounded-xl bg-white flex items-center justify-center text-black font-black text-lg italic shrink-0">S</div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">Stripe</p>
+                  <p className="text-xs text-neutral-500">Primary Processor</p>
+                </div>
+                <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border", stripeOk ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" : "text-neutral-500 bg-white/5 border-white/10")}>
+                  {stripeOk ? "Configured" : "Not Set"}
+                </span>
+              </div>
+              <div className="flex items-center gap-4 p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] opacity-50">
+                <div className="size-10 rounded-xl bg-[#003087] flex items-center justify-center text-white font-black text-lg italic shrink-0">P</div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">PayPal</p>
+                  <p className="text-xs text-neutral-500">Legacy Processor</p>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border text-neutral-500 bg-white/5 border-white/10">Inactive</span>
+              </div>
             </div>
           </motion.div>
-        </section>
 
-        {/* Payouts & Gateways */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-           {/* Payout Detail */}
-           <div className="glass-panel p-8 rounded-[2rem] border-white/5 flex flex-col gap-8">
-              <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                 <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Payout Details</h3>
-                 <Button variant="link" className="text-primary font-bold">Edit</Button>
+          {/* Transactions */}
+          <motion.section
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
+            className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden"
+          >
+            <div className="px-6 py-4 border-b border-white/[0.06] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <CreditCard className="size-4 text-primary" />
+                <h3 className="text-sm font-bold text-white">Recent Usage Transactions</h3>
+                <span className="text-xs text-neutral-500">{billing?.transactions?.length ?? 0} records</span>
               </div>
-              <div className="flex flex-col gap-8 flex-1 justify-between">
-                 <div>
-                    <p className="text-sm font-bold text-on-surface-variant uppercase tracking-widest">Available for Payout</p>
-                    <h3 className="text-4xl font-bold text-white mt-2">$42,150.00</h3>
-                 </div>
-                 <div className="flex items-center gap-4 p-5 rounded-2xl bg-white/5 border border-white/5">
-                    <Building className="size-6 text-on-surface-variant" />
-                    <div className="flex flex-col">
-                       <span className="text-sm font-bold text-white">Silicon Valley Bank</span>
-                       <span className="text-xs font-mono text-on-surface-variant tracking-widest mt-1">•••• •••• •••• 4201</span>
-                    </div>
-                 </div>
-                 <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-on-surface-variant flex items-center gap-2">
-                       <CheckCircle2 className="size-3.5 text-primary" />
-                       Next auto-payout: Nov 1st
-                    </p>
-                    <Button className="bg-primary hover:bg-primary/90 text-on-primary rounded-full px-8 font-bold">
-                       Withdraw Now
-                    </Button>
-                 </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-neutral-500" />
+                <input
+                  className="h-9 pl-9 pr-4 bg-white/[0.04] border border-white/[0.08] rounded-xl text-xs text-white placeholder:text-neutral-600 outline-none focus:border-primary transition-all w-52"
+                  placeholder="Search customer…"
+                  value={txSearch}
+                  onChange={(e) => setTxSearch(e.target.value)}
+                />
               </div>
-           </div>
+            </div>
 
-           {/* Gateways */}
-           <div className="glass-panel p-8 rounded-[2rem] border-white/5 flex flex-col gap-8">
-              <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                 <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Payment Gateways</h3>
-                 <Button variant="link" className="text-primary font-bold">Manage</Button>
+            {transactions.length === 0 ? (
+              <div className="py-16 text-center">
+                <Receipt className="size-8 text-neutral-700 mx-auto mb-3" />
+                <p className="text-neutral-400 text-sm font-medium">No transactions yet.</p>
+                <p className="text-neutral-600 text-xs mt-1">Usage records from Pro users will appear here.</p>
               </div>
-              <div className="flex flex-col gap-4">
-                 <div className="flex items-center justify-between p-5 rounded-2xl bg-white/5 border border-white/5 group hover:bg-white/[0.08] transition-all">
-                    <div className="flex items-center gap-4">
-                       <div className="size-12 rounded-xl bg-white flex items-center justify-center p-2 text-black font-black text-xl italic">S</div>
-                       <div className="flex flex-col">
-                          <span className="text-sm font-bold text-white">Stripe</span>
-                          <span className="text-xs font-medium text-on-surface-variant">Primary Processor</span>
-                       </div>
-                    </div>
-                    <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-widest border border-green-500/20">Active</span>
-                 </div>
-                 <div className="flex items-center justify-between p-5 rounded-2xl bg-white/5 border border-white/5 opacity-40 grayscale group hover:bg-white/[0.08] transition-all">
-                    <div className="flex items-center gap-4">
-                       <div className="size-12 rounded-xl bg-[#003087] flex items-center justify-center p-2 text-white font-black text-xl italic">P</div>
-                       <div className="flex flex-col">
-                          <span className="text-sm font-bold text-white">PayPal</span>
-                          <span className="text-xs font-medium text-on-surface-variant">Legacy Processor</span>
-                       </div>
-                    </div>
-                    <span className="px-3 py-1 rounded-full bg-white/10 text-on-surface-variant text-[10px] font-bold uppercase tracking-widest border border-white/20">Inactive</span>
-                 </div>
-              </div>
-           </div>
-        </section>
-
-        {/* Transactions Table */}
-        <section className="glass-panel rounded-[2rem] border-white/5 overflow-hidden shadow-2xl">
-           <div className="p-8 border-b border-white/5 bg-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-              <h3 className="text-xl font-bold text-white">Recent Transactions</h3>
-              <div className="flex gap-4">
-                 <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-on-surface-variant" />
-                    <input className="h-10 pl-10 pr-4 bg-white/5 border border-white/10 rounded-full text-sm outline-none focus:border-primary transition-all w-64" placeholder="Search invoices..." />
-                 </div>
-                 <Button variant="outline" size="icon" className="rounded-full border-white/10 hover:bg-white/5">
-                    <Filter className="size-4" />
-                 </Button>
-              </div>
-           </div>
-           
-           <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                 <thead>
-                    <tr className="border-b border-white/5 bg-white/[0.02]">
-                       <th className="p-6 text-xs font-bold uppercase tracking-widest text-on-surface-variant">Invoice</th>
-                       <th className="p-6 text-xs font-bold uppercase tracking-widest text-on-surface-variant">Customer</th>
-                       <th className="p-6 text-xs font-bold uppercase tracking-widest text-on-surface-variant">Date</th>
-                       <th className="p-6 text-xs font-bold uppercase tracking-widest text-on-surface-variant">Amount</th>
-                       <th className="p-6 text-xs font-bold uppercase tracking-widest text-on-surface-variant">Plan</th>
-                       <th className="p-6 text-xs font-bold uppercase tracking-widest text-on-surface-variant">Status</th>
-                       <th className="p-6"></th>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-white/[0.06] bg-white/[0.02]">
+                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">ID</th>
+                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Customer</th>
+                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Date</th>
+                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Characters</th>
+                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Plan</th>
+                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Status</th>
                     </tr>
-                 </thead>
-                 <tbody className="divide-y divide-white/5">
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
                     {transactions.map((t) => (
-                      <tr key={t.id} className="hover:bg-white/5 transition-all group">
-                         <td className="p-6 font-mono text-xs text-white">{t.id}</td>
-                         <td className="p-6">
-                            <div className="flex items-center gap-3">
-                               <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px]">{t.customer.charAt(0)}</div>
-                               <span className="text-sm font-bold text-white">{t.customer}</span>
+                      <tr key={t.id} className="hover:bg-white/[0.03] transition-all group">
+                        <td className="px-6 py-4 font-mono text-xs text-neutral-500">{t.id}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] shrink-0">
+                              {t.customer.charAt(0).toUpperCase()}
                             </div>
-                         </td>
-                         <td className="p-6 text-sm font-medium text-on-surface-variant">{t.date}</td>
-                         <td className="p-6 text-sm font-bold text-white">{t.amount}</td>
-                         <td className="p-6 text-sm font-medium text-on-surface-variant">{t.plan}</td>
-                         <td className="p-6">
-                            <span className={cn(
-                              "inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border",
-                              t.status === "Paid" ? "bg-green-500/10 text-green-400 border-green-500/20" :
-                              t.status === "Pending" ? "bg-orange-500/10 text-orange-400 border-orange-500/20" :
-                              "bg-red-500/10 text-red-400 border-red-500/20"
-                            )}>
-                               <span className={cn("size-1.5 rounded-full", 
-                                  t.status === "Paid" ? "bg-green-400" :
-                                  t.status === "Pending" ? "bg-orange-400 animate-pulse" : "bg-red-400"
-                               )} />
-                               {t.status}
-                            </span>
-                         </td>
-                         <td className="p-6 text-right">
-                            <Button variant="ghost" size="icon" className="size-10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                               <Receipt className="size-4" />
-                            </Button>
-                         </td>
+                            <div>
+                              <p className="text-sm font-semibold text-white">{t.customer}</p>
+                              <p className="text-[11px] text-neutral-500">{t.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-neutral-500">{t.date}</td>
+                        <td className="px-6 py-4 text-xs font-semibold text-white">{(t.characters || 0).toLocaleString()} chars</td>
+                        <td className="px-6 py-4">
+                          <span className={cn(
+                            "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border",
+                            t.plan === "Enterprise" ? "bg-violet-500/10 text-violet-400 border-violet-500/20" :
+                            t.plan === "Pro" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                            "bg-white/5 text-neutral-400 border-white/10"
+                          )}>{t.plan}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                            t.status === "Paid" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                            t.status === "Free" ? "bg-white/5 text-neutral-400 border-white/10" :
+                            "bg-orange-500/10 text-orange-400 border-orange-500/20"
+                          )}>
+                            <span className={cn("size-1.5 rounded-full",
+                              t.status === "Paid" ? "bg-emerald-400" : t.status === "Free" ? "bg-neutral-500" : "bg-orange-400"
+                            )} />
+                            {t.status}
+                          </span>
+                        </td>
                       </tr>
                     ))}
-                 </tbody>
-              </table>
-           </div>
-
-           <div className="p-6 bg-white/[0.02] border-t border-white/5 flex items-center justify-between">
-              <span className="text-xs font-bold text-on-surface-variant">Showing 1-5 of 124 entries</span>
-              <div className="flex gap-2">
-                 <Button variant="outline" size="icon" className="size-8 rounded-full border-white/10" disabled>
-                    <ChevronLeft className="size-4" />
-                 </Button>
-                 <Button className="size-8 rounded-full bg-primary text-on-primary font-bold text-xs">1</Button>
-                 <Button variant="ghost" className="size-8 rounded-full text-on-surface-variant font-bold text-xs">2</Button>
-                 <Button variant="outline" size="icon" className="size-8 rounded-full border-white/10">
-                    <ChevronRight className="size-4" />
-                 </Button>
+                  </tbody>
+                </table>
               </div>
-           </div>
-        </section>
-      </div>
+            )}
+          </motion.section>
+        </div>
+      )}
     </div>
   );
 }

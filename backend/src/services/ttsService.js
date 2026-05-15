@@ -7,6 +7,7 @@ const {
 } = require("../models");
 const config = require("../config");
 const { synthesizeSpeech } = require("../integrations/xaiTts");
+const { synthesizeSpeechEdge } = require("../integrations/edgeTts");
 const { uploadBuffer } = require("../integrations/storage");
 const { getCharactersLimit } = require("../utils/planLimits");
 
@@ -24,17 +25,23 @@ async function resolveVoice({ voiceId, voiceSlug }) {
 
 async function generateTts(userId, options) {
   const user = await User.findById(userId);
-  const limit = getCharactersLimit(user.plan);
   const charCount = options.text.length;
 
-  if (user.charactersUsed + charCount > limit) {
-    throw Object.assign(
-      new Error("You have reached your character limit for this billing period."),
-      { statusCode: 402 }
-    );
+  // Resolve voice first so we can check tier before enforcing limits
+  const voice = await resolveVoice(options);
+  const voiceTier = voice?.tier || "pro";
+  const isFree = voiceTier === "free";
+
+  if (!isFree) {
+    const limit = getCharactersLimit(user.plan);
+    if (user.charactersUsed + charCount > limit) {
+      throw Object.assign(
+        new Error("You have reached your character limit for this billing period."),
+        { statusCode: 402 }
+      );
+    }
   }
 
-  const voice = await resolveVoice(options);
   const xaiVoiceId =
     voice?.xaiVoiceId || options.xaiVoiceId || config.xai.defaultVoiceId;
 
@@ -53,19 +60,59 @@ async function generateTts(userId, options) {
     stability: options.stability ?? 0.5,
     tone: options.tone || "",
     status: "processing",
-    charactersUsed: charCount,
+    charactersUsed: isFree ? 0 : charCount,
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
   });
 
   try {
-    const result = await synthesizeSpeech({
-      text: options.text,
-      voiceId: xaiVoiceId,
-      language: generation.language,
-      codec: generation.codec,
-      sampleRate: generation.sampleRate,
-      bitRate: generation.bitRate,
-    });
+    let result;
+
+    if (isFree) {
+      console.log(`[TTS] Free voice "${voice?.name}" → Edge TTS (${xaiVoiceId}) speed=${generation.speed} stability=${generation.stability}`);
+      result = await synthesizeSpeechEdge({
+        text: options.text,
+        xaiVoiceId,
+        speed: generation.speed ?? 1,
+        stability: generation.stability ?? 0.75,
+      });
+    } else {
+      console.log(`[TTS] Pro voice "${voice?.name}" → xAI TTS (${xaiVoiceId}) speed=${generation.speed}`);
+      try {
+        result = await synthesizeSpeech({
+          text: options.text,
+          voiceId: xaiVoiceId,
+          codec: generation.codec,
+          speed: generation.speed ?? 1,
+        });
+      } catch (err) {
+        // Only credit (402/429) or auth (401/403) errors should propagate
+        // to the user so they know to top up / fix their key. Anything else
+        // (model name wrong, voice id rejected, gateway down, etc.) should
+        // gracefully fall back to Edge TTS so the user still gets audio.
+        const shouldFallback =
+          !config.xai.apiKey ||
+          err.code === "ECONNREFUSED" ||
+          err.code === "ENOTFOUND" ||
+          (!err.isCreditOrAuth && config.ttsProvider !== "xai");
+
+        if (shouldFallback) {
+          console.warn(
+            `[TTS] xAI failed (${err.statusCode || "?"}: ${err.message})${
+              err.xaiDetail ? ` — detail: ${err.xaiDetail}` : ""
+            } — falling back to Edge TTS`
+          );
+          result = await synthesizeSpeechEdge({
+            text: options.text,
+            xaiVoiceId,
+            speed: generation.speed ?? 1,
+            stability: generation.stability ?? 0.75,
+          });
+        } else {
+          // Credit exhausted or auth invalid — surface to user
+          throw err;
+        }
+      }
+    }
 
     let audioUrl = null;
     let downloadUrl = null;
@@ -95,17 +142,18 @@ async function generateTts(userId, options) {
     generation.durationSeconds = durationSeconds;
     await generation.save();
 
-    user.charactersUsed += charCount;
-    await user.save();
-
-    await UsageRecord.create({
-      user: userId,
-      type: "tts",
-      amount: charCount,
-      unit: "characters",
-      referenceId: generation._id,
-      referenceModel: "AudioGeneration",
-    });
+    if (!isFree) {
+      user.charactersUsed += charCount;
+      await user.save();
+      await UsageRecord.create({
+        user: userId,
+        type: "tts",
+        amount: charCount,
+        unit: "characters",
+        referenceId: generation._id,
+        referenceModel: "AudioGeneration",
+      });
+    }
 
     return formatGeneration(generation);
   } catch (err) {

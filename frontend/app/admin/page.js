@@ -1,154 +1,231 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { 
-  DollarSign, 
-  Users, 
-  Zap, 
-  Activity, 
-  TrendingUp, 
-  AlertCircle, 
-  CheckCircle2, 
-  Key,
-  CloudCheck,
-  UserPlus,
-  Bell
+import { adminApi } from "@/lib/api";
+import {
+  DollarSign, Users, Zap, Activity, TrendingUp, AlertCircle,
+  Key, CloudCheck, UserPlus, Bell, RefreshCw, Loader2,
+  Database, Cpu, Wifi, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
+function StatCard({ label, value, sub, icon: Icon, color, bar, barPct, delay }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      className="relative bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.06] rounded-2xl p-6 flex flex-col gap-4 transition-all group overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+      <div className="flex items-center justify-between relative">
+        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">{label}</p>
+        <div className={cn("size-9 rounded-xl flex items-center justify-center bg-white/5", color)}>
+          <Icon className="size-4" />
+        </div>
+      </div>
+      <div className="relative">
+        <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
+        {sub && <p className="text-xs text-neutral-500 mt-1">{sub}</p>}
+      </div>
+      {bar && (
+        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full transition-all duration-700" style={{ width: `${barPct ?? 0}%` }} />
+        </div>
+      )}
+      {!bar && (
+        <div className="flex items-end gap-0.5 h-8 opacity-30 group-hover:opacity-70 transition-opacity">
+          {[30, 45, 28, 60, 48, 72, 90].map((h, i) => (
+            <div key={i} className={cn("flex-1 rounded-t-[2px]", i === 6 ? "bg-primary" : "bg-white/20")} style={{ height: `${h}%` }} />
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function ServiceRow({ name, icon: Icon, status, latency, color }) {
+  const isOk = status === "Operational" || status === "Connected" || status === "Configured";
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-all">
+      <div className={cn("size-8 rounded-lg flex items-center justify-center", isOk ? "bg-emerald-500/10" : "bg-amber-500/10")}>
+        <Icon className={cn("size-4", isOk ? "text-emerald-400" : "text-amber-400")} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-white">{name}</p>
+        {latency && <p className="text-xs text-neutral-500">{latency}</p>}
+      </div>
+      <span className={cn(
+        "text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border",
+        isOk
+          ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+          : "text-amber-400 bg-amber-500/10 border-amber-500/20"
+      )}>{status}</span>
+    </div>
+  );
+}
 
 export default function AdminDashboardPage() {
+  const [dashboard, setDashboard] = useState(null);
+  const [health, setHealth] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    Promise.all([
+      adminApi.dashboard().catch(() => null),
+      adminApi.systemHealth().catch(() => null),
+    ]).then(([d, h]) => {
+      setDashboard(d);
+      setHealth(h);
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const mrr = dashboard?.revenue?.mrr ?? 0;
+  const apiPct = dashboard?.apiUsagePercent ?? 0;
+
   const stats = [
-    { label: "Total Revenue", value: "$12,340", trend: "+15%", icon: DollarSign, color: "text-green-400" },
-    { label: "Active Subscriptions", value: "1,245", trend: "+24", icon: Users, color: "text-blue-400" },
-    { label: "API Usage", value: "85%", trend: "Warning", icon: Zap, color: "text-orange-400", progress: 85 },
-    { label: "Generation Volume", value: "4.2M", trend: "Optimal", icon: Activity, color: "text-purple-400" },
+    { label: "MRR", value: `$${mrr.toLocaleString()}`, sub: "Monthly recurring", icon: DollarSign, color: "text-emerald-400", delay: 0 },
+    { label: "Total Users", value: String(dashboard?.subscriptions?.total ?? 0), sub: `${dashboard?.subscriptions?.active ?? 0} active`, icon: Users, color: "text-blue-400", delay: 0.06 },
+    { label: "API Usage", value: `${apiPct}%`, sub: "of monthly quota", icon: Zap, color: "text-orange-400", bar: true, barPct: apiPct, delay: 0.12 },
+    { label: "Generations (30d)", value: String(dashboard?.generationVolume ?? 0), sub: `${dashboard?.voiceClones ?? 0} clones`, icon: Activity, color: "text-violet-400", delay: 0.18 },
   ];
 
-  const regions = [
-    { name: "US East (N. Virginia)", latency: "24ms", status: "Operational", color: "bg-green-500" },
-    { name: "US West (Oregon)", latency: "32ms", status: "Operational", color: "bg-green-500" },
-    { name: "EU (Frankfurt)", latency: "145ms", status: "Degraded", color: "bg-red-500" },
-  ];
+  const apiService = health?.services?.find((s) => s.name === "api");
+  const dbService = health?.services?.find((s) => s.name === "mongodb");
+  const ttsService = health?.services?.find((s) => s.name === "tts");
+  const redisService = health?.services?.find((s) => s.name === "redis");
 
-  const activities = [
-    { title: "API Key Rotated", desc: "Enterprise account 'GlobalCorp' requested emergency key rotation.", time: "2 mins ago", icon: Key, iconColor: "text-orange-400" },
-    { title: "Spike in Synthesis Errors", desc: "EU (Frankfurt) region reporting elevated 500 errors on the /v1/synthesize endpoint.", time: "15 mins ago", icon: AlertCircle, iconColor: "text-red-400" },
-    { title: "Model Weights Updated", desc: "Successfully deployed 'VoiceEngine-v2.1' to all primary clusters.", time: "1 hour ago", icon: CloudCheck, iconColor: "text-blue-400" },
-    { title: "New Pro Subscription", desc: "User ID #8921 upgraded to Pro tier.", time: "3 hours ago", icon: UserPlus, iconColor: "text-green-400" },
-  ];
+  const services = health ? [
+    ...(apiService?.regions || []).map((r) => ({
+      name: `API — ${r.region}`,
+      icon: Wifi,
+      status: r.status === "up" ? "Operational" : "Degraded",
+      latency: `${r.latencyMs}ms`,
+    })),
+    { name: "MongoDB", icon: Database, status: dbService?.status === "up" ? "Connected" : "Disconnected" },
+    { name: "TTS Engine", icon: Cpu, status: ttsService?.status === "up" ? "Configured" : ttsService?.status === "not_configured" ? "Not Configured" : "Degraded" },
+    { name: "Redis Cache", icon: Zap, status: redisService?.status === "configured" ? "Configured" : "Optional" },
+  ] : [];
+
+  const uptime = health
+    ? `${Math.floor((health.uptimeSeconds || 0) / 3600)}h ${Math.floor(((health.uptimeSeconds || 0) % 3600) / 60)}m`
+    : "—";
+
+  function activityIcon(level) {
+    if (level === "error") return { icon: AlertCircle, cls: "text-red-400 bg-red-500/10" };
+    if (level === "warn") return { icon: Key, cls: "text-orange-400 bg-orange-500/10" };
+    if (level === "info") return { icon: CloudCheck, cls: "text-blue-400 bg-blue-500/10" };
+    return { icon: UserPlus, cls: "text-emerald-400 bg-emerald-500/10" };
+  }
+
+  const activities = (dashboard?.activity || []).map((a) => ({
+    title: a.action || "System Event",
+    desc: a.message || "",
+    time: a.createdAt ? new Date(a.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—",
+    ...activityIcon(a.level),
+  }));
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <header className="hidden lg:flex h-20 border-b border-white/5 bg-background/80 backdrop-blur-md sticky top-0 z-30 items-center justify-between px-10 shrink-0">
-        <h2 className="text-2xl font-bold text-white tracking-tight">Overview</h2>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="size-12 rounded-full hover:bg-white/5 border border-white/5">
-            <Bell className="size-5 text-on-surface-variant" />
+    <div className="h-full flex flex-col">
+      <header className="hidden lg:flex h-16 border-b border-white/[0.06] bg-background/80 backdrop-blur-md sticky top-0 z-30 items-center justify-between px-8 shrink-0">
+        <h2 className="text-lg font-bold text-white">Overview</h2>
+        <div className="flex items-center gap-3">
+          <button onClick={load} className="size-9 rounded-full hover:bg-white/5 flex items-center justify-center text-neutral-400 hover:text-white transition-colors">
+            <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+          </button>
+          <Button variant="ghost" size="icon" className="size-9 rounded-full hover:bg-white/5 border border-white/[0.06]">
+            <Bell className="size-4 text-neutral-400" />
           </Button>
-          <Button className="bg-primary hover:bg-primary/90 text-on-primary rounded-full px-8 h-12 font-bold shadow-[0_0_20px_rgba(59,130,246,0.2)]">
+          <Button className="bg-primary hover:bg-primary/90 text-white rounded-full px-6 h-9 text-sm font-semibold">
             Generate Report
           </Button>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-10 max-w-container-max mx-auto w-full flex flex-col gap-10 pb-20">
-        {/* Hero Stats */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((s, i) => (
-            <motion.div
-              key={s.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="glass-panel p-8 rounded-[2rem] flex flex-col gap-4 border-white/5 relative group hover:bg-white/[0.05] transition-all"
-            >
+      {loading && !dashboard ? (
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="size-8 text-primary animate-spin" />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-8 flex flex-col gap-8 pb-24">
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {stats.map((s) => <StatCard key={s.label} {...s} />)}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* System Health */}
+            <section className="lg:col-span-2 flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-widest">{s.label}</h3>
-                <s.icon className={cn("size-6", s.color)} />
-              </div>
-              <div className="flex items-end gap-3">
-                <span className="text-4xl font-bold text-white tracking-tight">{s.value}</span>
-                <span className={cn("text-xs font-bold mb-1 flex items-center gap-1", s.trend.includes("+") ? "text-green-400" : "text-orange-400")}>
-                  {s.trend.includes("+") && <TrendingUp className="size-3" />}
-                  {s.trend}
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest">System Health</h3>
+                <span className={cn(
+                  "text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider",
+                  health?.status === "healthy"
+                    ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                    : "text-amber-400 bg-amber-500/10 border-amber-500/20"
+                )}>
+                  {health?.status || "Loading"}
                 </span>
               </div>
-              {s.progress ? (
-                <div className="w-full bg-white/5 rounded-full h-2 mt-2">
-                   <div className="h-full bg-gradient-to-r from-blue-500 to-orange-500 rounded-full" style={{ width: `${s.progress}%` }} />
-                </div>
-              ) : (
-                <div className="mt-4 h-10 flex items-end gap-1 opacity-20 group-hover:opacity-100 transition-all">
-                   {[20, 35, 25, 50, 40, 65, 85].map((h, idx) => (
-                     <div key={idx} className={cn("w-full rounded-t-sm transition-all duration-500", idx === 6 ? "bg-primary" : "bg-white/20")} style={{ height: `${h}%` }} />
-                   ))}
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </section>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          {/* System Health */}
-          <section className="lg:col-span-1 flex flex-col gap-6">
-            <h2 className="text-xl font-bold text-white tracking-tight px-2">System Health</h2>
-            <div className="glass-panel rounded-[2rem] p-4 border-white/5 flex flex-col gap-2">
-              {regions.map((r, i) => (
-                <div key={r.name} className="flex items-center justify-between p-4 rounded-2xl hover:bg-white/5 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="size-10 rounded-full bg-white/5 flex items-center justify-center ring-1 ring-white/10">
-                      <div className={cn("size-2 rounded-full", r.color)} />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-white">{r.name}</span>
-                      <span className="text-xs text-on-surface-variant font-medium">Latency: {r.latency}</span>
-                    </div>
-                  </div>
-                  <span className={cn(
-                    "text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border",
-                    r.status === "Operational" ? "text-green-400 border-green-500/20 bg-green-500/10" : "text-red-400 border-red-500/20 bg-red-500/10"
-                  )}>{r.status}</span>
-                </div>
-              ))}
-              <div className="mt-4 pt-4 border-t border-white/5 px-4 pb-2">
-                 <div className="flex justify-between items-center text-xs font-bold text-on-surface-variant">
-                   <span className="uppercase tracking-widest">Main Database</span>
-                   <span className="text-primary uppercase tracking-widest">99.99% Uptime</span>
-                 </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Recent Activity Feed */}
-          <section className="lg:col-span-2 flex flex-col gap-6">
-            <div className="flex items-center justify-between px-2">
-              <h2 className="text-xl font-bold text-white tracking-tight">Recent Activity</h2>
-              <Button variant="link" className="text-sm text-primary font-bold">View All</Button>
-            </div>
-            <div className="glass-panel rounded-[2rem] p-8 border-white/5 relative">
-              <div className="flex flex-col gap-0 relative">
-                <div className="absolute left-[19px] top-4 bottom-4 w-px bg-white/5" />
-                {activities.map((a, i) => (
-                  <div key={i} className="flex gap-6 relative py-4 group">
-                    <div className="size-10 rounded-full bg-background border border-white/5 flex items-center justify-center z-10 shadow-xl shrink-0 group-hover:border-primary/50 transition-all">
-                      <a.icon className={cn("size-5", a.iconColor)} />
-                    </div>
-                    <div className={cn("flex-1 pb-4", i !== activities.length - 1 ? "border-b border-white/5" : "")}>
-                       <div className="flex justify-between items-start mb-1">
-                          <h4 className="text-base font-bold text-white">{a.title}</h4>
-                          <span className="text-xs font-medium text-on-surface-variant">{a.time}</span>
-                       </div>
-                       <p className="text-sm text-on-surface-variant leading-relaxed">{a.desc}</p>
-                    </div>
-                  </div>
+              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3 flex flex-col gap-1">
+                {services.map((s) => (
+                  <ServiceRow key={s.name} {...s} />
                 ))}
+                {!services.length && (
+                  <p className="text-xs text-neutral-500 text-center py-6">Loading services…</p>
+                )}
+                <div className="mt-2 pt-3 border-t border-white/[0.06] px-4 flex justify-between items-center">
+                  <span className="text-[11px] text-neutral-500 uppercase tracking-wider">Uptime</span>
+                  <span className="text-[11px] text-primary font-bold">{uptime}</span>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+
+            {/* Recent Activity */}
+            <section className="lg:col-span-3 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest">Recent Activity</h3>
+                <Link href="/admin/users" className="text-xs text-primary hover:underline font-semibold">View Users →</Link>
+              </div>
+              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 flex-1 min-h-[300px]">
+                {activities.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-neutral-600 min-h-[240px]">
+                    <CheckCircle2 className="size-8" />
+                    <p className="text-sm font-medium">No recent activity logged.</p>
+                    <p className="text-xs">Events will appear here as users interact with the platform.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1 relative">
+                    <div className="absolute left-4 top-5 bottom-5 w-px bg-white/[0.04]" />
+                    {activities.map((a, i) => (
+                      <div key={i} className="flex gap-4 py-3 group">
+                        <div className={cn("size-9 rounded-full flex items-center justify-center z-10 shrink-0", a.cls)}>
+                          <a.icon className="size-4" />
+                        </div>
+                        <div className={cn("flex-1 pb-3 min-w-0", i < activities.length - 1 && "border-b border-white/[0.04]")}>
+                          <div className="flex justify-between items-start gap-2">
+                            <p className="text-sm font-semibold text-white truncate">{a.title}</p>
+                            <span className="text-[11px] text-neutral-500 shrink-0">{a.time}</span>
+                          </div>
+                          <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">{a.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

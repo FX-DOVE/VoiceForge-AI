@@ -13,45 +13,31 @@ import {
   History as HistoryIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { GenerationDetailModal } from "@/components/history/generation-detail-modal";
+import { useGenerations } from "@/hooks/use-generations";
 
 export default function HistoryPage() {
   const [selected, setSelected] = useState(null);
-  const generations = [
-    {
-      text: "The future of interactive storytelling begins with truly dynamic, emotionally resonant voice generation...",
-      voice: "Marcus (British, Professional)",
-      time: "Oct 24, 2023, 14:30",
-      duration: "0:45",
-      expiry: "Deletes in 2 days",
-      status: "warning"
-    },
-    {
-      text: "Welcome to the onboarding sequence. Let's get your workspace set up and ready for production.",
-      voice: "Sarah (American, Casual)",
-      time: "Oct 22, 2023, 09:15",
-      duration: "0:12",
-      expiry: "Deletes in 4 days",
-      status: "neutral"
-    },
-    {
-      text: "Error 404. The requested neural pathway could not be found. Please recalculate your parameters.",
-      voice: "System (Robotic, Neutral)",
-      time: "Oct 19, 2023, 18:02",
-      duration: "0:08",
-      expiry: "Deletes in 7 days",
-      status: "neutral"
-    },
-    {
-      text: "In a world where artificial intelligence defines the boundaries of creativity, one platform stands alone.",
-      voice: "Antoni (Deep, Narrator)",
-      time: "Oct 15, 2023, 11:20",
-      duration: "1:30",
-      expiry: "Expired",
-      status: "expired"
+  const [search, setSearch] = useState("");
+  const [playingId, setPlayingId] = useState(null);
+  const audioRef = useRef(null);
+  const { items: generations, loading } = useGenerations(search);
+
+  function handlePlayItem(item, e) {
+    e.stopPropagation();
+    if (!item.audioUrl) return;
+    if (playingId === item.id) {
+      audioRef.current?.pause();
+      setPlayingId(null);
+      return;
     }
-  ];
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = item.audioUrl;
+      audioRef.current.play().then(() => setPlayingId(item.id)).catch(() => {});
+    }
+  }
 
   return (
     <>
@@ -72,6 +58,8 @@ export default function HistoryPage() {
             <input 
               className="w-full h-12 pl-12 pr-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-primary transition-all text-on-surface placeholder:text-on-surface-variant/50" 
               placeholder="Search generations..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <Button variant="outline" className="h-12 px-6 rounded-xl border-white/10 hover:bg-white/5">
@@ -80,11 +68,18 @@ export default function HistoryPage() {
           </Button>
         </div>
 
+        <audio ref={audioRef} onEnded={() => setPlayingId(null)} className="hidden" />
         {/* History List */}
         <div className="flex flex-col gap-4">
+          {loading && (
+            <p className="text-on-surface-variant text-sm">Loading history...</p>
+          )}
+          {!loading && generations.length === 0 && (
+            <p className="text-on-surface-variant text-sm">No generations found.</p>
+          )}
           {generations.map((item, i) => (
             <motion.div
-              key={i}
+              key={item.id || i}
               role="button"
               tabIndex={0}
               onClick={() => setSelected({ ...item, id: i })}
@@ -106,10 +101,16 @@ export default function HistoryPage() {
                 <Button
                   className="size-12 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shrink-0"
                   variant="ghost"
-                  disabled={item.status === "expired"}
-                  onClick={(e) => e.stopPropagation()}
+                  disabled={item.status === "expired" || !item.audioUrl}
+                  onClick={(e) => handlePlayItem(item, e)}
                 >
-                  <Play className="size-5 fill-current" />
+                  {playingId === item.id ? (
+                    <span className="size-5 flex items-center justify-center">
+                      <span className="size-2 bg-current rounded-sm" />
+                    </span>
+                  ) : (
+                    <Play className="size-5 fill-current" />
+                  )}
                 </Button>
 
                 <div className="flex-1 min-w-0 flex flex-col gap-2">
@@ -137,7 +138,21 @@ export default function HistoryPage() {
                   <span>{item.expiry}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="rounded-full text-on-surface-variant hover:text-primary hover:bg-primary/10" disabled={item.status === "expired"} onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full text-on-surface-variant hover:text-primary hover:bg-primary/10"
+                    disabled={item.status === "expired" || (!item.downloadUrl && !item.audioUrl)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const url = item.downloadUrl || item.audioUrl;
+                      if (!url) return;
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `voiceforge-${item.id || "audio"}.mp3`;
+                      a.click();
+                    }}
+                  >
                     <Download className="size-5" />
                   </Button>
                   <Button variant="ghost" size="icon" className="rounded-full text-on-surface-variant hover:bg-white/5" onClick={(e) => e.stopPropagation()}>

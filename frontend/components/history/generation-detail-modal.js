@@ -20,11 +20,32 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 export function GenerationDetailModal({ open, generation, onClose }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [copied, setCopied] = useState(false);
+  const audioRef = useRef(null);
+
+  function handlePlayPause() {
+    const el = audioRef.current;
+    if (!el) return;
+    if (isPlaying) {
+      el.pause();
+      setIsPlaying(false);
+    } else {
+      el.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
+  }
+
+  function handleDownload() {
+    const url = generation?.downloadUrl || generation?.audioUrl;
+    if (!url) return;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `voiceforge-${generation?.id || "audio"}.mp3`;
+    a.click();
+  }
 
   useEffect(() => {
     function onKey(e) {
@@ -108,11 +129,19 @@ export function GenerationDetailModal({ open, generation, onClose }) {
               <div className="px-6 sm:px-8 py-6 flex flex-col gap-6 max-h-[70vh] overflow-y-auto">
                 {/* Player */}
                 <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-5 flex flex-col gap-4">
+                  {generation.audioUrl && (
+                    <audio
+                      ref={audioRef}
+                      src={generation.audioUrl}
+                      onEnded={() => setIsPlaying(false)}
+                      className="hidden"
+                    />
+                  )}
                   <div className="flex items-center gap-4">
                     <button
                       type="button"
-                      onClick={() => setIsPlaying((p) => !p)}
-                      disabled={generation.status === "expired"}
+                      onClick={handlePlayPause}
+                      disabled={generation.status === "expired" || !generation.audioUrl}
                       className="size-14 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-[0_0_24px_rgba(59,130,246,0.3)] disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {isPlaying ? (
@@ -140,7 +169,8 @@ export function GenerationDetailModal({ open, generation, onClose }) {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      disabled={generation.status === "expired"}
+                      disabled={generation.status === "expired" || !generation.audioUrl}
+                      onClick={handleDownload}
                       className="rounded-full text-xs font-bold hover:bg-white/5 disabled:opacity-40"
                     >
                       <Download className="mr-1.5 size-3.5" />

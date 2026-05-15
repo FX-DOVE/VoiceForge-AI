@@ -1,10 +1,11 @@
 "use client";
 
 import { Toaster } from "sonner";
+import { AuthProvider } from "@/contexts/auth-context";
 
 export function Providers({ children }) {
   return (
-    <>
+    <AuthProvider>
       {children}
       <Toaster
         richColors
@@ -17,6 +18,6 @@ export function Providers({ children }) {
           },
         }}
       />
-    </>
+    </AuthProvider>
   );
 }

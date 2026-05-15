@@ -1,172 +1,366 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { 
-  Settings, 
-  Save, 
-  Bell, 
-  Globe, 
-  Cpu, 
-  ShieldCheck, 
-  Palette,
-  Terminal,
-  Activity,
-  Server,
-  Lock
+import { adminApi } from "@/lib/api";
+import {
+  Settings, Globe, Terminal, Database, Layers,
+  RefreshCw, Loader2, CheckCircle2, XCircle, AlertCircle,
+  Zap, Mic, CreditCard, Mail, Server, HardDrive,
+  Users, Key, Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
+function StatusBadge({ ok, trueLabel = "Configured", falseLabel = "Not Set" }) {
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+      ok
+        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+    )}>
+      {ok ? <CheckCircle2 className="size-3" /> : <AlertCircle className="size-3" />}
+      {ok ? trueLabel : falseLabel}
+    </span>
+  );
+}
+
+function InfoRow({ label, value, mono = false }) {
+  return (
+    <div className="flex items-center justify-between py-3 border-b border-white/[0.04] last:border-0">
+      <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">{label}</span>
+      <span className={cn("text-sm font-medium text-white", mono && "font-mono text-xs text-neutral-300")}>{value ?? "—"}</span>
+    </div>
+  );
+}
+
+function SectionCard({ title, icon: Icon, children, delay = 0 }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden"
+    >
+      <div className="px-6 py-4 border-b border-white/[0.06] flex items-center gap-3">
+        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Icon className="size-4 text-primary" />
+        </div>
+        <h3 className="text-sm font-bold text-white">{title}</h3>
+      </div>
+      <div className="px-6 py-2">{children}</div>
+    </motion.div>
+  );
+}
+
+function ServiceCard({ icon: Icon, name, desc, ok, label, badgeTrue, badgeFalse }) {
+  return (
+    <div className={cn(
+      "flex items-center gap-4 p-4 rounded-xl border transition-all",
+      ok ? "bg-emerald-500/[0.04] border-emerald-500/20" : "bg-white/[0.02] border-white/[0.06]"
+    )}>
+      <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0", ok ? "bg-emerald-500/10" : "bg-white/5")}>
+        <Icon className={cn("size-5", ok ? "text-emerald-400" : "text-neutral-500")} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-white">{name}</p>
+        {desc && <p className="text-xs text-neutral-500 mt-0.5 truncate">{desc}</p>}
+      </div>
+      <StatusBadge ok={ok} trueLabel={badgeTrue || "Active"} falseLabel={badgeFalse || "Not Set"} />
+    </div>
+  );
+}
+
+const TABS = [
+  { id: "general", label: "General", icon: Globe },
+  { id: "api", label: "API Config", icon: Terminal },
+  { id: "storage", label: "Storage", icon: Database },
+  { id: "services", label: "Services", icon: Layers },
+  { id: "plans", label: "Plan Limits", icon: Users },
+];
 
 export default function AdminSettingsPage() {
-  const tabs = [
-    { label: "General", icon: Globe },
-    { label: "API Config", icon: Terminal },
-    { label: "Security", icon: Lock },
-    { label: "Appearance", icon: Palette },
-  ];
+  const [activeTab, setActiveTab] = useState("general");
+  const [cfg, setCfg] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    adminApi.settings().catch(() => null).then((d) => { setCfg(d); setLoading(false); });
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const g = cfg?.general;
+  const api = cfg?.api;
+  const storage = cfg?.storage;
+  const services = cfg?.services;
+  const plans = cfg?.planLimits;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <header className="hidden lg:flex h-20 border-b border-white/5 bg-background/80 backdrop-blur-md sticky top-0 z-30 items-center justify-between px-10 shrink-0">
-        <div className="flex items-center gap-4">
-           <Settings className="size-6 text-primary" />
-           <h2 className="text-2xl font-bold text-white tracking-tight">System Settings</h2>
+    <div className="h-full flex flex-col">
+      <header className="hidden lg:flex h-16 border-b border-white/[0.06] bg-background/80 backdrop-blur-md sticky top-0 z-30 items-center justify-between px-8 shrink-0">
+        <div className="flex items-center gap-3">
+          <Settings className="size-5 text-primary" />
+          <h2 className="text-lg font-bold text-white">System Settings</h2>
         </div>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="size-12 rounded-full hover:bg-white/5 border border-white/5">
-            <Bell className="size-5 text-on-surface-variant" />
-          </Button>
-          <Button className="bg-primary hover:bg-primary/90 text-on-primary rounded-full px-8 h-12 font-bold shadow-[0_0_20px_rgba(59,130,246,0.2)]">
-            <Save className="mr-2 size-4" />
-            Save Changes
-          </Button>
-        </div>
+        <button
+          onClick={load}
+          className="size-9 rounded-full hover:bg-white/5 flex items-center justify-center text-neutral-400 hover:text-white transition-colors"
+        >
+          <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+        </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-10 max-w-container-max mx-auto w-full flex flex-col gap-10 pb-20">
-        {/* Tabs */}
-        <div className="flex border-b border-white/5 gap-10">
-          {tabs.map((t, i) => (
-            <button
-              key={t.label}
-              className={cn(
-                "flex items-center gap-3 pb-6 px-2 text-sm font-bold uppercase tracking-widest transition-all relative",
-                i === 0 ? "text-primary border-b-[3px] border-primary" : "text-on-surface-variant hover:text-white"
-              )}
-            >
-              <t.icon className="size-4" />
-              {t.label}
-            </button>
-          ))}
+      {/* Tabs */}
+      <div className="sticky top-16 z-20 bg-background flex gap-1 px-8 pt-4 pb-0 border-b border-white/[0.06] shrink-0 overflow-x-auto">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            className={cn(
+              "flex items-center gap-2 px-4 pb-4 text-xs font-semibold uppercase tracking-widest transition-all whitespace-nowrap relative",
+              activeTab === t.id
+                ? "text-primary"
+                : "text-neutral-500 hover:text-neutral-300"
+            )}
+          >
+            <t.icon className="size-3.5" />
+            {t.label}
+            {activeTab === t.id && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {loading && !cfg ? (
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="size-8 text-primary animate-spin" />
         </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-8 flex flex-col gap-5 pb-24">
 
-        <div className="flex flex-col gap-16">
-          {/* General Config */}
-          <section className="flex flex-col gap-8">
-            <div className="flex flex-col gap-2">
-              <h3 className="text-2xl font-bold text-white tracking-tight">General Configuration</h3>
-              <p className="text-on-surface-variant">Manage the core identity and operational status of your VoiceForge instance.</p>
-            </div>
-            
-            <div className="glass-panel p-10 rounded-[2.5rem] border-white/5 flex flex-col gap-10">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="flex flex-col gap-3">
-                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Site Name</label>
-                  <Input className="h-14 bg-white/5 border-white/10 rounded-2xl focus:ring-primary/20" defaultValue="VoiceForge AI Production" />
+          {/* ── GENERAL ── */}
+          {activeTab === "general" && (
+            <>
+              <SectionCard title="Instance Info" icon={Globe} delay={0}>
+                <InfoRow label="Environment" value={
+                  <span className={cn("px-2 py-0.5 rounded text-xs font-bold uppercase", g?.env === "production" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400")}>
+                    {g?.env || "—"}
+                  </span>
+                } />
+                <InfoRow label="Site Name" value={g?.siteName} />
+                <InfoRow label="Admin Email" value={g?.adminEmail || "Not configured"} mono />
+                <InfoRow label="Client URL" value={g?.clientUrl} mono />
+                <InfoRow label="Server Port" value={g?.port} />
+                <InfoRow label="TTS Provider" value={
+                  <span className="px-2 py-0.5 rounded text-xs font-mono bg-blue-500/10 text-blue-400">{g?.ttsProvider || "auto"}</span>
+                } />
+              </SectionCard>
+
+              <SectionCard className="hidden" title="Platform Status " icon={Cpu} delay={0.06}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-3 overflow-y-auto overflow-x-hidden" >
+                  <ServiceCard icon={Zap} name="xAI TTS Engine" desc={api?.xaiModel} ok={api?.xaiConfigured} badgeTrue="Key Set" badgeFalse="No API Key" />
+                  <ServiceCard icon={CreditCard} name="Stripe Payments" desc="Subscription billing" ok={services?.stripeConfigured} />
+                  <ServiceCard icon={Mail} name="Email (Resend)" desc={services?.emailFrom} ok={services?.resendConfigured} />
+                  <ServiceCard icon={Server} name="Redis Cache" desc="Session & rate-limit store" ok={services?.redisConfigured} badgeTrue="Connected" badgeFalse="Not Connected" />
+                  <ServiceCard icon={HardDrive} name="Cloud Storage" desc={`Provider: ${storage?.provider || "local"}`} ok={storage?.cloudinaryConfigured || storage?.awsConfigured} badgeTrue="Cloud Active" badgeFalse="Local Storage" />
                 </div>
-                <div className="flex flex-col gap-3">
-                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Admin Contact Email</label>
-                  <Input className="h-14 bg-white/5 border-white/10 rounded-2xl focus:ring-primary/20" defaultValue="admin@voiceforge.ai" />
+              </SectionCard>
+            </>
+          )}
+
+          {/* ── API CONFIG ── */}
+          {activeTab === "api" && (
+            <>
+              <SectionCard title="xAI Grok TTS" icon={Mic} delay={0}>
+                <div className="py-2">
+                  <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
+                    <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">API Key</span>
+                    <StatusBadge ok={api?.xaiConfigured} trueLabel="Configured" falseLabel="Missing" />
+                  </div>
+                  <InfoRow label="Model" value={api?.xaiModel} mono />
+                  <InfoRow label="Default Voice" value={api?.xaiDefaultVoice} />
+                  <InfoRow label="Default Language" value={api?.xaiDefaultLanguage} />
+                  <InfoRow label="Default Codec" value={api?.xaiDefaultCodec} />
                 </div>
-              </div>
+              </SectionCard>
 
-              <div className="pt-8 border-t border-white/5 flex items-center justify-between">
-                <div className="flex flex-col gap-1">
-                   <span className="text-sm font-bold text-white">Maintenance Mode</span>
-                   <p className="text-xs text-on-surface-variant font-medium">Temporarily disable access to the platform for all non-admin users.</p>
+              <SectionCard title="Rate Limiting" icon={Zap} delay={0.06}>
+                <div className="py-2">
+                  <InfoRow label="Max Requests" value={`${api?.rateLimitMax ?? "—"} requests`} />
+                  <InfoRow label="Window" value={`${Math.round((api?.rateLimitWindowMs ?? 0) / 60000)} minutes`} />
+                  <InfoRow label="Effective RPM" value={`${Math.round((api?.rateLimitMax ?? 0) / ((api?.rateLimitWindowMs ?? 60000) / 60000))} req/min`} />
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer group">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-14 h-8 bg-white/5 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-            </div>
-          </section>
+                <div className="py-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-neutral-500 uppercase tracking-wider">Utilisation cap</span>
+                    <span className="text-xs font-bold text-primary">{api?.rateLimitMax ?? 0} req / {Math.round((api?.rateLimitWindowMs ?? 900000) / 60000)}min window</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full w-3/5 bg-gradient-to-r from-blue-500 to-violet-500 rounded-full" />
+                  </div>
+                </div>
+              </SectionCard>
+            </>
+          )}
 
-          {/* API Config */}
-          <section className="flex flex-col gap-8">
-            <div className="flex flex-col gap-2">
-              <h3 className="text-2xl font-bold text-white tracking-tight">API & Resource Limits</h3>
-              <p className="text-on-surface-variant">Configure generation parameters, rate limits, and model access.</p>
-            </div>
-            
-            <div className="glass-panel p-10 rounded-[2.5rem] border-white/5 flex flex-col gap-10">
-              <div className="flex flex-col gap-3 max-w-md">
-                 <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Default Generation Model</label>
-                 <select defaultValue="pro" className="h-14 px-6 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none">
-                    <option value="turbo" className="bg-background">VoiceForge v2 Turbo (Fastest)</option>
-                    <option value="pro" className="bg-background">VoiceForge v2 Pro (High Fidelity)</option>
-                    <option value="v1" className="bg-background">VoiceForge v1 (Legacy)</option>
-                 </select>
-              </div>
+          {/* ── STORAGE ── */}
+          {activeTab === "storage" && (
+            <>
+              <SectionCard title="Storage Provider" icon={HardDrive} delay={0}>
+                <div className="py-2">
+                  <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
+                    <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Active Provider</span>
+                    <span className="px-3 py-1 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-bold uppercase border border-blue-500/20">
+                      {storage?.provider || "local"}
+                    </span>
+                  </div>
+                  <InfoRow label="Max Upload Size" value={`${storage?.maxUploadMb ?? 25} MB`} />
+                </div>
+              </SectionCard>
 
-              <div className="flex flex-col gap-6 max-w-2xl">
-                 <div className="flex justify-between items-end">
-                    <span className="text-sm font-bold text-white">Global Rate Limit (RPM)</span>
-                    <span className="px-3 py-1 rounded-lg bg-primary/10 text-primary font-bold text-xs uppercase">120 RPM</span>
-                 </div>
-                 <input type="range" min="10" max="500" defaultValue="120" className="w-full accent-primary h-2 bg-white/5 rounded-full" />
-                 <div className="flex justify-between text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                    <span>10 RPM</span>
-                    <span>500 RPM</span>
-                 </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Security */}
-          <section className="flex flex-col gap-8">
-            <h3 className="text-2xl font-bold text-white tracking-tight">Security & Access</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               <div className="glass-panel p-8 rounded-[2rem] border-white/5 flex flex-col justify-between gap-6 min-h-[220px]">
-                  <div>
-                    <div className="flex items-center gap-3 mb-3">
-                       <ShieldCheck className="size-6 text-primary" />
-                       <h4 className="text-lg font-bold text-white">2FA Enforcement</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <SectionCard title="Cloudinary" icon={Database} delay={0.06}>
+                  <div className="py-2 flex flex-col gap-2">
+                    <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
+                      <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Status</span>
+                      <StatusBadge ok={storage?.cloudinaryConfigured} />
                     </div>
-                    <p className="text-sm text-on-surface-variant leading-relaxed">
-                      Enforce two-factor authentication for all administrative accounts across the platform.
+                    <p className="text-xs text-neutral-600 py-2">
+                      {storage?.cloudinaryConfigured
+                        ? "Cloudinary is active. Audio and voice assets are served from the cloud."
+                        : "Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env to enable."}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between">
-                     <span className="text-xs font-bold text-white uppercase tracking-widest">Require Globally</span>
-                     <label className="relative inline-flex items-center cursor-pointer group">
-                        <input type="checkbox" className="sr-only peer" defaultChecked />
-                        <div className="w-14 h-8 bg-white/5 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
-                      </label>
-                  </div>
-               </div>
+                </SectionCard>
 
-               <div className="glass-panel p-8 rounded-[2rem] border-white/5 flex flex-col gap-6">
-                  <div className="flex items-center gap-3">
-                     <Server className="size-6 text-primary" />
-                     <h4 className="text-lg font-bold text-white">Admin IP Whitelist</h4>
+                <SectionCard title="Amazon S3" icon={Server} delay={0.1}>
+                  <div className="py-2 flex flex-col gap-2">
+                    <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
+                      <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Status</span>
+                      <StatusBadge ok={storage?.awsConfigured} />
+                    </div>
+                    <p className="text-xs text-neutral-600 py-2">
+                      {storage?.awsConfigured
+                        ? "AWS S3 bucket is configured and available."
+                        : "Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_S3_BUCKET in your .env to enable."}
+                    </p>
                   </div>
-                  <p className="text-sm text-on-surface-variant leading-relaxed">
-                    Restrict admin dashboard access to specific IP addresses. One per line.
+                </SectionCard>
+              </div>
+            </>
+          )}
+
+          {/* ── SERVICES ── */}
+          {activeTab === "services" && (
+            <div className="flex flex-col gap-5">
+              <SectionCard title="Stripe Billing" icon={CreditCard} delay={0}>
+                <div className="py-2">
+                  <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
+                    <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Secret Key</span>
+                    <StatusBadge ok={services?.stripeConfigured} />
+                  </div>
+                  <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
+                    <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Webhook Secret</span>
+                    <StatusBadge ok={services?.stripeWebhookConfigured} />
+                  </div>
+                  <p className="text-xs text-neutral-600 py-3">
+                    {services?.stripeConfigured
+                      ? "Stripe is configured. Subscription payments are active."
+                      : "Set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in your .env file to enable billing."}
                   </p>
-                  <textarea 
-                    className="flex-1 min-h-[120px] bg-white/5 border border-white/10 rounded-2xl p-4 text-xs font-mono text-on-surface-variant focus:border-primary outline-none transition-all resize-none"
-                    placeholder="e.g., 192.168.1.1"
-                    defaultValue={`203.0.113.50\n198.51.100.14`}
-                  />
-               </div>
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Email (Resend)" icon={Mail} delay={0.06}>
+                <div className="py-2">
+                  <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
+                    <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">API Key</span>
+                    <StatusBadge ok={services?.resendConfigured} />
+                  </div>
+                  <InfoRow label="Sender Address" value={services?.emailFrom} mono />
+                  <p className="text-xs text-neutral-600 py-3">
+                    {services?.resendConfigured
+                      ? "Transactional emails (password reset, etc.) are enabled via Resend."
+                      : "Set RESEND_API_KEY in your .env to enable email sending."}
+                  </p>
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Redis Cache" icon={Server} delay={0.1}>
+                <div className="py-2">
+                  <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
+                    <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Connection</span>
+                    <StatusBadge ok={services?.redisConfigured} trueLabel="URL Set" badgeFalse="Not Configured" />
+                  </div>
+                  <p className="text-xs text-neutral-600 py-3">
+                    {services?.redisConfigured
+                      ? "Redis is configured for rate limiting and session caching."
+                      : "Set REDIS_URL in your .env to enable Redis. Without it, in-memory rate limiting is used."}
+                  </p>
+                </div>
+              </SectionCard>
             </div>
-          </section>
+          )}
+
+          {/* ── PLAN LIMITS ── */}
+          {activeTab === "plans" && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                {[
+                  { key: "free", label: "Free", color: "text-neutral-400", bg: "bg-neutral-500/10 border-neutral-500/20" },
+                  { key: "pro", label: "Pro", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
+                  { key: "enterprise", label: "Enterprise", color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20" },
+                ].map(({ key, label, color, bg }, i) => {
+                  const p = plans?.[key];
+                  return (
+                    <motion.div
+                      key={key}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.06 }}
+                      className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 flex flex-col gap-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={cn("text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border", bg, color)}>{label}</span>
+                        <span className="text-xs text-neutral-500">{p?.users ?? 0} users</span>
+                      </div>
+                      <div>
+                        <p className={cn("text-3xl font-bold", color)}>{(p?.charactersLimit ?? 0).toLocaleString()}</p>
+                        <p className="text-xs text-neutral-500 mt-1">characters / month</p>
+                      </div>
+                      <div className="pt-3 border-t border-white/[0.05]">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-neutral-500">Concurrent jobs</span>
+                          <span className="text-white font-semibold">{p?.concurrentJobs ?? 1}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              <SectionCard title="How to update limits" icon={Key} delay={0.2}>
+                <div className="py-3">
+                  <p className="text-xs text-neutral-500 leading-relaxed">
+                    Plan limits are defined in your backend <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-[11px]">config/index.js</code> under <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-[11px]">planLimits</code>.
+                    Changes take effect after restarting the server. Existing users are not retroactively affected until their next billing cycle reset.
+                  </p>
+                  <div className="mt-4 bg-black/30 rounded-xl p-4 font-mono text-[11px] text-neutral-400 leading-relaxed">
+                    <span className="text-blue-400">planLimits</span>: {"{"}<br />
+                    {"  "}<span className="text-neutral-300">free</span>: {"{ "}charactersLimit: <span className="text-emerald-400">{(plans?.free?.charactersLimit ?? 10000).toLocaleString()}</span>{" }"},<br />
+                    {"  "}<span className="text-neutral-300">pro</span>: {"{ "}charactersLimit: <span className="text-blue-400">{(plans?.pro?.charactersLimit ?? 100000).toLocaleString()}</span>{" }"},<br />
+                    {"  "}<span className="text-neutral-300">enterprise</span>: {"{ "}charactersLimit: <span className="text-violet-400">{(plans?.enterprise?.charactersLimit ?? 1000000).toLocaleString()}</span>{" }"}<br />
+                    {"}"}
+                  </div>
+                </div>
+              </SectionCard>
+            </>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

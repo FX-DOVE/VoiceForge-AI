@@ -15,22 +15,40 @@ import {
   Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import { useUsage } from "@/hooks/use-usage";
+import { usersApi, filesApi } from "@/lib/api";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api/client";
 
 const DEFAULT_AVATAR =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuBg7h91fg7bqsAkL62YfMC8IQr_SJ_tniLt0-y6cg2RHooUbIvbp8KWFo83Hgq3sNFj64-P5xukuwjLg6E-ZNDmu_DPIwCZetojleAlsSHqoioPzgRk5Y20A_vMCy-nQmte8tKMrqa7V3K8AOWPobwJkETw5wwFdMAh9TgT9Ke4chPDnB20JpjB7ksQekpIS1GlKwCuuH-nMRb3EpyW-GVkOytcx-61_sxH3PyQ7KIbzd1MMbjlP8lhndHvs7E_JV7Upa1rpuiqiNw";
 
 export default function SettingsPage() {
+  const { user, refreshUser } = useAuth();
+  const { usage } = useUsage();
   const fileInputRef = useRef(null);
-  const [avatar, setAvatar] = useState(DEFAULT_AVATAR);
+  const [avatar, setAvatar] = useState(user?.avatar || DEFAULT_AVATAR);
   const [avatarError, setAvatarError] = useState("");
+  const [fullName, setFullName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFullName(user.name || "");
+      setEmail(user.email || "");
+      if (user.avatar) setAvatar(user.avatar);
+    }
+  }, [user]);
 
   function handlePickFile() {
     setAvatarError("");
     fileInputRef.current?.click();
   }
 
-  function handleAvatarChange(e) {
+  async function handleAvatarChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -41,15 +59,47 @@ export default function SettingsPage() {
       setAvatarError("Image must be smaller than 5 MB.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => setAvatar(ev.target?.result);
-    reader.readAsDataURL(file);
+
+    try {
+      setSaving(true);
+      const data = await filesApi.upload(file);
+      const url = data.file.url;
+      await usersApi.updateProfile({ avatar: url });
+      setAvatar(url);
+      await refreshUser();
+      toast.success("Avatar updated.");
+    } catch (err) {
+      toast.error("Failed to upload avatar.");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleResetAvatar() {
-    setAvatar(DEFAULT_AVATAR);
-    setAvatarError("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  async function handleResetAvatar() {
+    try {
+      setSaving(true);
+      await usersApi.updateProfile({ avatar: "" });
+      setAvatar(DEFAULT_AVATAR);
+      await refreshUser();
+      toast.success("Avatar reset.");
+    } catch (err) {
+      toast.error("Failed to reset avatar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveProfile() {
+    setSaving(true);
+    try {
+      await usersApi.updateProfile({ name: fullName, email });
+      await refreshUser();
+      toast.success("Profile updated successfully.");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to update profile.");
+    } finally {
+      setSaving(false);
+    }
   }
   const sections = [
     { id: "profile", label: "Profile", icon: User },
@@ -160,17 +210,30 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex flex-col gap-3">
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Full Name</label>
-                  <Input className="h-12 bg-white/5 border-white/10 rounded-xl focus:ring-primary/20" defaultValue="Alex Vance" />
+                  <Input 
+                    className="h-12 bg-white/5 border-white/10 rounded-xl focus:ring-primary/20" 
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
                 </div>
                 <div className="flex flex-col gap-3">
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Email Address</label>
-                  <Input className="h-12 bg-white/5 border-white/10 rounded-xl focus:ring-primary/20" defaultValue="alex.vance@example.com" />
+                  <Input 
+                    className="h-12 bg-white/5 border-white/10 rounded-xl focus:ring-primary/20" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled
+                  />
                 </div>
               </div>
 
               <div className="flex justify-end pt-6 border-t border-white/5">
-                <Button className="h-12 px-10 bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold shadow-[0_0_20px_rgba(59,130,246,0.2)]">
-                  Save Changes
+                <Button 
+                  className="h-12 px-10 bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold shadow-[0_0_20px_rgba(59,130,246,0.2)]"
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                >
+                  {saving ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             </div>
@@ -205,12 +268,12 @@ export default function SettingsPage() {
                       <span className="text-sm font-bold text-white">Monthly Audio Credits</span>
                       <span className="text-xs text-on-surface-variant font-medium">Resets in 12 days</span>
                     </div>
-                    <span className="text-sm font-bold text-on-surface-variant">
-                      <span className="text-white">75,000</span> / 100,000 chars
+                     <span className="text-sm font-bold text-on-surface-variant">
+                      <span className="text-white">{(usage?.charactersUsed ?? 0).toLocaleString()}</span> / {(usage?.charactersLimit ?? 100000).toLocaleString()} chars
                     </span>
                  </div>
                  <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
-                    <div className="bg-primary h-full rounded-full transition-all duration-1000" style={{ width: "75%" }} />
+                    <div className="bg-primary h-full rounded-full transition-all duration-1000" style={{ width: `${(usage?.charactersUsed / usage?.charactersLimit * 100) || 0}%` }} />
                  </div>
               </div>
             </div>

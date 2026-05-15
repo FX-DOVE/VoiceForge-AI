@@ -16,6 +16,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { authApi } from "@/lib/api";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api/client";
 
 function ResetPasswordInner() {
   const router = useRouter();
@@ -27,6 +30,7 @@ function ResetPasswordInner() {
   const [showPwd, setShowPwd] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const tokenInvalid = !token;
 
@@ -48,13 +52,24 @@ function ResetPasswordInner() {
     "bg-green-500",
   ][strength];
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     if (password.length < 8) return setError("Password must be at least 8 characters.");
     if (password !== confirm) return setError("Passwords do not match.");
-    setDone(true);
-    setTimeout(() => router.push("/login"), 2200);
+    setSubmitting(true);
+    try {
+      await authApi.resetPassword({ token, password });
+      setDone(true);
+      toast.success("Password updated successfully.");
+      setTimeout(() => router.push("/login"), 2200);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Reset failed.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -192,9 +207,10 @@ function ResetPasswordInner() {
 
               <Button
                 type="submit"
+                disabled={submitting}
                 className="h-14 bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold text-lg shadow-[0_0_30px_rgba(59,130,246,0.2)] group"
               >
-                Update Password
+                {submitting ? "Updating..." : "Update Password"}
                 <ArrowRight className="ml-2 size-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </form>

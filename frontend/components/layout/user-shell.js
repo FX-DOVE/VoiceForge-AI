@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
 import { NotificationsBell } from "@/components/layout/notifications-bell";
 import { CommandPalette } from "@/components/layout/command-palette";
 
@@ -116,6 +117,7 @@ function CommandPaletteTrigger() {
 function DashboardSidebar({ className, onClose }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout } = useAuth();
 
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -128,16 +130,17 @@ function DashboardSidebar({ className, onClose }) {
   ];
 
   function handleSignOut() {
-    try {
-      document.cookie = "vf_session=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
-      if (typeof window !== "undefined") {
-        window.localStorage?.removeItem("vf_session");
-        window.sessionStorage?.removeItem("vf_session");
-      }
-    } catch {}
+    logout();
     onClose?.();
     router.push("/login");
   }
+
+  const displayName = user?.name || "User";
+  const displayEmail = user?.email || "";
+  const planLabel = user?.plan ? `${user.plan.charAt(0).toUpperCase()}${user.plan.slice(1)}` : "Free";
+  const avatarSrc =
+    user?.avatarUrl ||
+    "https://lh3.googleusercontent.com/aida-public/AB6AXuBg7h91fg7bqsAkL62YfMC8IQr_SJ_tniLt0-y6cg2RHooUbIvbp8KWFo83Hgq3sNFj64-P5xukuwjLg6E-ZNDmu_DPIwCZetojleAlsSHqoioPzgRk5Y20A_vMCy-nQmte8tKMrqa7V3K8AOWPobwJkETw5wwFdMAh9TgT9Ke4chPDnB20JpjB7ksQekpIS1GlKwCuuH-nMRb3EpyW-GVkOytcx-61_sxH3PyQ7KIbzd1MMbjlP8lhndHvs7E_JV7Upa1rpuiqiNw";
 
   return (
     <aside className={cn("w-72 shrink-0 flex flex-col border-r border-white/5 bg-surface-container h-full relative z-20", className)}>
@@ -155,7 +158,7 @@ function DashboardSidebar({ className, onClose }) {
               <h1 className="text-white text-lg font-bold leading-none tracking-tight">VoiceForge</h1>
               <div className="flex items-center gap-1.5 mt-1">
                  <Sparkles className="size-3 text-primary" />
-                 <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest">Pro Member</span>
+                 <span className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest">{planLabel} Member</span>
               </div>
             </div>
           </div>
@@ -205,14 +208,14 @@ function DashboardSidebar({ className, onClose }) {
              >
                <div className="size-10 rounded-full bg-surface-variant border border-white/10 flex items-center justify-center overflow-hidden">
                   <img 
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBg7h91fg7bqsAkL62YfMC8IQr_SJ_tniLt0-y6cg2RHooUbIvbp8KWFo83Hgq3sNFj64-P5xukuwjLg6E-ZNDmu_DPIwCZetojleAlsSHqoioPzgRk5Y20A_vMCy-nQmte8tKMrqa7V3K8AOWPobwJkETw5wwFdMAh9TgT9Ke4chPDnB20JpjB7ksQekpIS1GlKwCuuH-nMRb3EpyW-GVkOytcx-61_sxH3PyQ7KIbzd1MMbjlP8lhndHvs7E_JV7Upa1rpuiqiNw" 
+                    src={avatarSrc}
                     alt="Avatar"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                </div>
                <div className="flex flex-col min-w-0">
-                  <p className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors">Jane Doe</p>
-                  <p className="text-[10px] text-on-surface-variant truncate font-medium">jane@example.com</p>
+                  <p className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors">{displayName}</p>
+                  <p className="text-[10px] text-on-surface-variant truncate font-medium">{displayEmail}</p>
                </div>
              </Link>
              <button

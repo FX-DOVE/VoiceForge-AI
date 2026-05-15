@@ -17,19 +17,109 @@ import {
   Volume2,
   Clock
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { VoiceRecorder } from "@/components/cloning/voice-recorder";
+import { cloningApi } from "@/lib/api";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api/client";
 
 export default function CloningPage() {
   const [step, setStep] = useState(1);
   const [inputMode, setInputMode] = useState("upload"); // upload | record
-  const [sampleCount, setSampleCount] = useState(0);
-  const [clonedVoices, setClonedVoices] = useState([
-    { name: "Narrator One", status: "ready", progress: 100 },
-    { name: "Podcast Host", status: "training", progress: 65 },
-    { name: "Corporate Voice", status: "ready", progress: 100 },
-  ]);
+  const [clonedVoices, setClonedVoices] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isTraining, setIsTraining] = useState(false);
+
+  // Form State
+  const [samples, setSamples] = useState([]);
+  const [cloneId, setCloneId] = useState(null);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [visibility, setVisibility] = useState("private");
+  const [progress, setProgress] = useState(0);
+
+  const fetchClones = useCallback(async () => {
+    try {
+      const data = await cloningApi.list();
+      setClonedVoices(data.clones || []);
+    } catch (err) {
+      console.error("Failed to fetch clones", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchClones();
+  }, [fetchClones]);
+
+  // Polling for status if in step 3
+  useEffect(() => {
+    let timer;
+    if (step === 3 && cloneId) {
+      timer = setInterval(async () => {
+        try {
+          const data = await cloningApi.status(cloneId);
+          setProgress(data.progress || 0);
+          if (data.status === "ready") {
+            toast.success("Voice is ready!");
+            fetchClones();
+            setStep(1); // Reset or go to library
+            setCloneId(null);
+            setSamples([]);
+          } else if (data.status === "failed") {
+            toast.error(data.errorMessage || "Training failed.");
+            setStep(2);
+          }
+        } catch (err) {
+          console.error("Status check failed", err);
+        }
+      }, 3000);
+    }
+    return () => clearInterval(timer);
+  }, [step, cloneId, fetchClones]);
+
+  async function handleUpload(files) {
+    if (!files?.length) return;
+    setLoading(true);
+    try {
+      const data = await cloningApi.upload(Array.from(files), cloneId);
+      setCloneId(data.cloneId);
+      toast.success("Samples uploaded.");
+      setStep(2);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Upload failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleConfigure() {
+    if (!name.trim()) return toast.error("Please enter a name.");
+    setLoading(true);
+    try {
+      await cloningApi.configure({
+        cloneId,
+        name,
+        description,
+        visibility,
+      });
+      setStep(3);
+      handleStartTraining();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Configuration failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleStartTraining() {
+    try {
+      await cloningApi.start(cloneId);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to start training.");
+      setStep(2);
+    }
+  }
 
   const steps = [
     { id: 1, label: "Upload Samples", icon: Upload },
@@ -115,13 +205,17 @@ export default function CloningPage() {
                           htmlFor="cloning-upload-input"
                           className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-[1.5rem] sm:rounded-[2rem] lg:rounded-[2.5rem] p-6 sm:p-10 lg:p-16 group hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer"
                        >
-                          <input
+                           <input
                              id="cloning-upload-input"
                              type="file"
                              accept="audio/*,.wav,.mp3,.m4a"
                              multiple
                              className="hidden"
-                             onChange={(e) => setSampleCount((e.target.files || []).length)}
+                             onChange={(e) => {
+                               const files = Array.from(e.target.files || []);
+                               setSamples(files);
+                               handleUpload(files);
+                             }}
                           />
                           <div className="size-20 bg-primary/10 rounded-3xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
                              <Upload className="size-10" />
@@ -132,16 +226,16 @@ export default function CloningPage() {
                              WAV, MP3, or M4A (Max 50MB).
                           </p>
                           <span className="h-12 px-8 inline-flex items-center bg-white/5 group-hover:bg-white/10 text-white rounded-full font-bold border border-white/10">
-                             Select Files
+                             {loading ? "Uploading..." : "Select Files"}
                           </span>
-                          {sampleCount > 0 && (
+                          {samples.length > 0 && (
                             <p className="mt-6 text-sm font-bold text-primary">
-                              {sampleCount} file{sampleCount === 1 ? "" : "s"} ready to upload
+                              {samples.length} file{samples.length === 1 ? "" : "s"} selected
                             </p>
                           )}
                        </label>
                      ) : (
-                       <VoiceRecorder onUse={(files) => setSampleCount(files.length)} />
+                       <VoiceRecorder onUse={(files) => handleUpload(files)} />
                      )}
 
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -184,14 +278,25 @@ export default function CloningPage() {
                      <div className="flex flex-col gap-8">
                         <div className="flex flex-col gap-3">
                            <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1">Voice Name</label>
-                           <Input placeholder="Enter a unique name for your voice" className="h-14 bg-white/5 border-white/10 rounded-2xl focus:ring-primary/20" />
+                           <Input 
+                             placeholder="Enter a unique name for your voice" 
+                             className="h-14 bg-white/5 border-white/10 rounded-2xl focus:ring-primary/20" 
+                             value={name}
+                             onChange={(e) => setName(e.target.value)}
+                           />
                         </div>
 
                         <div className="flex flex-col gap-3">
                            <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1">Visibility</label>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <label className="relative p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-white/10 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all group">
-                                 <input type="radio" name="visibility" className="sr-only peer" defaultChecked />
+                                 <input 
+                                   type="radio" 
+                                   name="visibility" 
+                                   className="sr-only peer" 
+                                   checked={visibility === "private"} 
+                                   onChange={() => setVisibility("private")}
+                                 />
                                  <div className="flex items-center gap-4 peer-checked:text-primary">
                                     <div className="size-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 peer-checked:border-primary/50">
                                        <Shield className="size-5" />
@@ -203,7 +308,13 @@ export default function CloningPage() {
                                  </div>
                               </label>
                               <label className="relative p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-white/10 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all group">
-                                 <input type="radio" name="visibility" className="sr-only peer" />
+                                 <input 
+                                   type="radio" 
+                                   name="visibility" 
+                                   className="sr-only peer" 
+                                   checked={visibility === "public"}
+                                   onChange={() => setVisibility("public")}
+                                 />
                                  <div className="flex items-center gap-4 peer-checked:text-primary">
                                     <div className="size-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
                                        <Globe className="size-5" />
@@ -222,20 +333,23 @@ export default function CloningPage() {
                            <textarea 
                              className="h-32 w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-white outline-none focus:ring-2 focus:ring-primary/20 resize-none transition-all"
                              placeholder="Describe the characteristics of this voice..."
+                             value={description}
+                             onChange={(e) => setDescription(e.target.value)}
                            />
                         </div>
                      </div>
 
                      <div className="flex justify-between pt-6 border-t border-white/5">
-                        <Button type="button" variant="ghost" onClick={() => setStep(1)} className="h-12 px-8 rounded-full font-bold">
+                        <Button type="button" variant="ghost" onClick={() => setStep(1)} className="h-12 px-8 rounded-full font-bold" disabled={loading}>
                            Back
                         </Button>
                         <Button
                           type="button"
-                          onClick={() => setStep(3)}
+                          onClick={handleConfigure}
+                          disabled={loading}
                           className="h-12 px-10 bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold shadow-[0_0_20px_rgba(59,130,246,0.2)]"
                         >
-                           Start Training
+                           {loading ? "Configuring..." : "Start Training"}
                         </Button>
                      </div>
                   </motion.div>
@@ -263,13 +377,13 @@ export default function CloningPage() {
                      <div className="w-full max-w-md bg-white/5 rounded-full h-3 overflow-hidden">
                         <motion.div 
                           initial={{ width: 0 }}
-                          animate={{ width: "45%" }}
+                          animate={{ width: `${progress}%` }}
                           className="h-full bg-gradient-to-r from-primary to-purple-500 rounded-full"
                         />
                      </div>
                      <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-widest">
-                        <span className="animate-pulse">Processing Neural Weights...</span>
-                        <span>45%</span>
+                        <span className="animate-pulse">{progress < 100 ? "Processing Neural Weights..." : "Completing..."}</span>
+                        <span>{progress}%</span>
                      </div>
                      <Button type="button" variant="outline" onClick={() => setStep(1)} className="mt-4 h-12 px-10 rounded-full border-white/10 hover:bg-white/5 font-bold">
                         Go to Dashboard

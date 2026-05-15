@@ -193,11 +193,23 @@ async function completeTraining(voiceCloneId, trainingJobId) {
   });
 }
 
+async function listClones(userId) {
+  const clones = await VoiceClone.find({ user: userId }).sort({ createdAt: -1 });
+  return clones.map((c) => ({
+    id: c._id.toString(),
+    name: c.name,
+    status: c.status,
+    progress: c.progress,
+    createdAt: c.createdAt,
+  }));
+}
+
 module.exports = {
   uploadSamples,
   configureClone,
   startTraining,
   getCloneStatus,
   completeTraining,
+  listClones,
   TRAINING_STEPS,
 };

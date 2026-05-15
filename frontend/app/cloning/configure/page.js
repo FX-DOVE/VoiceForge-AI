@@ -1,14 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useCloningStore } from "@/stores/cloning-store";
+import { cloningApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api/client";
 
 export default function CloningConfigurePage() {
+  const router = useRouter();
   const {
+    cloneId,
     voiceName,
     visibility,
     description,
@@ -16,6 +23,34 @@ export default function CloningConfigurePage() {
     setVisibility,
     setDescription,
   } = useCloningStore();
+  const [saving, setSaving] = useState(false);
+
+  async function handleContinue() {
+    if (!cloneId) {
+      toast.error("Upload samples first.");
+      router.push("/cloning/upload");
+      return;
+    }
+    if (!voiceName.trim()) {
+      toast.error("Enter a voice name.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await cloningApi.configure({
+        cloneId,
+        name: voiceName,
+        description,
+        visibility,
+      });
+      toast.success("Voice configured.");
+      router.push("/cloning/train");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Configuration failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="flex flex-1 flex-col px-4 py-8 sm:px-8">
@@ -74,8 +109,8 @@ export default function CloningConfigurePage() {
           <Button variant="ghost" asChild>
             <Link href="/cloning/upload">Back</Link>
           </Button>
-          <Button asChild>
-            <Link href="/cloning/train">Start Training</Link>
+          <Button onClick={handleContinue} disabled={saving}>
+            {saving ? "Saving..." : "Start Training"}
           </Button>
         </div>
       </div>

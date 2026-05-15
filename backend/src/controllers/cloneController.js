@@ -55,4 +55,9 @@ const status = asyncHandler(async (req, res) => {
   sendSuccess(res, data);
 });
 
-module.exports = { upload, configure, start, status };
+const list = asyncHandler(async (req, res) => {
+  const clones = await cloneService.listClones(req.user._id);
+  sendSuccess(res, { clones });
+});
+
+module.exports = { upload, configure, start, status, list };
