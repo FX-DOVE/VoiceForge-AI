@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand Colors */
+  --color-primary: #adc6ff;
+  --color-on-primary: #002e6a;
+  --color-primary-container: #4d8eff;
+  --color-on-primary-container: #00285d;
+  
+  --color-secondary: #c0c1ff;
+  --color-on-secondary: #1000a9;
+  --color-secondary-container: #3131c0;
+  --color-on-secondary-container: #b0b2ff;
+  
+  --color-tertiary: #ffb786;
+  --color-on-tertiary: #502400;
+  --color-tertiary-container: #df7412;
+  --color-on-tertiary-container: #461f00;
+  
+  --color-background: #0b1326;
+  --color-on-background: #dae2fd;
+  
+  --color-surface: #0b1326;
+  --color-on-surface: #dae2fd;
+  --color-surface-variant: #2d3449;
+  --color-on-surface-variant: #c2c6d6;
+  
+  --color-outline: #8c909f;
+  --color-outline-variant: #424754;
+  
+  --color-action: #3b82f6;
+  --color-on-action: #ffffff;
+  --color-surface-border: #1c253d;
+  
+  --color-surface-container-lowest: #060e20;
+  --color-surface-container-low: #131b2e;
+  --color-surface-container: #171f33;
+  --color-surface-container-high: #222a3d;
+  --color-surface-container-highest: #2d3449;
+
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+
+  /* Custom Spacing & Sizing */
+  --spacing-container-max: 1280px;
+  --max-width-container-max: 1280px;
+
+  /* Border Radius */
+  --radius-DEFAULT: 1rem;
+  --radius-lg: 2rem;
+  --radius-xl: 3rem;
+}
+
+@layer base {
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-on-surface);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: var(--font-inter), 'Inter', sans-serif;
+  }
+  /* Avoid sub-readable shrink */
+  .text-\[10px\], .text-\[11px\] {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+}
+
+@utility container-custom {
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  max-width: var(--max-width-container-max);
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+@utility glass-panel {
+  background-color: rgba(11, 19, 38, 0.7);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
+}
+
+@utility glass-card {
+  background-color: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@utility btn-primary {
+  background-color: var(--color-action);
+  color: var(--color-on-action);
+  font-weight: 700;
+  transition-property: all;
+}
+
+@utility btn-secondary {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  color: white;
+  font-weight: 700;
+  transition-property: all;
+}
+
+/* Custom Scrollbar */
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(140, 144, 159, 0.3);
+    border-radius: 10px;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
