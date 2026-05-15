@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Generate Voice - VoiceForge AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Geist:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "on-tertiary-container": "#461f00",
+                "on-tertiary": "#502400",
+                "on-primary-fixed": "#001a42",
+                "on-secondary-fixed": "#07006c",
+                "on-secondary": "#1000a9",
+                "inverse-surface": "#dae2fd",
+                "outline-variant": "#424754",
+                "surface-container-lowest": "#060e20",
+                "secondary-fixed": "#e1e0ff",
+                "background": "#0b1326",
+                "surface-dim": "#0b1326",
+                "on-surface-variant": "#c2c6d6",
+                "on-primary-container": "#00285d",
+                "surface-variant": "#2d3449",
+                "surface-bright": "#31394d",
+                "tertiary": "#ffb786",
+                "surface-container-low": "#131b2e",
+                "primary-fixed": "#d8e2ff",
+                "on-background": "#dae2fd",
+                "surface-container-highest": "#2d3449",
+                "secondary": "#c0c1ff",
+                "on-tertiary-fixed": "#311400",
+                "error": "#ffb4ab",
+                "inverse-on-surface": "#283044",
+                "on-secondary-container": "#b0b2ff",
+                "on-surface": "#dae2fd",
+                "primary": "#adc6ff",
+                "surface-container-high": "#222a3d",
+                "primary-container": "#4d8eff",
+                "surface": "#0b1326",
+                "primary-fixed-dim": "#adc6ff",
+                "on-primary": "#002e6a",
+                "surface-container": "#171f33",
+                "secondary-fixed-dim": "#c0c1ff",
+                "tertiary-container": "#df7412",
+                "on-error": "#690005",
+                "surface-tint": "#adc6ff",
+                "on-secondary-fixed-variant": "#2f2ebe",
+                "inverse-primary": "#005ac2",
+                "outline": "#8c909f",
+                "error-container": "#93000a",
+                "secondary-container": "#3131c0",
+                "tertiary-fixed": "#ffdcc6",
+                "on-error-container": "#ffdad6",
+                "tertiary-fixed-dim": "#ffb786",
+                "on-primary-fixed-variant": "#004395",
+                "on-tertiary-fixed-variant": "#723600"
+        },
+        "borderRadius": {
+                "DEFAULT": "1rem",
+                "lg": "2rem",
+                "xl": "3rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "xs": "8px",
+                "margin-mobile": "16px",
+                "unit": "4px",
+                "xl": "80px",
+                "container-max": "1280px",
+                "lg": "48px",
+                "gutter": "24px",
+                "sm": "16px",
+                "md": "24px"
+        },
+        "fontFamily": {
+                "headline-lg-mobile": ["Inter"],
+                "display-xl": ["Inter"],
+                "headline-md": ["Inter"],
+                "headline-lg": ["Inter"],
+                "body-md": ["Inter"],
+                "body-lg": ["Inter"],
+                "label-md": ["Geist"],
+                "label-sm": ["Geist"]
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .glass-panel {
+    background: rgba(45, 52, 73, 0.4);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .accent-primary { color: #3B82F6; }
+  .bg-accent-primary { background-color: #3B82F6; }
+  .border-accent-primary { border-color: #3B82F6; }
+  .hover-bg-accent-primary:hover { background-color: #2563EB; }
+  .focus-ring-accent:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+    border-color: #3B82F6;
+  }
+  
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    background: transparent;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: #3B82F6;
+    cursor: pointer;
+    margin-top: -6px;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+  }
+</style>
+</head>
+<body class="bg-background text-on-surface antialiased overflow-hidden">
+<div class="flex h-screen w-full">
+<!-- Shared SideNavBar Excluded: "Focused View" / "Process" screen (doing something heavy like generation) -->
+<!-- Back-to-Main Exception Header -->
+<header class="absolute top-0 left-0 w-full p-sm md:p-md z-50 flex items-center gap-sm">
+<button aria-label="Go back" class="p-xs rounded-full hover:bg-surface-variant transition-colors flex items-center justify-center text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<div class="flex items-center gap-xs">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-8 w-8" data-alt="A macro shot of an abstract, futuristic sound wave pattern glowing with vibrant electric blue light against a deep space dark background, representing advanced artificial intelligence voice synthesis." style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCFT7QWUNGVrTz0eReeOBnNUFNy1mReQKDowRWCaESkYWOwBKINsi86r1UHrH6dlct9KHcyndluvc0m2J8FASbda3WmgLm9CcwbhXBC1eZIQTScdwxn5gLFXOayxwqa4TZC1NOK9wO54-ccERY3Z6YmYe6mjQUfpFt2AKAogMB_7EBMPYep5f_--b2wgmLm1y4771-tYOv-j2cHH1j1-InKdw7jFRH54XVNeYP9f3kirtLqxU6Mhde25QIznClBqE8LaevKOT88h0w");'></div>
+<h1 class="text-body-md font-semibold text-on-surface">VoiceForge AI <span class="text-on-surface-variant font-normal">/ Studio</span></h1>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-full pt-16 lg:pt-20 pb-sm px-sm md:px-lg max-w-container-max mx-auto w-full">
+<div class="mb-sm">
+<h2 class="text-headline-lg font-headline-lg text-on-surface">Generate Voice</h2>
+<p class="text-body-md text-on-surface-variant">Input your script and choose a voice to generate high-quality audio.</p>
+</div>
+<!-- Two Column Layout -->
+<div class="flex-1 flex flex-col lg:flex-row gap-gutter overflow-hidden pb-sm">
+<!-- Left Column: Script Input & Controls -->
+<div class="flex-1 flex flex-col gap-sm min-w-0 h-full">
+<!-- Script Editor Card -->
+<div class="glass-panel rounded-DEFAULT flex flex-col flex-1 h-full overflow-hidden">
+<!-- Toolbar -->
+<div class="flex items-center justify-between p-sm border-b border-outline-variant/30 bg-surface/50"><h3 class="text-body-md font-medium text-on-surface">Select Voice</h3>
+<div class="flex items-center gap-xs">
+<button class="flex items-center gap-1 px-2 py-1 rounded-full hover:bg-surface-variant transition-colors text-label-sm text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+<span>Filters</span>
+</button>
+</div></div><div class="p-sm border-b border-outline-variant/20 bg-surface/30 flex flex-col gap-sm">
+<div class="flex flex-wrap gap-xs">
+<button class="px-3 py-1 rounded-full text-label-sm font-medium bg-accent-primary text-white border border-accent-primary transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]">All</button>
+<button class="px-3 py-1 rounded-full text-label-sm font-medium border border-outline-variant/50 text-on-surface-variant hover:border-accent-primary transition-all">Male</button>
+<button class="px-3 py-1 rounded-full text-label-sm font-medium border border-outline-variant/50 text-on-surface-variant hover:border-accent-primary transition-all">Female</button>
+<button class="px-3 py-1 rounded-full text-label-sm font-medium border border-outline-variant/50 text-on-surface-variant hover:border-accent-primary transition-all">Cloned</button>
+</div>
+<div class="flex items-center gap-sm">
+<span class="text-label-sm text-outline shrink-0">Language:</span>
+<div class="relative flex-1">
+<select class="w-full appearance-none bg-surface-variant/40 border border-outline-variant/30 text-on-surface text-label-sm rounded-lg py-1.5 pl-3 pr-8 focus-ring-accent transition-all cursor-pointer">
+<option>English</option>
+<option>Spanish</option>
+<option>French</option>
+<option>German</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Text Area -->
+<div class="flex-1 relative p-sm flex flex-col">
+<textarea class="w-full h-full bg-transparent border-none resize-none text-body-lg text-on-surface placeholder:text-outline focus:ring-0 p-0" placeholder="Enter your text here... Make it sound natural, professional, or however you need."></textarea>
+</div>
+<!-- Footer -->
+<div class="p-sm flex justify-between items-center text-label-sm text-outline border-t border-outline-variant/30 bg-surface/30">
+<span>0 / 5,000 characters</span>
+<button class="hover:text-on-surface transition-colors">Clear</button>
+</div>
+</div>
+<!-- Style Controls Card -->
+<div class="glass-panel rounded-DEFAULT p-sm flex flex-col gap-sm shrink-0">
+<h3 class="text-label-md text-on-surface uppercase tracking-wider mb-xs">Speaking Style</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-sm">
+<!-- Emotional Tone -->
+<div class="flex flex-col gap-xs">
+<label class="text-label-sm text-on-surface-variant">Emotional Tone</label>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-variant border border-outline-variant text-on-surface text-body-md rounded-lg py-2 pl-3 pr-10 focus-ring-accent transition-all cursor-pointer">
+<option>Neutral</option>
+<option>Professional</option>
+<option>Happy</option>
+<option>Serious</option>
+<option>Excited</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-on-surface-variant">
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-xs justify-center">
+<!-- Speed Slider -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between text-label-sm text-on-surface-variant">
+<span>Speed</span>
+<span>1.0x</span>
+</div>
+<input class="w-full" max="2.0" min="0.5" step="0.1" type="range" value="1.0"/>
+</div>
+<!-- Stability Slider -->
+<div class="flex flex-col gap-1 mt-2">
+<div class="flex justify-between text-label-sm text-on-surface-variant">
+<span>Stability</span>
+<span>75%</span>
+</div>
+<input class="w-full" max="100" min="0" step="5" type="range" value="75"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Voice Selection & Generation -->
+<div class="flex flex-col gap-sm w-full lg:w-[400px] shrink-0 h-full overflow-hidden">
+<!-- Voice Selector Container -->
+<div class="glass-panel rounded-DEFAULT flex flex-col flex-1 overflow-hidden">
+<div class="p-sm border-b border-outline-variant/30 flex justify-between items-center bg-surface/50"><h3 class="text-body-md font-medium text-on-surface">Select Voice</h3>
+<div class="flex items-center gap-xs">
+<button class="flex items-center gap-1 px-2 py-1 rounded-full hover:bg-surface-variant transition-colors text-label-sm text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+<span>Filters</span>
+</button>
+</div></div><div class="p-sm border-b border-outline-variant/20 bg-surface/30 flex flex-col gap-sm">
+<div class="flex flex-wrap gap-xs">
+<button class="px-3 py-1 rounded-full text-label-sm font-medium bg-accent-primary text-white border border-accent-primary transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]">All</button>
+<button class="px-3 py-1 rounded-full text-label-sm font-medium border border-outline-variant/50 text-on-surface-variant hover:border-accent-primary transition-all">Male</button>
+<button class="px-3 py-1 rounded-full text-label-sm font-medium border border-outline-variant/50 text-on-surface-variant hover:border-accent-primary transition-all">Female</button>
+<button class="px-3 py-1 rounded-full text-label-sm font-medium border border-outline-variant/50 text-on-surface-variant hover:border-accent-primary transition-all">Cloned</button>
+</div>
+<div class="flex items-center gap-sm">
+<span class="text-label-sm text-outline shrink-0">Language:</span>
+<div class="relative flex-1">
+<select class="w-full appearance-none bg-surface-variant/40 border border-outline-variant/30 text-on-surface text-label-sm rounded-lg py-1.5 pl-3 pr-8 focus-ring-accent transition-all cursor-pointer">
+<option>English</option>
+<option>Spanish</option>
+<option>French</option>
+<option>German</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Voice List (Scrollable) -->
+<div class="flex-1 overflow-y-auto p-xs space-y-xs custom-scrollbar">
+<!-- Voice Card (Active) -->
+<div class="p-3 rounded-lg border border-accent-primary bg-primary-container/10 cursor-pointer flex items-center justify-between group transition-all relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-accent-primary/5 to-transparent pointer-events-none"></div>
+<div class="flex items-center gap-3 relative z-10">
+<div class="h-10 w-10 rounded-full bg-cover bg-center border border-outline-variant/50" data-alt="A portrait of a sophisticated, professional mature man with a neat beard, dramatic lighting in a dark modern studio, representing a deep, authoritative AI voice persona." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD2D8D9oK2CItxDddKsnRQtWZhWFb22944r_D9_ybJrA4EUuMFaCtOviWQookDKNIzOrspcaLAHxVVypCLp37O1V2AHTz5ZGAqZq_Wj09Aiw7-IIn9An92_pXw43X1dnpmz8iay8mIeeQQ3Q_5XCYTgixa6UvJxuEZyvi4KicFLoug_-CCU0oPGqincJS603Xmmq786xGk29GHqiS38-RQE6DDoC_WcqgSA-x0d8LyNGWjZoOcx8ljQq-pEIyhl8m82x_kVtc7eVvw');"></div>
+<div>
+<h4 class="text-body-md font-medium text-on-surface leading-tight">Antoni</h4>
+<div class="flex gap-1 mt-1">
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-variant text-on-surface-variant border border-outline-variant/30">Deep</span>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-variant text-on-surface-variant border border-outline-variant/30">Professional</span>
+</div>
+</div>
+</div>
+<button class="h-8 w-8 rounded-full bg-surface-variant/50 hover:bg-surface-bright flex items-center justify-center text-on-surface transition-colors relative z-10">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+</div>
+<!-- Voice Card -->
+<div class="p-3 rounded-lg border border-transparent hover:border-outline-variant/50 hover:bg-surface-variant/30 cursor-pointer flex items-center justify-between group transition-all">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-cover bg-center border border-outline-variant/50" data-alt="A professional headshot of a confident businesswoman in a sleek, minimalist environment with soft, high-key lighting against a dark slate background, embodying a clear, articulate AI voice persona." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAWVcK77PB_yx276Gr_o2lGtn-Ns9h25u_SCSCykDUSFgjsCeEr5WQZg_t61JYQMVcmt9-xB0RCj-wkyujn-ZCpUkCD8S_JDVGvjE-5Nb6fnFliYPAw_66Yr0ySx0NkkAgMB1GrHxGpItdutBQ7lJPO6QkYTjanVUrFfKwIggk3jDzMx9IL_oZShjPkzTIXLlpvuJTUqirG0QGDGyHL4Emy39Z3Ts2hvC--S4QiAJd8iKrPHNXr6baWoEt2fGiGALuktxM8n6d_GRk');"></div>
+<div>
+<h4 class="text-body-md font-medium text-on-surface-variant group-hover:text-on-surface leading-tight">Sarah</h4>
+<div class="flex gap-1 mt-1">
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-variant/50 text-on-surface-variant border border-outline-variant/20">Clear</span>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-variant/50 text-on-surface-variant border border-outline-variant/20">Narration</span>
+</div>
+</div>
+</div>
+<button class="h-8 w-8 rounded-full bg-surface-variant/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-on-surface transition-all">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+</div>
+<!-- Voice Card -->
+<div class="p-3 rounded-lg border border-transparent hover:border-outline-variant/50 hover:bg-surface-variant/30 cursor-pointer flex items-center justify-between group transition-all">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-cover bg-center border border-outline-variant/50" data-alt="A close-up portrait of a rugged, middle-aged man with a warm smile, lit softly from the side in a moody, cinematic setting, representing a friendly, conversational AI voice persona." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBUkbwiI_VdoraV09OwLNXv9YPXCI1_hWyM5duLDb31Txo5_XyjONJ2IyLi0yBHFSET1nsME8Eqpj9vw2LsVDrrRM5HwW20R__cspcASeSGRPq_cd1rm8J0EjRkdM778VQx76AjBSxC8iuwBPu5-eCjSgND6aEVxZ8L6w_j0cB4BXdGbB2RkZhcJmW-BfD7Mg2v2B8lusuir9MoxvcGogfO1BDSfFviz97ig0nkjxJ92Y9qI_E48dTQxG7sdu_gnz7ma3nz4JWH2_Q');"></div>
+<div>
+<h4 class="text-body-md font-medium text-on-surface-variant group-hover:text-on-surface leading-tight">Marcus</h4>
+<div class="flex gap-1 mt-1">
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-variant/50 text-on-surface-variant border border-outline-variant/20">Friendly</span>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-variant/50 text-on-surface-variant border border-outline-variant/20">Conversational</span>
+</div>
+</div>
+</div>
+<button class="h-8 w-8 rounded-full bg-surface-variant/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-on-surface transition-all">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+</div>
+</div>
+<!-- Generate Action Area -->
+<div class="p-sm border-t border-outline-variant/30 bg-surface/80 flex flex-col gap-3">
+<button class="w-full bg-accent-primary hover-bg-accent-primary text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]">
+<span class="material-symbols-outlined text-[20px]">bolt</span>
+              Generate Audio
+            </button>
+<div class="text-center text-label-sm text-on-surface-variant">
+              Cost: 15 credits
+            </div>
+</div>
+</div>
+<!-- Output / Player Section (Mocked state: ready) -->
+<div class="glass-panel rounded-DEFAULT p-sm flex flex-col gap-sm shrink-0">
+<div class="flex justify-between items-center">
+<h3 class="text-label-md text-on-surface uppercase tracking-wider">Output</h3>
+<span class="text-label-sm text-primary">Ready</span>
+</div>
+<!-- Sleek Player -->
+<div class="bg-surface-variant/50 rounded-lg p-3 flex flex-col gap-2 border border-outline-variant/30">
+<div class="flex items-center gap-3">
+<button class="h-10 w-10 shrink-0 rounded-full bg-surface text-on-surface flex items-center justify-center border border-outline-variant/50 hover:bg-surface-bright transition-colors">
+<span class="material-symbols-outlined">play_arrow</span>
+</button>
+<!-- Waveform mock -->
+<div class="flex-1 h-8 flex items-center justify-between gap-[2px] opacity-80">
+<div class="w-1 bg-accent-primary h-[30%] rounded-full"></div>
+<div class="w-1 bg-accent-primary h-[50%] rounded-full"></div>
+<div class="w-1 bg-accent-primary h-[80%] rounded-full"></div>
+<div class="w-1 bg-accent-primary h-[100%] rounded-full"></div>
+<div class="w-1 bg-accent-primary h-[60%] rounded-full"></div>
+<div class="w-1 bg-accent-primary h-[40%] rounded-full"></div>
+<div class="w-1 bg-accent-primary h-[70%] rounded-full"></div>
+<div class="w-1 bg-outline h-[30%] rounded-full"></div>
+<div class="w-1 bg-outline h-[20%] rounded-full"></div>
+<div class="w-1 bg-outline h-[50%] rounded-full"></div>
+<div class="w-1 bg-outline h-[30%] rounded-full"></div>
+</div>
+<span class="text-label-sm text-on-surface-variant w-10 text-right">0:04</span>
+</div>
+</div>
+<!-- Download Actions -->
+<div class="grid grid-cols-2 gap-2 mt-1">
+<button class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-outline-variant/50 hover:bg-surface-variant transition-colors text-label-md text-on-surface">
+<span class="material-symbols-outlined text-[18px]">download</span>
+              MP3
+            </button>
+<button class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-outline-variant/50 hover:bg-surface-variant transition-colors text-label-md text-on-surface">
+<span class="material-symbols-outlined text-[18px]">download</span>
+              WAV
+            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<style>
+  /* Custom scrollbar for webkit */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(66, 71, 84, 0.5); /* outline-variant approx */
+    border-radius: 10px;
+  }
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(66, 71, 84, 0.8);
+  }
+</style>
+</body></html>

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VoiceForge AI - Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Geist:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#131b2e",
+                        "primary-fixed": "#d8e2ff",
+                        "primary-container": "#4d8eff",
+                        "surface-tint": "#adc6ff",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "secondary": "#c0c1ff",
+                        "on-secondary-container": "#b0b2ff",
+                        "background": "#0b1326",
+                        "error-container": "#93000a",
+                        "surface-bright": "#31394d",
+                        "secondary-fixed": "#e1e0ff",
+                        "tertiary": "#ffb786",
+                        "on-secondary": "#1000a9",
+                        "inverse-surface": "#dae2fd",
+                        "surface-container": "#171f33",
+                        "on-primary-fixed": "#001a42",
+                        "on-error": "#690005",
+                        "on-tertiary-container": "#461f00",
+                        "surface": "#0b1326",
+                        "surface-container-high": "#222a3d",
+                        "tertiary-fixed": "#ffdcc6",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#283044",
+                        "outline-variant": "#424754",
+                        "outline": "#8c909f",
+                        "on-tertiary-fixed-variant": "#723600",
+                        "on-background": "#dae2fd",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-tertiary": "#502400",
+                        "surface-variant": "#2d3449",
+                        "on-primary-fixed-variant": "#004395",
+                        "surface-dim": "#0b1326",
+                        "tertiary-container": "#df7412",
+                        "secondary-container": "#3131c0",
+                        "on-surface-variant": "#c2c6d6",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-secondary-fixed": "#07006c",
+                        "surface-container-lowest": "#060e20",
+                        "on-surface": "#dae2fd",
+                        "on-primary": "#002e6a",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed-dim": "#ffb786",
+                        "on-primary-container": "#00285d",
+                        "surface-container-highest": "#2d3449",
+                        "primary": "#adc6ff",
+                        "inverse-primary": "#005ac2",
+                        "on-tertiary-fixed": "#311400"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "8px",
+                        "xl": "80px",
+                        "md": "24px",
+                        "unit": "4px",
+                        "sm": "16px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "lg": "48px",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Geist"],
+                        "headline-lg": ["Inter"],
+                        "display-xl": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Geist"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "display-xl": ["64px", { "lineHeight": "72px", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen overflow-x-hidden selection:bg-primary-container selection:text-on-primary-container">
+<div class="flex h-screen overflow-hidden bg-background w-full">
+<!-- Sidebar (Shared Component) -->
+<aside class="flex-shrink-0 w-64 flex flex-col bg-surface-container border-r border-outline-variant/30 h-full relative z-20 shadow-[4px_0_24px_rgba(0,0,0,0.2)]">
+<div class="flex items-center gap-3 px-sm py-md">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 shadow-[0_0_15px_rgba(77,142,255,0.3)] ring-1 ring-primary-container/50" data-alt="A sleek, metallic, electric blue circular logo representing soundwaves or an artificial intelligence core, set against a dark background. It should look like a premium, high-tech emblem suitable for an advanced AI software company." style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCZKIWRGQ6bWeEtxCuqnp8vYtYZ-UHQizuwgi6HezCZWr7AmlWHvJBSBYDq09Qyz4gcpXrCE5s0Frgfi6U5_0ilfzr_9P0YnUbZ9kR7329b_7YtzoXPLLztTjXTxAfDvD31kwPl-XtKCH--Th3G9v_4VL5Uh2aW3YuDtlNfMNWrT3sHD9VHJeY2rGbassM7FxHFR0wv4mBWN_y6Uw1aoGIBL5RoVREJ08RT4S-bolmK92q7tUzi14IHjMLfwQPs1jUhtrIYdY53wjE");'></div>
+<div class="flex flex-col">
+<h1 class="text-on-surface text-body-md font-semibold leading-normal tracking-tight">VoiceForge AI</h1>
+<p class="text-on-surface-variant text-label-sm font-normal uppercase">Admin Dashboard</p>
+</div>
+</div>
+<nav class="flex-1 px-sm py-xs flex flex-col gap-unit overflow-y-auto">
+<a class="flex items-center gap-3 px-3 py-2 rounded-full bg-primary-container/10 text-primary relative group" href="#">
+<div class="absolute inset-0 bg-primary-container/5 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<span class="material-symbols-outlined relative z-10" data-icon="dashboard" data-weight="fill" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="text-label-md relative z-10 font-semibold">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="group" data-weight="regular">group</span>
+<span class="text-label-md">Users</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="credit_card" data-weight="regular">credit_card</span>
+<span class="text-label-md">Billing</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings" data-weight="regular">settings</span>
+<span class="text-label-md">Settings</span>
+</a>
+</nav>
+<div class="p-sm border-t border-outline-variant/30 mt-auto">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-sm text-on-surface" data-icon="person">person</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium text-on-surface truncate">Admin User</p>
+<p class="text-xs text-on-surface-variant truncate">admin@voiceforge.ai</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col h-full overflow-y-auto bg-background relative z-10">
+<!-- Header -->
+<header class="h-16 border-b border-outline-variant/30 bg-surface/80 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between px-lg shrink-0">
+<h2 class="text-headline-md text-on-surface">Overview</h2>
+<div class="flex items-center gap-sm">
+<button class="size-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors border border-outline-variant/30 shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="bg-primary-container text-on-primary-container hover:bg-primary px-4 py-2 rounded-full text-label-md transition-colors shadow-[0_0_15px_rgba(77,142,255,0.2)]">
+                        Generate Report
+                    </button>
+</div>
+</header>
+<div class="p-lg max-w-container-max mx-auto w-full flex flex-col gap-lg pb-xl">
+<!-- Hero Stats Widgets -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-sm">
+<!-- Total Revenue -->
+<div class="bg-surface-container-low/70 backdrop-blur-xl border border-outline-variant/30 rounded-DEFAULT p-md flex flex-col gap-unit relative overflow-hidden group shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
+<div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+<div class="flex items-center justify-between mb-2">
+<h3 class="text-label-md text-on-surface-variant">Total Revenue</h3>
+<span class="material-symbols-outlined text-primary-container" data-icon="payments">payments</span>
+</div>
+<div class="flex items-end gap-3">
+<span class="text-headline-lg text-on-surface">$12,340</span>
+<span class="text-label-md text-[#0bda5e] mb-1 flex items-center">
+<span class="material-symbols-outlined text-[16px]" data-icon="trending_up">trending_up</span> 15%
+                            </span>
+</div>
+<!-- Minimal Sparkline representation -->
+<div class="mt-4 h-10 flex items-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+<div class="w-full bg-surface-variant rounded-t-sm h-[20%]"></div>
+<div class="w-full bg-surface-variant rounded-t-sm h-[35%]"></div>
+<div class="w-full bg-surface-variant rounded-t-sm h-[25%]"></div>
+<div class="w-full bg-surface-variant rounded-t-sm h-[50%]"></div>
+<div class="w-full bg-surface-variant rounded-t-sm h-[40%]"></div>
+<div class="w-full bg-surface-variant rounded-t-sm h-[65%]"></div>
+<div class="w-full bg-primary-container/80 rounded-t-sm h-[85%] shadow-[0_0_10px_rgba(77,142,255,0.4)]"></div>
+</div>
+</div>
+<!-- Active Subscriptions -->
+<div class="bg-surface-container-low/70 backdrop-blur-xl border border-outline-variant/30 rounded-DEFAULT p-md flex flex-col gap-unit relative shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
+<div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+<div class="flex items-center justify-between mb-2">
+<h3 class="text-label-md text-on-surface-variant">Active Subscriptions</h3>
+<span class="material-symbols-outlined text-tertiary-container" data-icon="card_membership">card_membership</span>
+</div>
+<div class="flex items-end gap-3">
+<span class="text-headline-lg text-on-surface">1,245</span>
+<span class="text-label-md text-[#0bda5e] mb-1 flex items-center">
+<span class="material-symbols-outlined text-[16px]" data-icon="arrow_upward">arrow_upward</span> 24
+                            </span>
+</div>
+<p class="text-sm text-on-surface-variant mt-2">New subs this week.</p>
+</div>
+<!-- API Usage -->
+<div class="bg-surface-container-low/70 backdrop-blur-xl border border-outline-variant/30 rounded-DEFAULT p-md flex flex-col gap-unit relative shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
+<div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+<div class="flex items-center justify-between mb-2">
+<h3 class="text-label-md text-on-surface-variant">API Usage</h3>
+<span class="material-symbols-outlined text-error" data-icon="api">api</span>
+</div>
+<div class="flex items-end gap-3 mb-2">
+<span class="text-headline-lg text-on-surface">85%</span>
+<span class="text-label-md text-error mb-1">Warning</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full bg-surface-variant rounded-full h-2 mt-auto">
+<div class="bg-gradient-to-r from-primary-container to-error h-2 rounded-full relative" style="width: 85%">
+<div class="absolute inset-0 bg-white/20 rounded-full animate-pulse"></div>
+</div>
+</div>
+<div class="flex justify-between text-xs text-on-surface-variant mt-1">
+<span>8.5M calls</span>
+<span>10M limit</span>
+</div>
+</div>
+<!-- Voice Generation Volume -->
+<div class="bg-surface-container-low/70 backdrop-blur-xl border border-outline-variant/30 rounded-DEFAULT p-md flex flex-col gap-unit relative shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
+<div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+<div class="flex items-center justify-between mb-2">
+<h3 class="text-label-md text-on-surface-variant">Generation Volume</h3>
+<span class="material-symbols-outlined text-primary" data-icon="graphic_eq">graphic_eq</span>
+</div>
+<div class="flex items-end gap-3">
+<span class="text-headline-lg text-on-surface">4.2M</span>
+<span class="text-sm text-on-surface-variant mb-1">hrs</span>
+</div>
+<div class="mt-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-sm" data-icon="check_circle" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-sm text-on-surface-variant">Capacity Optimal</span>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+<!-- System Health Column -->
+<section class="lg:col-span-1 flex flex-col gap-sm">
+<div class="flex items-center justify-between px-2">
+<h2 class="text-body-lg font-semibold text-on-surface">System Health</h2>
+</div>
+<div class="bg-surface-container-low/70 backdrop-blur-xl border border-outline-variant/30 rounded-DEFAULT p-2 shadow-[0_8px_32px_rgba(0,0,0,0.1)] flex flex-col gap-1">
+<div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+<!-- Region 1 -->
+<div class="flex items-center justify-between p-3 rounded-lg hover:bg-surface-variant/50 transition-colors">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-primary-container/10 border border-primary-container/30 flex items-center justify-center shadow-[0_0_10px_rgba(77,142,255,0.2)]">
+<div class="size-2 rounded-full bg-[#0bda5e]"></div>
+</div>
+<div class="flex flex-col">
+<span class="text-body-md text-on-surface">US East (N. Virginia)</span>
+<span class="text-xs text-on-surface-variant">Latency: 24ms</span>
+</div>
+</div>
+<span class="text-label-sm text-[#0bda5e] bg-[#0bda5e]/10 px-2 py-1 rounded-full border border-[#0bda5e]/20">Operational</span>
+</div>
+<!-- Region 2 -->
+<div class="flex items-center justify-between p-3 rounded-lg hover:bg-surface-variant/50 transition-colors">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-primary-container/10 border border-primary-container/30 flex items-center justify-center shadow-[0_0_10px_rgba(77,142,255,0.2)]">
+<div class="size-2 rounded-full bg-[#0bda5e]"></div>
+</div>
+<div class="flex flex-col">
+<span class="text-body-md text-on-surface">US West (Oregon)</span>
+<span class="text-xs text-on-surface-variant">Latency: 32ms</span>
+</div>
+</div>
+<span class="text-label-sm text-[#0bda5e] bg-[#0bda5e]/10 px-2 py-1 rounded-full border border-[#0bda5e]/20">Operational</span>
+</div>
+<!-- Region 3 -->
+<div class="flex items-center justify-between p-3 rounded-lg hover:bg-surface-variant/50 transition-colors">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-error/10 border border-error/30 flex items-center justify-center">
+<div class="size-2 rounded-full bg-error"></div>
+</div>
+<div class="flex flex-col">
+<span class="text-body-md text-on-surface">EU (Frankfurt)</span>
+<span class="text-xs text-on-surface-variant">Latency: 145ms</span>
+</div>
+</div>
+<span class="text-label-sm text-error bg-error/10 px-2 py-1 rounded-full border border-error/20">Degraded</span>
+</div>
+<!-- DB Status -->
+<div class="mt-4 pt-4 border-t border-outline-variant/30 px-3 pb-2">
+<div class="flex items-center justify-between mb-2">
+<span class="text-sm text-on-surface-variant">Main Database</span>
+<span class="text-sm text-on-surface">99.99% Uptime</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Recent Activity Feed -->
+<section class="lg:col-span-2 flex flex-col gap-sm">
+<div class="flex items-center justify-between px-2">
+<h2 class="text-body-lg font-semibold text-on-surface">Recent Activity</h2>
+<button class="text-sm text-primary hover:text-primary-container transition-colors">View All</button>
+</div>
+<div class="bg-surface-container-low/70 backdrop-blur-xl border border-outline-variant/30 rounded-DEFAULT p-md shadow-[0_8px_32px_rgba(0,0,0,0.1)] relative">
+<div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+<div class="flex flex-col relative">
+<!-- Continuous Line -->
+<div class="absolute left-[15px] top-4 bottom-4 w-px bg-outline-variant/30"></div>
+<!-- Log Item 1 -->
+<div class="flex gap-4 relative py-3 group">
+<div class="size-8 rounded-full bg-surface border border-outline-variant/50 flex items-center justify-center z-10 shadow-sm shrink-0 group-hover:border-primary-container transition-colors">
+<span class="material-symbols-outlined text-[16px] text-tertiary-container" data-icon="key">key</span>
+</div>
+<div class="flex-1 pb-4 border-b border-outline-variant/10">
+<div class="flex justify-between items-start mb-1">
+<p class="text-body-md text-on-surface">API Key Rotated</p>
+<span class="text-xs text-on-surface-variant">2 mins ago</span>
+</div>
+<p class="text-sm text-on-surface-variant">Enterprise account 'GlobalCorp' requested emergency key rotation.</p>
+</div>
+</div>
+<!-- Log Item 2 -->
+<div class="flex gap-4 relative py-3 group">
+<div class="size-8 rounded-full bg-surface border border-outline-variant/50 flex items-center justify-center z-10 shadow-sm shrink-0 group-hover:border-primary-container transition-colors">
+<span class="material-symbols-outlined text-[16px] text-error" data-icon="warning">warning</span>
+</div>
+<div class="flex-1 pb-4 border-b border-outline-variant/10">
+<div class="flex justify-between items-start mb-1">
+<p class="text-body-md text-on-surface">Spike in Synthesis Errors</p>
+<span class="text-xs text-on-surface-variant">15 mins ago</span>
+</div>
+<p class="text-sm text-on-surface-variant">EU (Frankfurt) region reporting elevated 500 errors on the /v1/synthesize endpoint.</p>
+</div>
+</div>
+<!-- Log Item 3 -->
+<div class="flex gap-4 relative py-3 group">
+<div class="size-8 rounded-full bg-surface border border-outline-variant/50 flex items-center justify-center z-10 shadow-sm shrink-0 group-hover:border-primary-container transition-colors">
+<span class="material-symbols-outlined text-[16px] text-primary-container" data-icon="cloud_done">cloud_done</span>
+</div>
+<div class="flex-1 pb-4 border-b border-outline-variant/10">
+<div class="flex justify-between items-start mb-1">
+<p class="text-body-md text-on-surface">Model Weights Updated</p>
+<span class="text-xs text-on-surface-variant">1 hour ago</span>
+</div>
+<p class="text-sm text-on-surface-variant">Successfully deployed 'VoiceEngine-v2.1' to all primary clusters.</p>
+</div>
+</div>
+<!-- Log Item 4 -->
+<div class="flex gap-4 relative py-3 group">
+<div class="size-8 rounded-full bg-surface border border-outline-variant/50 flex items-center justify-center z-10 shadow-sm shrink-0 group-hover:border-primary-container transition-colors">
+<span class="material-symbols-outlined text-[16px] text-[#0bda5e]" data-icon="person_add">person_add</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<p class="text-body-md text-on-surface">New Pro Subscription</p>
+<span class="text-xs text-on-surface-variant">3 hours ago</span>
+</div>
+<p class="text-sm text-on-surface-variant">User ID #8921 upgraded to Pro tier.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</body></html>
