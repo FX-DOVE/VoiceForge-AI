@@ -13,6 +13,10 @@ const userSchema = new mongoose.Schema(
     status: { type: String, enum: ["active", "suspended", "invited"], default: "active" },
     charactersUsed: { type: Number, default: 0 },
     usageResetAt: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+    totalCredits: { type: Number, default: 0 },
+    creditsUsed: { type: Number, default: 0 },
+    creditsRemaining: { type: Number, default: 0 },
+    totalPayments: { type: Number, default: 0 },
     resetPasswordToken: { type: String, select: false },
     resetPasswordExpires: { type: Date, select: false },
     stripeCustomerId: { type: String, default: null },
@@ -46,6 +50,10 @@ userSchema.methods.toPublicJSON = function toPublicJSON() {
       charactersLimit: limit,
       resetAt: this.usageResetAt,
     },
+    totalCredits: this.totalCredits,
+    creditsUsed: this.creditsUsed,
+    creditsRemaining: this.creditsRemaining,
+    totalPayments: this.totalPayments,
   };
 };
 

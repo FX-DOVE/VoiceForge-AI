@@ -41,16 +41,16 @@ export default function HistoryPage() {
 
   return (
     <>
-      <header className="hidden lg:flex shrink-0 items-center justify-between border-b border-outline-variant/30 px-8 py-6 sticky top-0 bg-background/80 backdrop-blur-md z-10">
-        <div className="flex items-center gap-4 text-white">
-          <div className="size-8 bg-primary/10 text-primary flex items-center justify-center rounded-lg">
-             <HistoryIcon className="size-5" />
+      <header className="hidden lg:flex h-16 border-b border-white/5 bg-background/80 backdrop-blur-xl sticky top-0 z-30 items-center justify-between px-8 shrink-0">
+        <div className="flex items-center gap-3 text-white">
+          <div className="size-8 bg-primary/10 text-primary flex items-center justify-center rounded-xl border border-primary/20">
+            <HistoryIcon className="size-4" />
           </div>
-          <h2 className="text-xl font-bold tracking-tight">Generation History</h2>
+          <h2 className="text-base font-bold tracking-tight">Generation History</h2>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full pb-16">
         {/* Search and Filters */}
         <div className="flex flex-col md:flex-row gap-4 mb-10">
           <div className="relative flex-1 group">
@@ -75,8 +75,14 @@ export default function HistoryPage() {
             <p className="text-on-surface-variant text-sm">Loading history...</p>
           )}
           {!loading && generations.length === 0 && (
-            <p className="text-on-surface-variant text-sm">No generations found.</p>
-          )}
+          <div className="py-16 flex flex-col items-center gap-3 text-center glass-panel rounded-2xl border-white/5">
+            <div className="size-14 rounded-2xl bg-white/5 flex items-center justify-center">
+              <HistoryIcon className="size-7 text-neutral-600" />
+            </div>
+            <p className="text-white font-semibold">No generations found</p>
+            <p className="text-neutral-500 text-sm">{search ? `No results for "${search}"` : "Your generated audio will appear here."}</p>
+          </div>
+        )}
           {generations.map((item, i) => (
             <motion.div
               key={item.id || i}

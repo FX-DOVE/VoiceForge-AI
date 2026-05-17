@@ -22,9 +22,9 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="dark h-screen overflow-hidden">
+    <html lang="en" className="dark h-screen">
       <body
-        className={`${inter.variable} ${geist.variable} h-screen overflow-hidden bg-background text-on-surface antialiased`}
+        className={`${inter.variable} ${geist.variable} h-screen bg-background text-on-surface antialiased`}
       >
         <Providers>{children}</Providers>
       </body>

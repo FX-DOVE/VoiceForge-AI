@@ -54,6 +54,10 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
   html, body {
     max-width: 100%;
     overflow-x: hidden;
@@ -69,6 +73,26 @@
   .text-\[10px\], .text-\[11px\] {
     font-size: 11px;
     line-height: 1.4;
+  }
+
+  /* Global scrollbar styling */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(140, 144, 159, 0.3) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgba(140, 144, 159, 0.3);
+    border-radius: 10px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(140, 144, 159, 0.5);
   }
 }
 

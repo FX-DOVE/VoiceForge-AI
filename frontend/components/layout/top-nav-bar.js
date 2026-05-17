@@ -79,37 +79,65 @@ export function TopNavBar() {
         </Button>
       </div>
 
-      {/* Mobile Nav */}
+      {/* Mobile Nav — full-screen overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-x-0 top-full bg-surface-container border-b border-white/10 p-8 flex flex-col gap-8 lg:hidden shadow-2xl"
-          >
-            <div className="flex flex-col gap-6">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-2xl font-bold text-white tracking-tight"
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-md z-40 lg:hidden"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ type: "spring", damping: 28, stiffness: 240 }}
+              className="fixed inset-x-0 top-0 bg-surface-container border-b border-white/10 p-6 pt-20 flex flex-col gap-6 lg:hidden shadow-2xl z-50"
+            >
+              {/* Close area at top */}
+              <div className="absolute top-4 right-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-12 rounded-full hover:bg-white/10 text-on-surface-variant hover:text-white"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-            <div className="h-px bg-white/5" />
-            <div className="flex flex-col gap-4">
-              <Button variant="outline" className="h-14 rounded-full border-white/10 font-bold text-lg" asChild>
-                <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Sign In</Link>
-              </Button>
-              <Button className="h-14 rounded-full bg-primary font-bold text-lg" asChild>
-                <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link>
-              </Button>
-            </div>
-          </motion.div>
+                  <X className="size-5" />
+                </Button>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={cn(
+                      "text-xl font-bold tracking-tight px-4 py-4 rounded-2xl transition-colors min-h-[60px] flex items-center",
+                      pathname === link.href
+                        ? "text-primary bg-primary/10"
+                        : "text-white hover:bg-white/5 hover:text-primary"
+                    )}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+              <div className="h-px bg-white/5" />
+              <div className="flex flex-col gap-3 pb-4">
+                <Button variant="outline" className="h-14 rounded-full border-white/10 font-bold text-base" asChild>
+                  <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Sign In</Link>
+                </Button>
+                <Button className="h-14 rounded-full bg-primary text-on-primary font-bold text-base shadow-lg shadow-primary/20" asChild>
+                  <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started Free</Link>
+                </Button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </header>

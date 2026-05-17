@@ -129,33 +129,51 @@ export default function CloningPage() {
 
   return (
     <>
-      <div className="flex-1 max-w-container-max mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 flex flex-col gap-10">
+      {/* Sticky Desktop Header */}
+      <header className="hidden lg:flex h-16 border-b border-white/5 bg-background/80 backdrop-blur-xl sticky top-0 z-30 items-center justify-between px-8 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="size-8 bg-primary/10 text-primary flex items-center justify-center rounded-xl border border-primary/20">
+            <Mic className="size-4" />
+          </div>
+          <h2 className="text-base font-bold tracking-tight text-white">Voice Cloning</h2>
+        </div>
+      </header>
+
+      <div className="max-w-container-max mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 flex flex-col gap-8 pb-16">
         {/* Header */}
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Voice Cloning</h1>
-          <p className="text-on-surface-variant max-w-3xl">
-            Create a custom AI voice by uploading high-quality audio samples. 
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Voice Cloning</h1>
+          <p className="text-sm text-on-surface-variant max-w-2xl leading-relaxed">
+            Create a custom AI voice by uploading high-quality audio samples.
             The better the input, the more accurate the clone.
           </p>
         </div>
 
         {/* Wizard Progress */}
-        <div className="flex border-b border-white/5 gap-6 sm:gap-12 overflow-x-auto pb-4">
-           {steps.map((s) => (
-             <button
-               key={s.id}
-               type="button"
-               onClick={() => setStep(s.id)}
-               className={cn(
-                 "flex items-center gap-3 pb-4 px-2 text-sm font-bold uppercase tracking-widest transition-all relative whitespace-nowrap",
-                 step === s.id ? "text-primary border-b-[3px] border-primary" :
-                 step > s.id ? "text-green-400" : "text-on-surface-variant hover:text-white"
-               )}
-             >
-                {step > s.id ? <CheckCircle2 className="size-4" /> : <s.icon className="size-4" />}
-                {s.id}. {s.label}
-             </button>
-           ))}
+        <div className="flex gap-2 sm:gap-3">
+          {steps.map((s) => {
+            const done = step > s.id;
+            const active = step === s.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setStep(s.id)}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl text-xs sm:text-sm font-bold transition-all border",
+                  active
+                    ? "bg-primary/10 text-primary border-primary/30 shadow-[0_0_16px_rgba(59,130,246,0.12)]"
+                    : done
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    : "bg-white/[0.03] text-on-surface-variant border-white/[0.06] hover:bg-white/[0.06] hover:text-white"
+                )}
+              >
+                {done ? <CheckCircle2 className="size-3.5" /> : <s.icon className="size-3.5" />}
+                <span className="hidden sm:inline">{s.id}.</span>
+                <span>{s.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
@@ -395,8 +413,8 @@ export default function CloningPage() {
 
           {/* Right Column: Library */}
           <div className="flex flex-col gap-6">
-             <div className="flex items-center justify-between px-2">
-                <h3 className="text-xl font-bold text-white">My Cloned Voices</h3>
+             <div className="flex items-center justify-between px-1">
+                <h3 className="text-base font-bold text-white">My Cloned Voices</h3>
                 <div className="flex items-center gap-1">
                    <Button variant="ghost" size="sm" className="rounded-full text-xs font-bold text-primary hover:bg-primary/10" asChild>
                       <a href="/cloning/library">View all</a>
@@ -406,7 +424,12 @@ export default function CloningPage() {
                    </Button>
                 </div>
              </div>
-             <div className="flex flex-col gap-4">
+             <div className="flex flex-col gap-3">
+                {!clonedVoices.length && (
+                  <p className="text-xs text-neutral-600 text-center py-10 glass-panel rounded-2xl border-white/5">
+                    No cloned voices yet.<br />Upload samples to get started.
+                  </p>
+                )}
                 {clonedVoices.map((v, i) => (
                   <motion.div
                     key={v.name}

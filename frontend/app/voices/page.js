@@ -71,23 +71,33 @@ export default function VoicesPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-background">
+    <>
+      <header className="hidden lg:flex h-16 border-b border-white/5 bg-background/80 backdrop-blur-xl sticky top-0 z-30 items-center justify-between px-8 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="size-8 bg-primary/10 text-primary flex items-center justify-center rounded-xl border border-primary/20">
+            <Zap className="size-4" />
+          </div>
+          <h2 className="text-base font-bold tracking-tight text-white">Voice Library</h2>
+        </div>
+        <span className="text-xs text-neutral-500 font-medium">{voices.length} voices</span>
+      </header>
+
       <audio ref={audioRef} onEnded={() => setPlayingSlug(null)} className="hidden" />
 
-      <main className="flex-1 container-custom py-8 lg:py-12 space-y-8">
+      <main className="max-w-container-max mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 pb-16 space-y-6">
 
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Voice Library</h1>
-            <p className="text-neutral-400 mt-1">Explore our collection of studio-quality AI voices.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Voice Library</h1>
+            <p className="text-sm text-neutral-400 mt-1">Explore our collection of studio-quality AI voices.</p>
           </div>
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-neutral-500" />
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-neutral-500" />
             <input
               type="text"
               placeholder="Search voices or styles..."
-              className="w-full bg-white/5 border border-white/10 rounded-full py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500/50 transition-colors"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl h-10 pl-10 pr-4 text-sm outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -177,10 +187,10 @@ export default function VoicesPage() {
                       type="button"
                       onClick={(e) => handlePlay(slug, e)}
                       disabled={isLoading}
-                      className={`size-11 shrink-0 rounded-full flex items-center justify-center transition-all transform active:scale-95 shadow-lg border ${
+                      className={`size-10 shrink-0 rounded-full flex items-center justify-center transition-all transform active:scale-95 border ${
                         isPlaying
-                          ? "bg-blue-600 border-blue-600 text-white"
-                          : "bg-white/5 border-white/10 text-white hover:bg-blue-600 hover:border-blue-600"
+                          ? "bg-primary border-primary text-on-primary shadow-lg shadow-primary/20"
+                          : "bg-white/5 border-white/10 text-white hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20"
                       } disabled:opacity-50`}
                       aria-label={`Play sample of ${v.name}`}
                     >
@@ -194,7 +204,7 @@ export default function VoicesPage() {
                     </button>
                   </div>
 
-                  <span className="w-full inline-flex items-center justify-center text-xs text-neutral-400 group-hover:text-blue-500 transition-colors font-bold">
+                  <span className="w-full inline-flex items-center justify-center text-xs text-neutral-500 group-hover:text-primary transition-colors font-semibold">
                     View voice <ArrowRight className="ml-2 size-3" />
                   </span>
                 </Link>
@@ -204,11 +214,15 @@ export default function VoicesPage() {
         )}
 
         {!loading && voices.length === 0 && (
-          <div className="py-20 text-center">
-            <p className="text-neutral-500">No voices found{search ? ` matching "${search}"` : ""}.</p>
+          <div className="py-16 flex flex-col items-center gap-3 text-center glass-panel rounded-2xl border-white/5">
+            <div className="size-14 rounded-2xl bg-white/5 flex items-center justify-center">
+              <Zap className="size-7 text-neutral-600" />
+            </div>
+            <p className="text-white font-semibold">No voices found</p>
+            <p className="text-neutral-500 text-sm">{search ? `No results for "${search}"` : "Voices will appear here once they are loaded."}</p>
           </div>
         )}
       </main>
-    </div>
+    </>
   );
 }

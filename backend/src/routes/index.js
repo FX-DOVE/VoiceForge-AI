@@ -8,6 +8,7 @@ const usageRoutes = require("./usageRoutes");
 const adminRoutes = require("./adminRoutes");
 const fileRoutes = require("./fileRoutes");
 const notificationRoutes = require("./notificationRoutes");
+const paymentRoutes = require("./paymentRoutes");
 const { health } = require("../controllers/healthController");
 
 const router = express.Router();
@@ -22,5 +23,6 @@ router.use("/usage", usageRoutes);
 router.use("/admin", adminRoutes);
 router.use("/files", fileRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/payments", paymentRoutes);
 
 module.exports = router;

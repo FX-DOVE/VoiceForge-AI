@@ -37,8 +37,11 @@ export default function DashboardPage() {
     }
   }
 
-  const usedPct = usage
-    ? Math.min(100, Math.round(((usage.charactersUsed ?? 0) / (usage.charactersLimit || 1)) * 100))
+  const totalCredits = usage?.totalCredits ?? 0;
+  const creditsUsed = usage?.creditsUsed ?? 0;
+  const creditsRemaining = usage?.creditsRemaining ?? 0;
+  const usedPct = totalCredits > 0
+    ? Math.min(100, Math.round((creditsUsed / totalCredits) * 100))
     : 0;
 
   const planLabel = usage?.plan
@@ -47,16 +50,16 @@ export default function DashboardPage() {
 
   const stats = [
     {
-      label: "Characters Used",
-      value: usageLoading ? "—" : (usage?.charactersUsed ?? 0).toLocaleString(),
-      sub: usageLoading ? "" : `of ${(usage?.charactersLimit ?? 0).toLocaleString()} limit`,
+      label: "Credits Used",
+      value: usageLoading ? "—" : creditsUsed.toLocaleString(),
+      sub: usageLoading ? "" : `of ${totalCredits.toLocaleString()} total`,
       icon: Zap,
       color: "text-blue-400",
       bar: true,
     },
     {
-      label: "Characters Remaining",
-      value: usageLoading ? "—" : (usage?.charactersRemaining ?? 0).toLocaleString(),
+      label: "Credits Remaining",
+      value: usageLoading ? "—" : creditsRemaining.toLocaleString(),
       sub: usageLoading ? "" : `${usedPct}% used`,
       icon: BarChart2,
       color: usedPct > 80 ? "text-red-400" : "text-emerald-400",
@@ -71,65 +74,87 @@ export default function DashboardPage() {
       color: "text-purple-400",
     },
     {
-      label: "Current Plan",
-      value: usageLoading ? "—" : planLabel,
+      label: "Total Credits",
+      value: usageLoading ? "—" : totalCredits.toLocaleString(),
       sub: usageLoading
         ? ""
-        : usage?.resetAt
-        ? `Resets ${new Date(usage.resetAt).toLocaleDateString()}`
-        : "No reset date",
+        : `$${(usage?.totalPayments ?? 0).toLocaleString()} total spent`,
       icon: Crown,
-      color: planLabel === "Free" ? "text-neutral-400" : "text-amber-400",
+      color: totalCredits > 0 ? "text-amber-400" : "text-neutral-400",
     },
   ];
 
+  const sparkBars = [20, 35, 25, 50, 40, 65, 85];
+
   return (
     <>
-      <header className="hidden lg:flex shrink-0 items-center justify-between border-b border-outline-variant/30 px-8 py-6 sticky top-0 bg-background/80 backdrop-blur-md z-10">
+      {/* Sticky Page Header */}
+      <header className="hidden lg:flex shrink-0 items-center justify-between border-b border-white/5 px-8 py-5 sticky top-0 bg-background/80 backdrop-blur-xl z-10">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-white">Dashboard</h2>
+          <h2 className="text-lg font-bold tracking-tight text-white">Dashboard</h2>
           {usage?.name && (
-            <p className="text-sm text-neutral-400 mt-0.5">
+            <p className="text-sm text-neutral-500 mt-0.5">
               Welcome back, <span className="text-white font-semibold">{usage.name}</span>
-              {" "}·{" "}
-              <span className={planLabel === "Free" ? "text-neutral-400" : "text-amber-400"}>
+              {" · "}
+              <span className={planLabel === "Free" ? "text-neutral-400" : "text-amber-400 font-semibold"}>
                 {planLabel} plan
               </span>
             </p>
           )}
         </div>
-        <Button className="rounded-full bg-primary hover:bg-primary/90 text-on-primary" asChild>
+        <Button className="rounded-full bg-primary hover:bg-primary/90 text-on-primary h-10 px-5 text-sm font-semibold shadow-lg shadow-primary/20" asChild>
           <Link href="/studio">
-            <Plus className="mr-2 size-4" />
+            <Plus className="mr-1.5 size-4" />
             New Generation
           </Link>
         </Button>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-10">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-8 pb-16">
 
-        {/* Stats Grid */}
+        {/* Stats Grid — premium cards with sparklines matching design ref */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {stats.map((s, i) => (
             <motion.div
               key={s.label}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.07 }}
-              className="glass-panel p-6 rounded-2xl flex flex-col gap-3 border-white/5"
+              className="relative bg-surface-container-low/70 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-5 flex flex-col gap-3 group hover:bg-surface-container-low/90 transition-all overflow-hidden"
             >
+              {/* Top shimmer line */}
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
               <div className="flex items-center justify-between">
-                <p className="text-sm text-neutral-400 font-medium">{s.label}</p>
-                <s.icon className={cn("size-4 opacity-60", s.color)} />
+                <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">{s.label}</p>
+                <div className={cn("size-8 rounded-xl flex items-center justify-center bg-white/5", s.color)}>
+                  <s.icon className="size-4" />
+                </div>
               </div>
-              <p className={cn("text-3xl font-bold tracking-tight", s.color)}>{s.value}</p>
-              {s.sub && <p className="text-xs text-neutral-500">{s.sub}</p>}
-              {s.bar && (
-                <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                  <div
-                    className={cn("h-full rounded-full transition-all", usedPct > 80 ? "bg-red-500" : "bg-blue-500")}
-                    style={{ width: `${usedPct}%` }}
+
+              <div>
+                <p className={cn("text-2xl sm:text-3xl font-bold tracking-tight", s.color)}>{s.value}</p>
+                {s.sub && <p className="text-xs text-neutral-500 mt-1 leading-relaxed">{s.sub}</p>}
+              </div>
+
+              {s.bar ? (
+                <div className="h-1.5 rounded-full bg-white/5 overflow-hidden mt-1">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${usedPct}%` }}
+                    transition={{ delay: i * 0.07 + 0.3, duration: 0.8 }}
+                    className={cn("h-full rounded-full", usedPct > 80 ? "bg-red-500" : "bg-primary")}
                   />
+                </div>
+              ) : (
+                <div className="flex items-end gap-0.5 h-8 opacity-40 group-hover:opacity-80 transition-opacity mt-1">
+                  {sparkBars.map((h, j) => (
+                    <div
+                      key={j}
+                      className={cn("flex-1 rounded-t-sm", j === sparkBars.length - 1 ? s.color.replace("text-", "bg-") : "bg-white/20")}
+                      style={{ height: `${h}%` }}
+                    />
+                  ))}
                 </div>
               )}
             </motion.div>
@@ -138,74 +163,87 @@ export default function DashboardPage() {
 
         {/* Quick Action Banner */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="glass-panel p-6 sm:p-8 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-primary/20 bg-primary/5"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.32 }}
+          className="relative glass-panel rounded-2xl sm:rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 border-primary/20 bg-primary/[0.04] overflow-hidden"
         >
-          <div>
-            <h3 className="text-xl font-bold text-white">Ready to create?</h3>
-            <p className="text-neutral-400 mt-1">
-              Free voices use Edge TTS and <span className="text-emerald-400 font-semibold">don't count against your limit</span>.
-              Pro voices use xAI Grok TTS.
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+          <div className="absolute -right-10 -top-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative">
+            <h3 className="text-lg font-bold text-white">Ready to create?</h3>
+            <p className="text-sm text-neutral-400 mt-1.5 max-w-md leading-relaxed">
+              Free voices use Edge TTS and{" "}
+              <span className="text-emerald-400 font-semibold">don&apos;t use credits</span>.
+              Pro voices use xAI Grok TTS and deduct credits.
             </p>
           </div>
-          <Button size="lg" className="rounded-full bg-primary hover:bg-primary/90 text-on-primary px-8 shrink-0" asChild>
+          <Button size="lg" className="rounded-full bg-primary hover:bg-primary/90 text-on-primary px-8 shrink-0 font-semibold shadow-lg shadow-primary/20" asChild>
             <Link href="/studio">Open Studio</Link>
           </Button>
         </motion.div>
 
         {/* Recent Generations */}
         <audio ref={audioRef} onEnded={() => setPlayingId(null)} className="hidden" />
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">Recent Generations</h2>
+            <h2 className="text-base font-bold text-white tracking-tight">Recent Generations</h2>
             <button
               onClick={reload}
-              className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-white transition-colors py-1.5 px-3 rounded-full hover:bg-white/5"
             >
-              <RefreshCw className="size-3.5" />
+              <RefreshCw className="size-3" />
               Refresh
             </button>
           </div>
 
           {loading && (
-            <div className="py-12 flex justify-center">
-              <Loader2 className="size-7 text-primary animate-spin" />
+            <div className="py-16 flex justify-center">
+              <Loader2 className="size-6 text-primary animate-spin" />
             </div>
           )}
 
           {!loading && recentGenerations.length === 0 && (
-            <div className="py-16 text-center glass-panel rounded-2xl border-white/5">
-              <Mic className="size-10 text-neutral-600 mx-auto mb-3" />
-              <p className="text-neutral-400 font-medium">No generations yet.</p>
-              <p className="text-neutral-600 text-sm mt-1">Head to the Studio to create your first one.</p>
-              <Button className="mt-5 rounded-full bg-primary hover:bg-primary/90" asChild>
+            <div className="py-16 text-center glass-panel rounded-2xl border-white/5 flex flex-col items-center gap-3">
+              <div className="size-14 rounded-2xl bg-white/5 flex items-center justify-center">
+                <Mic className="size-7 text-neutral-600" />
+              </div>
+              <div>
+                <p className="text-white font-semibold">No generations yet</p>
+                <p className="text-neutral-500 text-sm mt-1">Head to the Studio to create your first voiceover.</p>
+              </div>
+              <Button className="mt-2 rounded-full bg-primary hover:bg-primary/90 text-on-primary h-10 px-6 font-semibold" asChild>
                 <Link href="/studio">Go to Studio</Link>
               </Button>
             </div>
           )}
 
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             {recentGenerations.map((item, i) => (
               <motion.div
                 key={item.id || i}
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
+                transition={{ delay: i * 0.04 }}
                 role="button"
                 tabIndex={0}
                 onClick={() => setSelected(item)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(item); }
                 }}
-                className="glass-card p-4 sm:p-5 rounded-2xl flex items-center gap-4 border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="bg-surface-container-low/50 hover:bg-surface-container-low/80 border border-white/[0.05] rounded-xl sm:rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 sm:gap-4 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 group"
               >
                 {/* Play button */}
                 <button
                   type="button"
                   disabled={!item.audioUrl}
                   onClick={(e) => handlePlayItem(item, e)}
-                  className="size-11 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shrink-0 flex items-center justify-center disabled:opacity-30"
+                  className={cn(
+                    "size-10 sm:size-11 rounded-full flex items-center justify-center transition-all shrink-0 disabled:opacity-30",
+                    playingId === item.id
+                      ? "bg-primary text-on-primary shadow-lg shadow-primary/30"
+                      : "bg-primary/10 text-primary hover:bg-primary hover:text-on-primary"
+                  )}
                 >
                   {playingId === item.id ? (
                     <Pause className="size-4 fill-current" />
@@ -216,8 +254,10 @@ export default function DashboardPage() {
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white line-clamp-1">"{item.text}"</p>
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-neutral-500 mt-1">
+                  <p className="text-sm font-medium text-white line-clamp-1 leading-snug">
+                    &ldquo;{item.text}&rdquo;
+                  </p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-neutral-500 mt-1">
                     <span className="flex items-center gap-1">
                       <User className="size-3" />{item.voice}
                     </span>
@@ -230,10 +270,10 @@ export default function DashboardPage() {
 
                 {/* Expiry badge */}
                 <div className={cn(
-                  "hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border shrink-0",
+                  "hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold border shrink-0",
                   item.status === "warning" || item.status === "expired"
                     ? "bg-red-500/10 text-red-400 border-red-500/20"
-                    : "bg-white/5 text-neutral-500 border-white/10"
+                    : "bg-white/[0.04] text-neutral-500 border-white/[0.06]"
                 )}>
                   <Timer className="size-3" />
                   {item.expiry}
@@ -252,7 +292,7 @@ export default function DashboardPage() {
                     a.download = `voiceforge-${item.id || "audio"}.mp3`;
                     a.click();
                   }}
-                  className="size-9 rounded-full hover:bg-white/10 text-neutral-500 hover:text-white transition-colors flex items-center justify-center shrink-0 disabled:opacity-30"
+                  className="size-9 rounded-full hover:bg-white/10 text-neutral-500 hover:text-white transition-colors flex items-center justify-center shrink-0 disabled:opacity-30 opacity-0 group-hover:opacity-100"
                 >
                   <Download className="size-4" />
                 </button>

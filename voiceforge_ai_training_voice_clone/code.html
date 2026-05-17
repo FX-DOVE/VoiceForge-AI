@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Voice Cloning - VoiceForge AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Geist:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary": "#c0c1ff",
+                      "on-tertiary-fixed": "#311400",
+                      "surface-container-highest": "#2d3449",
+                      "surface-variant": "#2d3449",
+                      "surface-bright": "#31394d",
+                      "primary-fixed": "#d8e2ff",
+                      "on-background": "#dae2fd",
+                      "tertiary": "#ffb786",
+                      "surface-container-low": "#131b2e",
+                      "outline-variant": "#424754",
+                      "surface-dim": "#0b1326",
+                      "on-surface-variant": "#c2c6d6",
+                      "on-primary-container": "#00285d",
+                      "surface-container-lowest": "#060e20",
+                      "secondary-fixed": "#e1e0ff",
+                      "background": "#0b1326",
+                      "on-secondary-fixed": "#07006c",
+                      "on-secondary": "#1000a9",
+                      "inverse-surface": "#dae2fd",
+                      "on-tertiary-container": "#461f00",
+                      "on-tertiary": "#502400",
+                      "on-primary-fixed": "#001a42",
+                      "secondary-container": "#3131c0",
+                      "outline": "#8c909f",
+                      "error-container": "#93000a",
+                      "on-primary-fixed-variant": "#004395",
+                      "on-tertiary-fixed-variant": "#723600",
+                      "tertiary-fixed": "#ffdcc6",
+                      "on-error-container": "#ffdad6",
+                      "tertiary-fixed-dim": "#ffb786",
+                      "on-primary": "#002e6a",
+                      "surface-container": "#171f33",
+                      "secondary-fixed-dim": "#c0c1ff",
+                      "on-error": "#690005",
+                      "surface-tint": "#adc6ff",
+                      "on-secondary-fixed-variant": "#2f2ebe",
+                      "inverse-primary": "#005ac2",
+                      "tertiary-container": "#df7412",
+                      "surface-container-high": "#222a3d",
+                      "primary-container": "#4d8eff",
+                      "surface": "#0b1326",
+                      "primary": "#adc6ff",
+                      "primary-fixed-dim": "#adc6ff",
+                      "error": "#ffb4ab",
+                      "on-secondary-container": "#b0b2ff",
+                      "on-surface": "#dae2fd",
+                      "inverse-on-surface": "#283044"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "xs": "8px",
+                      "margin-mobile": "16px",
+                      "md": "24px",
+                      "lg": "48px",
+                      "gutter": "24px",
+                      "sm": "16px",
+                      "container-max": "1280px",
+                      "xl": "80px"
+              },
+              "fontFamily": {
+                      "label-sm": ["Geist"],
+                      "label-md": ["Geist"],
+                      "body-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "display-xl": ["Inter"],
+                      "headline-lg-mobile": ["Inter"]
+              },
+              "fontSize": {
+                      "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "headline-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                      "display-xl": ["64px", {"lineHeight": "72px", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                      "headline-lg-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased overflow-x-hidden">
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-background dark group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col lg:flex-row">
+<!-- Sidebar Navigation -->
+<div class="hidden lg:flex w-64 flex-col bg-surface-container-low border-r border-outline-variant h-screen sticky top-0">
+<div class="flex items-center gap-4 px-md py-md border-b border-outline-variant">
+<div class="size-6 text-primary">
+<svg fill="currentColor" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z"></path>
+</svg>
+</div>
+<h2 class="text-on-background font-headline-md text-lg">VoiceForge AI</h2>
+</div>
+<div class="flex flex-col gap-sm p-md flex-1">
+<div class="flex gap-3 mb-md">
+<div class="bg-surface-variant bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="A small circular avatar placeholder image in a modern dark UI setting, displaying a subtle abstract pattern in electric blue and charcoal tones, representing a user profile icon." style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuALAwG9ap54UnX0P0Tgowk4ZkE_imuy6s5HFQUoReOAomRThkYTtjQCS-1Gk45U1q5eNfTtVoo4KhScJy86Yok-dwUtM2hw_z0okTHRwWusUbxDd7IAKx0LGeW7jRA4yr3KAfOCXkACam-2aI5Y1Rsl0pp0Vq8tJuRS6TkGP6eFX27cfpE62m7QKEscg2hhDdzIZeZk7deXu219jz43FPOYivB8cLXdjsnPv2CZivXPV1rTHmEuWwUeCJr_vfuaBuXeyqyLWeF0W_Q");'></div>
+<div class="flex flex-col">
+<h1 class="text-on-background text-sm font-medium leading-normal">Jane Doe</h1>
+<p class="text-on-surface-variant text-xs font-normal leading-normal">Pro Plan</p>
+</div>
+</div>
+<div class="flex flex-col gap-unit">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-background" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">house</span>
+<span class="font-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-container text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">Microphone</span>
+<span class="font-label-md">Voice Cloning</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-background" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">speaker</span>
+<span class="font-label-md">Text-to-Speech</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-background" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+<span class="font-label-md">Settings</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 bg-background">
+<!-- Mobile Header (Hidden on Desktop) -->
+<header class="lg:hidden flex items-center justify-between border-b border-outline-variant px-margin-mobile py-sm bg-surface-container-low sticky top-0 z-10">
+<div class="flex items-center gap-2">
+<button class="text-on-background">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="font-headline-md text-base">Voice Cloning</span>
+</div>
+</header>
+<div class="flex-1 max-w-container-max mx-auto w-full px-margin-mobile lg:px-xl py-lg flex flex-col gap-lg">
+<!-- Page Header -->
+<div class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-sm">
+<div class="flex flex-col gap-xs">
+<h1 class="font-headline-lg text-on-background">Voice Cloning</h1>
+<p class="font-body-md text-on-surface-variant max-w-2xl">Create a custom AI voice by uploading high-quality audio samples. The better the input, the more accurate the clone.</p>
+</div>
+</div>
+<!-- Wizard Progress -->
+<div class="flex border-b border-outline-variant gap-lg overflow-x-auto hide-scrollbar">
+<div class="flex flex-col items-center justify-center border-b-[3px] pb-sm pt-sm min-w-max border-transparent text-on-surface-variant">
+<p class="font-label-md text-primary">1. Upload Samples</p>
+</div>
+<div class="flex flex-col items-center justify-center border-b-[3px] border-transparent text-on-surface-variant pb-sm pt-sm min-w-max">
+<p class="font-label-md">2. Configure</p>
+</div>
+<div class="flex flex-col items-center justify-center border-b-[3px] pb-sm pt-sm min-w-max border-primary text-primary">
+<p class="font-label-md">3. Train</p>
+</div>
+</div>
+<!-- Main Content Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+<!-- Left Column: Current Step (Upload) -->
+<div class="lg:col-span-2 flex flex-col gap-md">
+<!-- Upload Zone -->
+<div class="flex flex-col items-center justify-center p-xl rounded-DEFAULT border border-outline-variant bg-surface-container-low/50 backdrop-blur-md min-h-[400px] text-center">
+<div class="relative flex items-center justify-center mb-lg">
+<div class="size-32 rounded-full border-4 border-surface-variant border-t-primary animate-spin"></div>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-4xl animate-pulse">model_training</span>
+</div>
+</div>
+<h3 class="font-headline-md text-2xl text-on-background mb-2">Training Your Voice...</h3>
+<p class="font-body-md text-on-surface-variant max-w-md">This typically takes 5-10 minutes. You can leave this page; we'll notify you when it's ready.</p>
+<div class="mt-xl flex flex-col items-center gap-sm w-full max-w-sm">
+<div class="flex justify-between w-full mb-1">
+<span class="font-label-sm text-on-surface-variant">Generating Neural Model</span>
+<span class="font-label-sm text-primary">15%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2 overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 15%"></div>
+</div>
+</div>
+</div>
+<!-- Recording Tips (Step 1 specifics) -->
+<!-- Actions -->
+<div class="flex justify-end gap-sm mt-md pt-md border-t border-outline-variant"><button class="px-md py-sm rounded-full font-label-md text-on-background bg-transparent border border-outline-variant hover:bg-surface-container transition-colors">Cancel Training</button>
+<button class="px-md py-sm rounded-full font-label-md text-on-primary bg-primary hover:bg-primary-fixed transition-colors shadow-sm">Back to Dashboard</button></div>
+</div>
+<!-- Right Column: My Voices List -->
+<div class="flex flex-col gap-md">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-md text-lg text-on-background">My Cloned Voices</h3>
+<button class="text-primary hover:text-primary-fixed transition-colors">
+<span class="material-symbols-outlined">refresh</span>
+</button>
+</div>
+<div class="flex flex-col gap-sm"><div class="flex flex-col p-sm rounded-DEFAULT border border-primary/30 bg-primary/5 gap-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined animate-spin" style="font-variation-settings: 'FILL' 1;">sync</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-on-background">New Voice Clone</span>
+<span class="font-body-md text-xs text-primary">Processing...</span>
+</div>
+</div>
+<span class="font-label-sm text-primary">15%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary h-1.5 rounded-full" style="width: 15%"></div>
+</div>
+</div>
+<!-- Voice Item: Ready -->
+<div class="flex items-center justify-between p-sm rounded-DEFAULT border border-outline-variant bg-surface-container-low">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-surface-variant flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-on-background">Narrator One</span>
+<span class="font-body-md text-xs text-on-surface-variant flex items-center gap-1">
+<span class="size-2 rounded-full bg-primary inline-block"></span>
+                                            Ready to use
+                                        </span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-background transition-colors p-1 rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined text-xl">more_vert</span>
+</button>
+</div>
+<!-- Voice Item: Training -->
+<div class="flex flex-col p-sm rounded-DEFAULT border border-outline-variant bg-surface-container-low gap-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-surface-variant flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined animate-pulse" style="font-variation-settings: 'FILL' 1;">model_training</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-on-background">Podcast Host</span>
+<span class="font-body-md text-xs text-tertiary">Training...</span>
+</div>
+</div>
+<span class="font-label-sm text-on-surface-variant">65%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-1.5 overflow-hidden">
+<div class="bg-tertiary h-1.5 rounded-full" style="width: 65%"></div>
+</div>
+</div>
+<!-- Voice Item: Ready -->
+<div class="flex items-center justify-between p-sm rounded-DEFAULT border border-outline-variant bg-surface-container-low">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-surface-variant flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-on-background">Corporate Voice</span>
+<span class="font-body-md text-xs text-on-surface-variant flex items-center gap-1">
+<span class="size-2 rounded-full bg-primary inline-block"></span>
+                                            Ready to use
+                                        </span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-background transition-colors p-1 rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined text-xl">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>

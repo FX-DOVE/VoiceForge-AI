@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>VoiceForge AI - Natural AI Voices</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Geist:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/history@5/umd/history.development.js"></script>
+    <script src="https://unpkg.com/react-router@6.3.0/umd/react-router.development.js"></script>
+    <script src="https://unpkg.com/react-router-dom@6.3.0/umd/react-router-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3b82f6",
+                        "on-secondary-container": "#b0b2ff",
+                        "primary-fixed-dim": "#adc6ff",
+                        "surface-container-highest": "#2d3449",
+                        "inverse-surface": "#dae2fd",
+                        "surface-tint": "#adc6ff",
+                        "surface": "#0b1326",
+                        "secondary-container": "#3131c0",
+                        "surface-bright": "#31394d",
+                        "on-secondary-fixed": "#07006c",
+                        "error-container": "#93000a",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-tertiary-fixed-variant": "#723600",
+                        "secondary-fixed": "#e1e0ff",
+                        "surface-container-high": "#222a3d",
+                        "on-primary": "#002e6a",
+                        "tertiary-fixed": "#ffdcc6",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed": "#311400",
+                        "surface-container-low": "#131b2e",
+                        "primary": "#adc6ff",
+                        "secondary": "#c0c1ff",
+                        "on-primary-fixed-variant": "#004395",
+                        "surface-container": "#171f33",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-primary-container": "#00285d",
+                        "inverse-primary": "#005ac2",
+                        "on-primary-fixed": "#001a42",
+                        "tertiary-container": "#df7412",
+                        "on-secondary": "#1000a9",
+                        "outline-variant": "#424754",
+                        "tertiary": "#ffb786",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed": "#d8e2ff",
+                        "outline": "#8c909f",
+                        "on-background": "#dae2fd",
+                        "on-tertiary-container": "#461f00",
+                        "on-surface-variant": "#c2c6d6",
+                        "error": "#ffb4ab",
+                        "on-tertiary": "#502400",
+                        "background": "#0b1326",
+                        "surface-container-lowest": "#060e20",
+                        "primary-container": "#4d8eff",
+                        "on-surface": "#dae2fd",
+                        "tertiary-fixed-dim": "#ffb786",
+                        "surface-variant": "#2d3449",
+                        "surface-dim": "#0b1326",
+                        "inverse-on-surface": "#283044"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "gutter": "24px",
+                        "sm": "16px",
+                        "xl": "80px",
+                        "lg": "48px",
+                        "xs": "8px",
+                        "container-max": "1280px",
+                        "unit": "4px",
+                        "margin-mobile": "16px",
+                        "md": "24px"
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0b1326; color: #dae2fd; }
+        .glass-card, .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(66, 71, 84, 0.5); border-radius: 10px; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #3B82F6; cursor: pointer; margin-top: -6px; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255, 255, 255, 0.2); border-radius: 2px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
+        const { MemoryRouter, Routes, Route, Link, useNavigate, useLocation } = ReactRouterDOM;
+
+        // --- Common Components ---
+        const TopNavBar = () => (
+            <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-surface-container-highest px-10 py-3 bg-background/80 backdrop-blur-md sticky top-0 z-50">
+                <Link to="/" className="flex items-center gap-4 text-white">
+                    <div className="size-4">
+                        <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
+                        </svg>
+                    </div>
+                    <h2 className="text-white text-lg font-bold leading-tight tracking-[-0.015em]">VoiceForge AI</h2>
+                </Link>
+                <div className="flex flex-1 justify-end gap-8">
+                    <div className="flex items-center gap-9">
+                        <Link to="/features" className="text-white text-sm font-medium leading-normal">Features</Link>
+                        <Link to="/pricing" className="text-white text-sm font-medium leading-normal">Pricing</Link>
+                        <Link to="/faq" className="text-white text-sm font-medium leading-normal">FAQ</Link>
+                    </div>
+                    <div className="flex gap-2">
+                        <Link to="/signup" className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#3b83f6] text-white text-sm font-bold leading-normal tracking-[0.015em]">
+                            Start Free
+                        </Link>
+                        <Link to="/login" className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#223149] text-white text-sm font-bold leading-normal tracking-[0.015em]">
+                            Sign In
+                        </Link>
+                    </div>
+                </div>
+            </header>
+        );
+
+        const AdminSidebar = () => {
+            const location = useLocation();
+            const items = [
+                { path: "/admin", icon: "dashboard", label: "Dashboard" },
+                { path: "/admin/users", icon: "group", label: "Users" },
+                { path: "/admin/billing", icon: "credit_card", label: "Billing" },
+                { path: "/admin/settings", icon: "settings", label: "Settings" }
+            ];
+            return (
+                <aside className="relative flex h-full w-[280px] flex-col bg-[#101723] shrink-0 border-r border-outline-variant z-20">
+                    <div className="flex h-full flex-col justify-between p-4">
+                        <div className="flex flex-col gap-8">
+                            <Link to="/admin" className="flex gap-3 px-2 pt-2">
+                                <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDlVesRVJY3hoT2gS83Z7V-aRT5ebC1NQSlQ0f3YRROkzfOzEVkzTQvpyebG5kqRIfhHAwyrFb4z9xmhuMhRKhbIOAYQohtPwue-SvKicMpyFD62xpCItelqmoW9RwhEZ1qUe-wzv6C1LENyk8wVYjcxqnACk5dU2apetdzcKOTuT5M8dmUm7gXPclqAnCCJtDMtroRUYKoSffCdIl6sBHgqqT2WtHr0tCat4dvc9JqiVAR0cAKcwUliEQqgjA19LxYI5tBxLwdrrs")'}}></div>
+                                <div className="flex flex-col justify-center">
+                                    <h1 className="text-on-surface text-base font-medium leading-tight">VoiceForge</h1>
+                                    <p className="text-on-surface-variant text-xs font-normal">Admin Panel</p>
+                                </div>
+                            </Link>
+                            <div className="flex flex-col gap-1">
+                                {items.map(item => (
+                                    <Link 
+                                        key={item.path} 
+                                        to={item.path} 
+                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer ${location.pathname === item.path ? 'bg-primary-container/20 text-primary border border-primary/20' : 'hover:bg-surface-variant text-on-surface-variant'}`}
+                                    >
+                                        <span className="material-symbols-outlined text-lg">{item.icon}</span>
+                                        <p className="text-sm font-medium">{item.label}</p>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                        <Link to="/settings" className="flex items-center gap-3 px-3 py-3 mt-auto border-t border-outline-variant/50 pt-4 cursor-pointer hover:bg-surface-variant rounded-lg transition-colors">
+                            <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuAnAGMkxbYZsC3w84cUUUbb0BbtqpZ9aZ--aQGp8tv4gd2Iqr_QIkNDJk8_auczrJE7VXOlZcjbuqhBfm3qGZ-f8Qr9zhaFiueci3LrTOZ2VrCZcgASz5HkGgkh3xp-bL82XDeMZUq2i2ju2KGXt9CqByt6uTTgyB1nLENv_8jPvaWMs6dwsS2Cs-3fAut87kIyXGZ0Fgzaxir5jiXmswYjZihycdApc08fkrQhFBvB_-XWkjE6Pq__Pxa-faPZzo-Zys4egP2FZWc")'}}></div>
+                            <div className="flex flex-col">
+                                <p className="text-sm font-medium text-on-surface">Admin User</p>
+                                <p className="text-xs text-on-surface-variant">admin@voiceforge.ai</p>
+                            </div>
+                        </Link>
+                    </div>
+                </aside>
+            );
+        };
+
+        const DashboardSidebar = () => {
+            const location = useLocation();
+            return (
+                <aside className="flex w-[280px] shrink-0 flex-col border-r border-[#223149] bg-[#101723] px-4 py-6">
+                    <div className="flex flex-col gap-8">
+                        <div className="flex items-center gap-3 px-2">
+                            <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuACiwTexWesnOxoMg0sIWHfUtoQOScUdYCmPOvE-gOjKR-5fYTY5gQcjZX52M2z9LqwFQG70-v945NTkOS8_wwdW6ybWkaCZp7RcSb3gIzX4j5FI9_tb0PZci6qAuNbYiJiJwMRdnvWwoeLVyX1P_K0dGYWARl25-c6mcg0aK1ODe7aDgOwF-aPigE4u0x_lSvlKmSJSixN2O6TF95rTY6ufcBkc7IzUDF4KAZuRTItsl-IvEScClyfFXv9drShtEVSV4n86ix7vuE")'}}></div>
+                            <div className="flex flex-col">
+                                <h1 className="text-white text-base font-medium leading-normal">VoiceForge</h1>
+                                <p className="text-[#90a7cb] text-sm font-normal leading-normal">Pro Plan</p>
+                            </div>
+                        </div>
+                        <nav className="flex flex-col gap-2">
+                            {[
+                                { path: "/dashboard", icon: "home", label: "Dashboard" },
+                                { path: "/studio", icon: "mic", label: "Studio" },
+                                { path: "/cloning", icon: "group", label: "Voice Cloning" },
+                                { path: "/settings", icon: "settings", label: "Settings" }
+                            ].map(item => (
+                                <Link 
+                                    key={item.path} 
+                                    to={item.path} 
+                                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${location.pathname.startsWith(item.path) ? 'bg-[#223149] text-white' : 'text-[#90a7cb] hover:bg-[#223149]/50'}`}
+                                >
+                                    <span className="material-symbols-outlined">{item.icon}</span>
+                                    <span className="text-sm font-medium">{item.label}</span>
+                                </Link>
+                            ))}
+                        </nav>
+                    </div>
+                </aside>
+            );
+        };
+
+        // --- Pages ---
+
+        const HomePage = () => (
+            <div className="flex flex-col">
+                <TopNavBar />
+                <div className="layout-content-container flex flex-col max-w-container-max mx-auto flex-1 px-10">
+                    <div className="mt-xl flex flex-col gap-6 py-10 lg:flex-row items-center">
+                        <div className="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-DEFAULT shadow-2xl lg:w-1/2" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuB_7rCsegpxK0ELZVC4N_-mnZLMsYk7655oSzClcJhe3fPg_poYc2ZkaUNID2Yy7TaN6B40P7d_MgmTXhhSDhZ1wCrkmSqJ0JFX7riytNJ-bvlPwww8m4jFPthMhJWY0VgQJ1mXGNRv06bqnFItVp1DakVGVUNseaJ6tEVXTIDP1hrPqKIiI1wZw8KXASF3EJwwCo9PJeRP1vDjNsclSpHxabU9C-SCiBy5eG3QQlftsCkTvm1mQKa8Z10rzWLO7y8CcYS7EYui3no")'}}></div>
+                        <div className="flex flex-col gap-6 lg:justify-center lg:w-1/2 pl-lg">
+                            <h1 className="text-on-surface text-6xl font-bold tracking-tighter leading-tight">Generate Natural AI Voices with xAI</h1>
+                            <p className="text-on-surface-variant text-lg max-w-2xl">Convert any script into realistic speech in seconds. Studio-quality text-to-speech for creators and developers.</p>
+                            <div className="flex gap-4 mt-4">
+                                <Link to="/signup" className="bg-[#3B82F6] text-white font-bold h-12 px-6 rounded-full flex items-center justify-center">Start Free</Link>
+                                <button className="glass-card text-white font-bold h-12 px-6 rounded-full flex items-center justify-center gap-2 border border-white/10">
+                                    <span className="material-symbols-outlined">play_circle</span> Listen to Demo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-xl">
+                        <h2 className="text-on-surface text-4xl font-bold pb-6">Voice Samples</h2>
+                        <div className="flex overflow-x-auto gap-6 pb-8 no-scrollbar">
+                            {[
+                                { name: "Antoni", tags: "Professional, Deep", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuDvtHzWYW9YJzgO_ZRR1_fwvCYGCE5I40t2H_nT91mQWjl56adu0N2kKqLKgfU22nQqPBKuyL7MynP0811hmBL_xZoZcRzkWWHjhOihdPB4D1vsB7r7HQ1uebjx6KJpiFk8b233ysRamZ8A1_4j6OZSVzwJxGQ3HSOIoI-9LbJy59tXbu1ZnPsIov4A9Wr-sOI1wxo-VQgvxkEfwpwYOfkopYZZKxqnm60BoQtEUSzdBX8TCAtr3a3Yh-rhnnUB3QygZepRyo6kmV4" },
+                                { name: "Bella", tags: "Conversational, Soft", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuB3yNFip8ipSMpdIPkUH62nYg3INJqnyq-TYzXmHVpq2mOblZtDXHU7mUH1kXIcEzeU5pRbk3z-co0NZdouUqZgenIC9CzOzcm5vLxPv0lyWdcorypmqjNiZ3qvEICSkYGilD3I1zDIz1izW8Zm7PoIN3ureDYiW40G2tgkmnpZJ-c9TnPGMtnE9rBFdlUpNQ6Afj9F73PyJ4EwL_Oe6BCfIO4ADZkfAvfNYgv2mangcbceP0efVAGn8Xg8Zw4QpXbT9mXIlNaWaFQ" },
+                                { name: "Rachel", tags: "Energetic, Clear", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuA2tgjHbZwPadn9cw8gkAsLy3BUQBYyoxAwGgVkLfOyM6HiZjVInAwRHZ1aW_apmv2jonV32Kt8XI9EP_naAtJe1iDk6A52iZXSjIl74mKvtM5bE3JvRw-3eomYwDnOaX0BKJRV8tVDFyzjtxOYVMLzTEQwVedzcpD_GEraL1Ox2JLl2XK43bwHtKAixzquKTfrV3kd_0LWxm1NRbjHKQCnRksMEV-1EyqOpag-yGBjGHJgwuPMkiQrwlqxgRbyI15wJl86LQg2tMA" }
+                            ].map(v => (
+                                <div key={v.name} className="glass-card flex flex-col gap-4 rounded-DEFAULT p-4 min-w-[280px] hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-shadow">
+                                    <div className="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-DEFAULT" style={{backgroundImage: `url(${v.img})`}}></div>
+                                    <div className="flex flex-col gap-4">
+                                        <div><p className="text-on-surface text-2xl font-bold">{v.name}</p><p className="text-primary-fixed-dim text-sm mt-1">{v.tags}</p></div>
+                                        <button className="glass-card w-full flex items-center justify-center rounded-full h-10 px-4 text-sm font-bold border border-white/10"><span className="material-symbols-outlined mr-2">play_arrow</span> Play</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+                <footer className="mt-xl border-t border-surface-container-highest py-10 px-10 flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className="flex items-center gap-4 text-white">
+                        <div className="size-6 text-primary"><svg fill="currentColor" viewBox="0 0 48 48"><path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z"/></svg></div>
+                        <h2 className="text-on-surface text-lg font-bold">VoiceForge AI</h2>
+                    </div>
+                    <div className="text-on-surface-variant text-sm">© 2024 VoiceForge AI. All rights reserved.</div>
+                </footer>
+            </div>
+        );
+
+        const DashboardPage = () => (
+            <div className="flex h-screen w-full bg-[#101723] overflow-hidden">
+                <DashboardSidebar />
+                <main className="flex-1 flex flex-col overflow-y-auto">
+                    <header className="flex shrink-0 items-center justify-between border-b border-solid border-b-[#223149] px-10 py-4 sticky top-0 bg-[#101723] z-10">
+                        <div className="flex items-center gap-4 text-white">
+                            <span className="material-symbols-outlined">dashboard</span>
+                            <h2 className="text-white text-lg font-bold">Dashboard</h2>
+                        </div>
+                        <div className="size-10 bg-center bg-no-repeat bg-cover rounded-full" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDabL1ZEbtoTZGQW0KuSKuApsanIIyeREI7_h-bUb-PdN4dcsZ9gmeFVAsJ8c4NkzlhtNeR9ow_DATImPNUXdf4JGq-uqpNpNSBLoDYrnQjST4Sw4cetHEMhk9ZWzGnMstPRGcTSvLm6HzEDTwLVakw23_RMpBA1dLIkLLU_Q9429sl9vHVtsP4TQIcwiUCHmEzhUU7-t2ReK2apCc-BDHd3vgToOVe4u79s9DVEw4cnkMRwM3aM3_rMcDo-P0Aaq4uhWGwEBXVRrU")'}}></div>
+                    </header>
+                    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-8">
+                        <div className="flex flex-wrap gap-4">
+                            <div className="flex-1 flex flex-col gap-2 rounded-xl p-6 border border-[#314668] bg-[#172133]/30">
+                                <p className="text-white text-base font-medium">Remaining Credits</p>
+                                <p className="text-white text-3xl font-bold">1,250</p>
+                            </div>
+                            <div className="flex-1 flex flex-col gap-2 rounded-xl p-6 border border-[#314668] bg-[#172133]/30">
+                                <p className="text-white text-base font-medium">Usage This Month</p>
+                                <p className="text-white text-3xl font-bold">145 mins</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-4 pt-4">
+                            <h2 className="text-white text-[22px] font-bold">Recent Generations</h2>
+                            {[
+                                { text: "The future of interactive storytelling begins with truly dynamic...", who: "Marcus (British, Professional)", time: "0:45" },
+                                { text: "Welcome to the onboarding sequence. Let's get your workspace...", who: "Sarah (American, Casual)", time: "0:12" }
+                            ].map((item, i) => (
+                                <div key={i} className="flex items-center gap-md p-4 rounded-DEFAULT bg-surface-container-low/70 border border-outline-variant/30 backdrop-blur-[24px] hover:bg-surface-container transition-colors shadow-lg">
+                                    <button className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined">play_arrow</span>
+                                    </button>
+                                    <div className="flex-1 px-4 truncate">
+                                        <p className="text-on-surface truncate">"{item.text}"</p>
+                                        <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-1">
+                                            <span className="material-symbols-outlined text-sm">person</span>
+                                            <span>{item.who}</span>
+                                            <span>•</span>
+                                            <span>{item.time}</span>
+                                        </div>
+                                    </div>
+                                    <button className="text-on-surface-variant hover:text-primary p-2">
+                                        <span className="material-symbols-outlined">download</span>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </main>
+            </div>
+        );
+
+        const StudioPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="flex h-screen w-full bg-background overflow-hidden relative">
+                    <header className="absolute top-0 left-0 w-full p-md z-50 flex items-center gap-sm">
+                        <button onClick={() => navigate(-1)} className="p-xs rounded-full hover:bg-surface-variant transition-colors flex items-center justify-center text-on-surface-variant hover:text-on-surface">
+                            <span className="material-symbols-outlined">arrow_back</span>
+                        </button>
+                        <h1 className="text-body-md font-semibold">VoiceForge Studio</h1>
+                    </header>
+                    <main className="flex-1 flex flex-col pt-16 px-md lg:px-lg max-w-container-max mx-auto w-full">
+                        <div className="mb-sm">
+                            <h2 className="text-4xl font-bold">Generate Voice</h2>
+                            <p className="text-on-surface-variant">Input script and choose a voice.</p>
+                        </div>
+                        <div className="flex-1 flex flex-col lg:flex-row gap-gutter overflow-hidden pb-4">
+                            <div className="flex-1 flex flex-col gap-sm h-full">
+                                <div className="glass-panel rounded-DEFAULT flex flex-col flex-1 overflow-hidden">
+                                    <div className="flex items-center justify-between p-sm border-b border-outline-variant/30 bg-surface/50">
+                                        <h3 className="text-sm font-medium">Select Voice</h3>
+                                    </div>
+                                    <div className="flex-1 p-sm">
+                                        <textarea className="w-full h-full bg-transparent border-none resize-none text-lg text-on-surface placeholder:text-outline focus:ring-0" placeholder="Enter your text here..."></textarea>
+                                    </div>
+                                    <div className="p-sm text-xs text-outline border-t border-outline-variant/30 bg-surface/30 flex justify-between">
+                                        <span>0 / 5,000 characters</span>
+                                        <button>Clear</button>
+                                    </div>
+                                </div>
+                                <div className="glass-panel rounded-DEFAULT p-sm flex flex-col gap-sm">
+                                    <div className="grid grid-cols-2 gap-sm">
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs text-on-surface-variant">Speed (1.0x)</label>
+                                            <input type="range" max="2.0" min="0.5" step="0.1" defaultValue="1.0" />
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs text-on-surface-variant">Stability (75%)</label>
+                                            <input type="range" max="100" min="0" step="5" defaultValue="75" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-sm w-full lg:w-[400px] shrink-0 h-full overflow-hidden">
+                                <div className="glass-panel rounded-DEFAULT flex flex-col flex-1 overflow-hidden">
+                                    <div className="p-sm border-b border-outline-variant/30 bg-surface/50 flex justify-between items-center">
+                                        <h3 className="font-medium">Voice Library</h3>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+                                        {[
+                                            { name: "Antoni", tags: ["Deep", "Professional"], img: "https://lh3.googleusercontent.com/aida-public/AB6AXuD2D8D9oK2CItxDddKsnRQtWZhWFb22944r_D9_ybJrA4EUuMFaCtOviWQookDKNIzOrspcaLAHxVVypCLp37O1V2AHTz5ZGAqZq_Wj09Aiw7-IIn9An92_pXw43X1dnpmz8iay8mIeeQQ3Q_5XCYTgixa6UvJxuEZyvi4KicFLoug_-CCU0oPGqincJS603Xmmq786xGk29GHqiS38-RQE6DDoC_WcqgSA-x0d8LyNGWjZoOcx8ljQq-pEIyhl8m82x_kVtc7eVvw" },
+                                            { name: "Sarah", tags: ["Clear", "Narration"], img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAWVcK77PB_yx276Gr_o2lGtn-Ns9h25u_SCSCykDUSFgjsCeEr5WQZg_t61JYQMVcmt9-xB0RCj-wkyujn-ZCpUkCD8S_JDVGvjE-5Nb6fnFliYPAw_66Yr0ySx0NkkAgMB1GrHxGpItdutBQ7lJPO6QkYTjanVUrFfKwIggk3jDzMx9IL_oZShjPkzTIXLlpvuJTUqirG0QGDGyHL4Emy39Z3Ts2hvC--S4QiAJd8iKrPHNXr6baWoEt2fGiGALuktxM8n6d_GRk" }
+                                        ].map(v => (
+                                            <div key={v.name} className="p-3 rounded-lg border border-transparent hover:border-outline-variant/50 hover:bg-surface-variant/30 cursor-pointer flex items-center justify-between group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="size-10 rounded-full bg-cover" style={{backgroundImage: `url(${v.img})`}}></div>
+                                                    <div>
+                                                        <h4 className="font-medium text-sm">{v.name}</h4>
+                                                        <div className="flex gap-1 mt-1">
+                                                            {v.tags.map(t => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-surface-variant text-xs">{t}</span>)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span className="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100">play_arrow</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="p-sm bg-surface/80">
+                                        <button className="w-full bg-primary hover:opacity-90 text-on-primary py-3 rounded-lg flex items-center justify-center gap-2 font-bold shadow-lg">
+                                            <span className="material-symbols-outlined">bolt</span> Generate Audio
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const SettingsPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="flex h-screen w-full bg-background overflow-hidden">
+                    <DashboardSidebar />
+                    <main className="flex-1 p-lg overflow-y-auto">
+                        <div className="max-w-4xl mx-auto flex flex-col gap-lg">
+                            <div className="flex flex-col gap-2 pb-4 border-b border-outline-variant">
+                                <h1 className="text-4xl font-bold">Profile Settings</h1>
+                                <p className="text-on-surface-variant">Manage your account.</p>
+                            </div>
+                            <div className="glass-panel p-lg rounded-DEFAULT flex flex-col gap-lg">
+                                <div className="flex items-center gap-md">
+                                    <div className="size-24 rounded-full bg-center bg-cover bg-surface-variant" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBg7h91fg7bqsAkL62YfMC8IQr_SJ_tniLt0-y6cg2RHooUbIvbp8KWFo83Hgq3sNFj64-P5xukuwjLg6E-ZNDmu_DPIwCZetojleAlsSHqoioPzgRk5Y20A_vMCy-nQmte8tKMrqa7V3K8AOWPobwJkETw5wwFdMAh9TgT9Ke4chPDnB20JpjB7ksQekpIS1GlKwCuuH-nMRb3EpyW-GVkOytcx-61_sxH3PyQ7KIbzd1MMbjlP8lhndHvs7E_JV7Upa1rpuiqiNw")'}}></div>
+                                    <button className="bg-surface-variant px-6 py-2 rounded-full border border-outline-variant hover:bg-surface-container-highest">Change Avatar</button>
+                                </div>
+                                <div className="grid gap-md">
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-sm font-medium">Full Name</label>
+                                        <input type="text" className="bg-surface-container-low border border-outline-variant rounded-DEFAULT px-4 py-3" defaultValue="Jane Doe" />
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-sm font-medium">Email Address</label>
+                                        <input type="email" className="bg-surface-container-low border border-outline-variant rounded-DEFAULT px-4 py-3" defaultValue="jane.doe@example.com" />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-2 border-t border-outline-variant pt-6">
+                                    <button className="bg-primary text-on-primary px-8 py-3 rounded-full font-bold shadow-lg hover:opacity-90">Save Changes</button>
+                                </div>
+                            </div>
+                            <div className="glass-panel p-lg rounded-DEFAULT flex flex-col gap-4">
+                                <h2 className="text-2xl font-bold">Subscription</h2>
+                                <div className="flex justify-between items-center bg-surface-container-low p-4 rounded-lg border border-outline-variant/30">
+                                    <div>
+                                        <h3 className="font-bold">Pro Plan</h3>
+                                        <p className="text-sm text-on-surface-variant">$49.99 / month</p>
+                                    </div>
+                                    <Link to="/pricing" className="text-primary font-bold">Change Plan</Link>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const PricingPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="min-h-screen bg-background text-on-surface">
+                    <TopNavBar />
+                    <main className="max-w-container-max mx-auto py-xl px-10">
+                        <div className="text-center mb-16">
+                            <h1 className="text-6xl font-bold mb-4">Simple, transparent pricing</h1>
+                            <p className="text-on-surface-variant text-xl">Choose the perfect plan for your voice generation needs.</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            {[
+                                { name: "Free", price: "0", features: ["10 mins generation", "Standard voices"], btn: "Get Started Free", color: "bg-surface-container-high" },
+                                { name: "Pro", price: "19", features: ["100 mins generation", "Premium AI voices", "Voice cloning"], btn: "Start Pro Trial", color: "bg-primary-container", popular: true },
+                                { name: "Enterprise", price: "Custom", features: ["Unlimited generation", "Custom voice creation", "Dedicated support"], btn: "Contact Sales", color: "bg-surface-container-high" }
+                            ].map(p => (
+                                <div key={p.name} className={`glass-panel p-8 rounded-DEFAULT flex flex-col gap-6 relative ${p.popular ? 'scale-105 border-primary' : ''}`}>
+                                    {p.popular && <span className="absolute top-4 right-4 bg-primary text-xs font-bold px-2 py-1 rounded-full uppercase">Popular</span>}
+                                    <div className="flex flex-col gap-2">
+                                        <h2 className="text-2xl font-bold">{p.name}</h2>
+                                        <div className="flex items-baseline">
+                                            <span className="text-5xl font-bold">${p.price}</span>
+                                            {p.price !== 'Custom' && <span className="text-on-surface-variant">/month</span>}
+                                        </div>
+                                    </div>
+                                    <Link to={p.name === "Pro" ? "/checkout" : "/signup"} className={`w-full py-3 rounded-full flex items-center justify-center font-bold ${p.color === "bg-primary-container" ? 'bg-primary text-on-primary' : 'bg-surface-container hover:bg-surface-container-high'}`}>
+                                        {p.btn}
+                                    </Link>
+                                    <div className="flex flex-col gap-3 mt-4">
+                                        {p.features.map(f => (
+                                            <div key={f} className="flex gap-2 text-sm text-on-surface-variant">
+                                                <span className="material-symbols-outlined text-primary text-sm">check</span> {f}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const AdminPage = () => (
+            <div className="flex h-screen w-full bg-[#0b1326] overflow-hidden">
+                <AdminSidebar />
+                <main className="flex-1 flex flex-col overflow-y-auto">
+                    <header className="h-16 border-b border-outline-variant/30 bg-surface/80 backdrop-blur-md flex items-center justify-between px-lg sticky top-0 z-30">
+                        <h2 className="text-2xl font-bold">Admin Overview</h2>
+                        <button className="bg-primary text-on-primary px-4 py-2 rounded-full font-bold">Generate Report</button>
+                    </header>
+                    <div className="p-lg max-w-container-max mx-auto w-full grid grid-cols-1 md:grid-cols-4 gap-sm">
+                        {[
+                            { label: "Total Revenue", val: "$12,340", trend: "+15%", icon: "payments" },
+                            { label: "Active Subscriptions", val: "1,245", trend: "+24", icon: "card_membership" },
+                            { label: "API Usage", val: "85%", trend: "Warning", icon: "api" },
+                            { label: "Gen Volume", val: "4.2M hrs", trend: "Optimal", icon: "graphic_eq" }
+                        ].map((s, i) => (
+                            <div key={i} className="glass-panel p-6 rounded-DEFAULT flex flex-col gap-2 shadow-lg">
+                                <div className="flex justify-between">
+                                    <span className="text-on-surface-variant text-sm">{s.label}</span>
+                                    <span className="material-symbols-outlined text-primary">{s.icon}</span>
+                                </div>
+                                <div className="flex items-end gap-2">
+                                    <span className="text-3xl font-bold">{s.val}</span>
+                                    <span className="text-xs text-green-400 font-bold mb-1">{s.trend}</span>
+                                </div>
+                            </div>
+                        ))}
+                        <div className="md:col-span-4 glass-panel p-6 rounded-DEFAULT mt-lg">
+                            <h3 className="text-lg font-bold mb-4">System Health</h3>
+                            <div className="space-y-4">
+                                {["US East (N. Virginia)", "EU (Frankfurt)"].map((r, i) => (
+                                    <div key={i} className="flex justify-between items-center p-3 hover:bg-surface-variant/30 rounded-lg">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`size-3 rounded-full ${i === 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                            <span>{r}</span>
+                                        </div>
+                                        <span className={`text-xs px-2 py-1 rounded-full ${i === 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                            {i === 0 ? 'Operational' : 'Degraded'}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        );
+
+        const LoginPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="min-h-screen flex items-center justify-center relative bg-background overflow-hidden">
+                    <div className="glass-panel rounded-lg p-lg w-full max-w-md flex flex-col gap-8 relative z-10">
+                        <div className="text-center">
+                            <h1 className="text-4xl font-bold mb-2">Welcome back</h1>
+                            <p className="text-on-surface-variant">Sign in to continue your audio synthesis.</p>
+                        </div>
+                        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); navigate('/dashboard'); }}>
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm">Email</label>
+                                <input type="email" placeholder="name@company.com" className="bg-surface-container-low border border-outline-variant rounded-DEFAULT p-4 focus:ring-2 focus:ring-primary outline-none" required />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm">Password</label>
+                                <input type="password" placeholder="••••••••" className="bg-surface-container-low border border-outline-variant rounded-DEFAULT p-4 focus:ring-2 focus:ring-primary outline-none" required />
+                            </div>
+                            <button type="submit" className="bg-primary text-on-primary py-4 rounded-full font-bold shadow-lg hover:opacity-90 flex items-center justify-center gap-2">
+                                Sign In <span className="material-symbols-outlined">arrow_forward</span>
+                            </button>
+                        </form>
+                        <div className="text-center">
+                            <Link to="/signup" className="text-sm text-on-surface-variant hover:text-primary transition-colors">Don't have an account? Sign up</Link>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const SignupPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="min-h-screen flex w-full">
+                    <div className="hidden lg:flex w-1/2 bg-surface-container-lowest relative items-end p-xl overflow-hidden">
+                        <img className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-screen" src="https://lh3.googleusercontent.com/aida-public/AB6AXuClYdI7HXEmXhvpPHMcqTSdJB_GZgHWPDEaIF4D4rUGMXakXZxhxYthkMTULe7hKJ-L_4ufivnSgMDuoFrpvGPK9vR1ijxzL1E1M69-gkb_7A2DUsYopZEV393g2ceVV_HyWaaf5q8ep-O8tJU4xrDtWiI7B8AaIAPfTJ3RLlwg0jMBt09_7rh8HEgxZnF-ZuoLeVeVvAZeKVUc-0NPHb1PvCp5B9ov7h8fkkj8sXBVrIB5Uzp2PWso5vpqm0B7irDKlMPoff_qrhI" />
+                        <div className="relative z-10 max-w-md">
+                            <h3 className="text-6xl font-bold mb-4">Shape the sound of tomorrow.</h3>
+                            <p className="text-lg text-on-surface-variant">Join VoiceForge AI for next-gen voice generation.</p>
+                        </div>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center justify-center p-lg relative bg-background">
+                        <div className="w-full max-w-sm flex flex-col gap-8">
+                            <h1 className="text-4xl font-bold">Create your account</h1>
+                            <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); navigate('/dashboard'); }}>
+                                <input placeholder="Full Name" className="bg-surface-container/50 border border-outline-variant p-4 rounded-DEFAULT" required />
+                                <input placeholder="Email" type="email" className="bg-surface-container/50 border border-outline-variant p-4 rounded-DEFAULT" required />
+                                <input placeholder="Password" type="password" className="bg-surface-container/50 border border-outline-variant p-4 rounded-DEFAULT" required />
+                                <button type="submit" className="bg-primary text-on-primary py-4 rounded-full font-bold shadow-xl hover:opacity-90">Sign Up</button>
+                            </form>
+                            <div className="text-center text-on-surface-variant">
+                                Already have an account? <Link to="/login" className="text-primary font-bold">Sign in</Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const CheckoutPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="min-h-screen bg-background">
+                    <TopNavBar />
+                    <main className="max-w-container-max mx-auto py-xl px-10 grid grid-cols-1 lg:grid-cols-12 gap-xl">
+                        <div className="lg:col-span-5 flex flex-col gap-md">
+                            <h1 className="text-5xl font-bold">Upgrade to Pro</h1>
+                            <div className="glass-panel p-8 rounded-DEFAULT flex flex-col gap-6">
+                                <h2 className="text-2xl font-bold pb-2 border-b border-white/10">Order Summary</h2>
+                                <div className="flex justify-between bg-surface-container-low p-4 rounded-lg">
+                                    <div className="flex flex-col">
+                                        <span className="font-bold">VoiceForge Pro</span>
+                                        <span className="text-primary text-2xl font-bold">$49.99/mo</span>
+                                    </div>
+                                    <div className="size-20 rounded bg-cover" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBpnJZDzS7Y7oQIx1IJUJOk5ldSmLnhVRaznfbBvdipX5gg48_CDpnya3tdYS2lxXhB5WNQp7USNBG_jcZSA02CPzGgCpU1SnsDtNY7bTQcX78Et_8VygGcCaNCYcjk-Z3f9zUfCPSwErmYhN_QmDKQ83zgoflIgMlGbj07g2K6J3V6r9J2FKv9GBYfMXuEFB3ZmakkdEJupVkAlOrde_EJW0TTvRP4g77cDhVMaSmG4XXqWYBKoP7HNRwXkppSQlUNyKLDU03YoP8")'}}></div>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    {["100,000 characters", "Hi-fi voices", "Commercial rights"].map(f => (
+                                        <div key={f} className="flex gap-2 text-sm"><span className="material-symbols-outlined text-primary">check_circle</span> {f}</div>
+                                    ))}
+                                </div>
+                                <div className="border-t border-white/10 pt-4 flex justify-between font-bold text-xl">
+                                    <span>Total Due</span>
+                                    <span className="text-primary">$49.99</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="lg:col-span-7">
+                            <div className="glass-panel p-8 rounded-DEFAULT flex flex-col gap-6">
+                                <h2 className="text-2xl font-bold">Payment Details</h2>
+                                <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); navigate('/success'); }}>
+                                    <input placeholder="Card Number" className="bg-surface-container-highest p-4 rounded-full border border-outline-variant outline-none focus:ring-2 focus:ring-primary" required />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input placeholder="MM / YY" className="bg-surface-container-highest p-4 rounded-full border border-outline-variant outline-none focus:ring-2 focus:ring-primary" required />
+                                        <input placeholder="CVC" type="password" className="bg-surface-container-highest p-4 rounded-full border border-outline-variant outline-none focus:ring-2 focus:ring-primary" required />
+                                    </div>
+                                    <button type="submit" className="bg-primary text-on-primary py-5 rounded-full font-bold text-lg mt-4 shadow-xl hover:opacity-90">Complete Upgrade</button>
+                                </form>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const SuccessPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-lg bg-background text-center">
+                    <div className="relative size-24 mb-lg glass-panel rounded-full flex items-center justify-center">
+                        <span className="material-symbols-outlined text-6xl text-primary" style={{fontVariationSettings: "'FILL' 1"}}>check_circle</span>
+                    </div>
+                    <h1 className="text-5xl font-bold mb-4">Upgrade Successful!</h1>
+                    <p className="text-on-surface-variant text-lg max-w-md mb-8">Your Pro Plan is now active. You’ve unlocked hi-fi cloning and unlimited studio generations.</p>
+                    <div className="glass-panel p-8 rounded-lg max-w-md w-full mb-8">
+                        <div className="flex justify-between border-b border-white/10 pb-4 mb-4">
+                            <span className="text-on-surface-variant uppercase text-xs">Confirmation</span>
+                            <span className="text-primary font-mono font-bold">#VF-882910</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-xl font-bold">VoiceForge Pro</h2>
+                            <span className="font-bold text-lg">$49.99/mo</span>
+                        </div>
+                    </div>
+                    <button onClick={() => navigate('/dashboard')} className="bg-primary text-on-primary px-12 py-4 rounded-full font-bold shadow-xl hover:opacity-90">Go to Dashboard</button>
+                </div>
+            );
+        };
+
+        const FaqPage = () => (
+            <div className="min-h-screen bg-background">
+                <TopNavBar />
+                <main className="max-w-container-max mx-auto py-xl px-10 flex flex-col md:flex-row gap-lg">
+                    <aside className="w-full md:w-1/4">
+                        <div className="glass-panel p-6 rounded-lg sticky top-24">
+                            <h3 className="text-xl font-bold mb-4">Need help?</h3>
+                            <p className="text-sm text-on-surface-variant mb-6">Can't find the answer? Our support team is here for you.</p>
+                            <button className="w-full bg-primary py-3 rounded-full font-bold flex items-center justify-center gap-2"><span className="material-symbols-outlined">support_agent</span> Contact Support</button>
+                        </div>
+                    </aside>
+                    <div className="flex-1 flex flex-col gap-12">
+                        <h1 className="text-6xl font-bold">Frequently Asked Questions</h1>
+                        <section className="space-y-4">
+                            {[
+                                { q: "What is VoiceForge AI?", a: "VoiceForge is a cutting-edge platform for natural sounding synthetic voices." },
+                                { q: "What languages are supported?", a: "We support over 30 languages including English, Spanish, French, and more." },
+                                { q: "Is there a free trial?", a: "Yes! New accounts get 10,000 complimentary characters." }
+                            ].map((f, i) => (
+                                <details key={i} className="glass-panel p-6 rounded-lg group cursor-pointer" open={i === 0}>
+                                    <summary className="font-bold text-xl flex justify-between items-center list-none">
+                                        {f.q} <span className="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+                                    </summary>
+                                    <p className="mt-4 text-on-surface-variant">{f.a}</p>
+                                </details>
+                            ))}
+                        </section>
+                    </div>
+                </main>
+            </div>
+        );
+
+        const FeaturesPage = () => (
+            <div className="min-h-screen bg-background">
+                <TopNavBar />
+                <main className="max-w-container-max mx-auto py-xl px-10 flex flex-col gap-xl">
+                    <div className="text-center flex flex-col gap-4">
+                        <h1 className="text-7xl font-bold">Next-Generation <span className="text-primary">Voice AI</span></h1>
+                        <p className="text-xl text-on-surface-variant max-w-2xl mx-auto">Powerful features for professional audio generation.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {[
+                            { icon: "sparkle", title: "xAI Realism", desc: "Studio quality with natural inflections." },
+                            { icon: "language", title: "Global Reach", desc: "Translate into 50+ languages easily." },
+                            { icon: "mic", title: "Instant Cloning", desc: "Perfect replica in 10 seconds." }
+                        ].map(f => (
+                            <div key={f.title} className="glass-panel p-8 rounded-lg hover:border-primary/50 transition-colors">
+                                <div className="size-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-6"><span className="material-symbols-outlined text-4xl">{f.icon}</span></div>
+                                <h3 className="text-2xl font-bold mb-2">{f.title}</h3>
+                                <p className="text-on-surface-variant">{f.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </main>
+            </div>
+        );
+
+        const App = () => {
+            return (
+                <MemoryRouter>
+                    <Routes>
+                        <Route path="/" element={<HomePage />} />
+                        <Route path="/dashboard" element={<DashboardPage />} />
+                        <Route path="/studio" element={<StudioPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/pricing" element={<PricingPage />} />
+                        <Route path="/admin" element={<AdminPage />} />
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/signup" element={<SignupPage />} />
+                        <Route path="/checkout" element={<CheckoutPage />} />
+                        <Route path="/success" element={<SuccessPage />} />
+                        <Route path="/faq" element={<FaqPage />} />
+                        <Route path="/features" element={<FeaturesPage />} />
+                        <Route path="/admin/users" element={<AdminPage />} />
+                        <Route path="/admin/billing" element={<AdminPage />} />
+                        <Route path="/admin/settings" element={<AdminPage />} />
+                        <Route path="/cloning" element={<StudioPage />} />
+                    </Routes>
+                </MemoryRouter>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

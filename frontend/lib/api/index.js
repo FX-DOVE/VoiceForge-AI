@@ -50,6 +50,12 @@ export const usageApi = {
   summary: () => apiRequest("/usage/summary"),
 };
 
+export const paymentsApi = {
+  purchase: (amount) => apiRequest("/payments/purchase", { method: "POST", body: { amount } }),
+  estimate: (amount) => apiRequest(`/payments/estimate?amount=${amount}`),
+  balance: () => apiRequest("/payments/balance"),
+};
+
 export const adminApi = {
   dashboard: () => apiRequest("/admin/dashboard"),
   users: (params = {}) => {

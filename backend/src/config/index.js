@@ -3,9 +3,9 @@ require("dotenv").config();
 const config = {
   env: process.env.NODE_ENV || "development",
   port: parseInt(process.env.PORT, 10) || 5000,
-  clientUrl: process.env.CLIENT_URL || "http://localhost:3000",
+  clientUrl: process.env.CLIENT_URL || "http://192.168.1.125:3000",
   mongodbUri:
-    process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/voiceforge",
+    process.env.MONGODB_URI,
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET || "dev-access-secret-change-in-production",
     refreshSecret: process.env.JWT_REFRESH_SECRET || "dev-refresh-secret-change-in-production",

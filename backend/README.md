@@ -162,3 +162,8 @@ After registering, set role in MongoDB:
 ```js
 db.users.updateOne({ email: "you@example.com" }, { $set: { role: "admin", plan: "pro" } })
 ```
+
+
+
+when the  tts is open just run 
+node scripts/generate-voice-previews.js --force

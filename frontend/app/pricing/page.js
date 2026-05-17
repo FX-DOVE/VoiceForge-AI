@@ -1,114 +1,110 @@
 "use client";
 
+import Link from "next/link";
 import { TopNavBar } from "@/components/layout/top-nav-bar";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
-import { Check, ArrowRight, Info } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, ArrowRight, Zap, Crown, ChevronDown, HelpCircle, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { calculateCreditsFromPayment } from "@/lib/creditCalc";
 import { useState } from "react";
 
+function FaqItem({ q, a }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={cn("border rounded-2xl overflow-hidden transition-all", open ? "border-white/10" : "border-white/[0.05]")}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between gap-4 p-5 text-left hover:bg-white/[0.04] transition-colors"
+      >
+        <span className="text-sm sm:text-base font-bold text-white leading-snug">{q}</span>
+        <ChevronDown className={cn("size-4 shrink-0 text-neutral-400 transition-transform duration-300", open && "rotate-180 text-primary")} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="a"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-5 text-sm text-neutral-400 leading-relaxed border-t border-white/5 pt-4">{a}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function PricingPage() {
-  const [isYearly, setIsYearly] = useState(false);
+  const creditPacks = [
+    { amount: 1, label: "Starter" },
+    { amount: 5, label: "Basic" },
+    { amount: 10, label: "Creator", highlight: true },
+    { amount: 25, label: "Studio" },
+    { amount: 50, label: "Agency" },
+    { amount: 100, label: "Enterprise" },
+  ];
 
   const plans = [
     {
       name: "Free",
       price: "$0",
-      desc: "For hobbyists and individual exploration.",
+      desc: "Use Edge TTS voices at no cost, forever.",
       features: [
-        "10 minutes of voice generation",
-        "Standard AI voices",
+        "Unlimited free voice generation",
+        "Edge TTS voices (standard quality)",
         "Community support",
-        "MP3 downloads"
+        "MP3 downloads",
+        "No credit card required"
       ],
       btnText: "Get Started Free",
       highlight: false
     },
     {
-      name: "Pro",
-      price: isYearly ? "$15" : "$19",
-      desc: "Perfect for creators and professional studios.",
+      name: "Credits",
+      price: "Pay as you go",
+      desc: "Purchase credits and use premium xAI voices.",
       features: [
-        "100 minutes of voice generation",
-        "Premium xAI voices",
-        "Instant voice cloning",
-        "Priority support",
-        "Commercial rights"
+        "Buy any amount — $1 to $100+",
+        "Premium xAI Grok TTS voices",
+        "1 character = 2 credits",
+        "Credits never expire",
+        "Instant voice cloning"
       ],
-      btnText: "Start Pro Trial",
+      btnText: "Buy Credits",
       highlight: true
-    },
-    {
-      name: "Enterprise",
-      price: "Custom",
-      desc: "Tailored solutions for global organizations.",
-      features: [
-        "Unlimited voice generation",
-        "Custom voice creation",
-        "API access & integration",
-        "Dedicated manager",
-        "SLA & Security"
-      ],
-      btnText: "Contact Sales",
-      highlight: false
     }
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-background relative overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-background relative overflow-x-hidden overflow-y-auto">
       {/* Ambient Background */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-full blur-[120px] -z-10" />
-      
+
       <TopNavBar />
-      
+
       <main className="flex-1 flex flex-col items-center px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-32">
         <div className="w-full max-w-container-max flex flex-col items-center">
            {/* Header */}
-           <motion.div 
+           <motion.div
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
-             className="text-center flex flex-col items-center gap-6 mb-16"
+             className="text-center flex flex-col items-center gap-5 mb-16"
            >
-              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-white tracking-tight">Simple, transparent pricing</h1>
-              <p className="text-base sm:text-lg lg:text-xl text-on-surface-variant max-w-2xl">Choose the perfect plan for your voice generation needs.</p>
+             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest">
+               <span className="size-1.5 rounded-full bg-primary" />
+               No subscriptions, ever
+             </div>
+             <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white tracking-tight leading-[1.05]">Simple, transparent pricing</h1>
+             <p className="text-base sm:text-lg text-on-surface-variant max-w-2xl leading-relaxed">Free voices forever. Pay-as-you-go credits for premium xAI voices.</p>
            </motion.div>
 
-           {/* Toggle */}
-           <motion.div 
-             initial={{ opacity: 0 }}
-             animate={{ opacity: 1 }}
-             className="flex mb-16"
-           >
-              <div className="flex h-14 items-center bg-white/5 p-1.5 rounded-full border border-white/10 shadow-2xl relative">
-                 <div 
-                   className={cn(
-                     "absolute h-[calc(100%-12px)] w-[calc(50%-6px)] bg-primary rounded-full transition-all duration-300 shadow-lg shadow-primary/20",
-                     isYearly ? "translate-x-full" : "translate-x-0"
-                   )}
-                 />
-                 <button 
-                   onClick={() => setIsYearly(false)}
-                   className={cn(
-                     "relative z-10 px-8 h-full rounded-full text-sm font-bold transition-colors",
-                     !isYearly ? "text-on-primary" : "text-on-surface-variant hover:text-white"
-                   )}
-                 >
-                   Monthly
-                 </button>
-                 <button 
-                   onClick={() => setIsYearly(true)}
-                   className={cn(
-                     "relative z-10 px-8 h-full rounded-full text-sm font-bold transition-colors",
-                     isYearly ? "text-on-primary" : "text-on-surface-variant hover:text-white"
-                   )}
-                 >
-                   Yearly <span className="text-[10px] opacity-70 ml-1">(-20%)</span>
-                 </button>
-              </div>
-           </motion.div>
-
-           {/* Grid */}
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full items-stretch">
+           {/* Plans Grid */}
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl items-stretch">
               {plans.map((p, i) => (
                 <motion.div
                   key={p.name}
@@ -130,18 +126,21 @@ export default function PricingPage() {
                      <h2 className="text-2xl font-bold text-white tracking-tight">{p.name}</h2>
                      <div className="flex items-baseline gap-2">
                         <span className="text-5xl font-bold text-white">{p.price}</span>
-                        {p.price !== "Custom" && <span className="text-sm font-bold text-on-surface-variant uppercase tracking-widest">/mo</span>}
                      </div>
                      <p className="text-sm text-on-surface-variant leading-relaxed">{p.desc}</p>
                   </div>
 
                   <Button className={cn(
                     "h-14 w-full rounded-full font-bold text-lg",
-                    p.highlight 
-                      ? "bg-primary hover:bg-primary/90 text-on-primary shadow-[0_0_30px_rgba(59,130,246,0.2)]" 
+                    p.highlight
+                      ? "bg-primary hover:bg-primary/90 text-on-primary shadow-[0_0_30px_rgba(59,130,246,0.2)]"
                       : "bg-white/5 hover:bg-white/10 text-white border border-white/10"
-                  )}>
-                    {p.btnText}
+                  )} asChild={p.highlight}>
+                    {p.highlight ? (
+                      <Link href="/checkout">{p.btnText}</Link>
+                    ) : (
+                      p.btnText
+                    )}
                   </Button>
 
                   <div className="flex flex-col gap-6 pt-8 lg:pt-10 border-t border-white/5">
@@ -158,25 +157,139 @@ export default function PricingPage() {
               ))}
            </div>
 
-           {/* FAQ Lead */}
-           <div className="mt-32 w-full pt-16 border-t border-white/5 flex flex-col items-center gap-6">
-              <h2 className="text-3xl font-bold text-white tracking-tight">Need a custom enterprise solution?</h2>
-              <Button variant="link" className="text-primary font-bold text-lg group">
-                 Contact our sales team
-                 <ArrowRight className="ml-2 size-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
+           {/* Credit Packs Grid */}
+           <motion.div
+             initial={{ opacity: 0, y: 20 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ delay: 0.3 }}
+             className="mt-20 w-full"
+           >
+             <div className="flex items-center gap-3 mb-8">
+               <Zap className="size-5 text-primary" />
+               <h2 className="text-2xl font-bold text-white tracking-tight">Popular Credit Packs</h2>
+             </div>
+
+             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+               {creditPacks.map((pack) => {
+                 const credits = calculateCreditsFromPayment(pack.amount);
+                 return (
+                   <Link
+                     key={pack.amount}
+                     href="/checkout"
+                     className={cn(
+                       "relative glass-panel p-4 sm:p-5 rounded-2xl border flex flex-col items-center gap-2 transition-all group hover:scale-[1.03] hover:shadow-lg",
+                       pack.highlight
+                         ? "bg-primary/[0.06] border-primary/30 ring-1 ring-primary/20 hover:shadow-primary/10"
+                         : "border-white/5 hover:border-white/15 hover:bg-white/[0.04]"
+                     )}
+                   >
+                     {pack.highlight && (
+                       <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-on-primary text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                         Popular
+                       </div>
+                     )}
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mt-1">{pack.label}</span>
+                     <span className="text-2xl sm:text-3xl font-bold text-white">${pack.amount}</span>
+                     <span className={cn("text-[10px] font-bold", pack.highlight ? "text-primary" : "text-neutral-400")}>{credits.toLocaleString()} cr</span>
+                     <span className="text-[10px] text-neutral-600">~{Math.floor(credits / 2).toLocaleString()} chars</span>
+                   </Link>
+                 );
+               })}
+             </div>
+           </motion.div>
+
+           {/* How Credits Work */}
+           <motion.div
+             initial={{ opacity: 0, y: 20 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ delay: 0.4 }}
+             className="mt-20 w-full max-w-4xl"
+           >
+             <div className="flex items-center gap-3 mb-8">
+               <Crown className="size-5 text-amber-400" />
+               <h2 className="text-2xl font-bold text-white tracking-tight">How Credits Work</h2>
+             </div>
+
+             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+               <div className="glass-panel p-6 rounded-2xl border border-white/5">
+                 <div className="text-4xl font-bold text-primary mb-2">40%</div>
+                 <p className="text-white font-bold">Platform Fee</p>
+                 <p className="text-neutral-400 text-sm mt-1">The platform keeps 40% of every payment to cover infrastructure, support, and development.</p>
+               </div>
+               <div className="glass-panel p-6 rounded-2xl border border-white/5">
+                 <div className="text-4xl font-bold text-emerald-400 mb-2">60%</div>
+                 <p className="text-white font-bold">Your API Value</p>
+                 <p className="text-neutral-400 text-sm mt-1">60% goes directly to xAI API costs. You get the most value for your money.</p>
+               </div>
+               <div className="glass-panel p-6 rounded-2xl border border-white/5">
+                 <div className="text-4xl font-bold text-amber-400 mb-2">2×</div>
+                 <p className="text-white font-bold">Credits Per Character</p>
+                 <p className="text-neutral-400 text-sm mt-1">Each character costs 2 credits. Pro xAI voices deduct credits on every generation.</p>
+               </div>
+             </div>
+           </motion.div>
+
+           {/* FAQ Section */}
+           <motion.div
+             initial={{ opacity: 0, y: 20 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ delay: 0.5 }}
+             className="mt-24 w-full max-w-3xl"
+           >
+             <div className="flex items-center gap-3 mb-8">
+               <div className="size-9 bg-primary/10 rounded-xl flex items-center justify-center">
+                 <HelpCircle className="size-5 text-primary" />
+               </div>
+               <h2 className="text-2xl font-bold text-white tracking-tight">Frequently Asked Questions</h2>
+             </div>
+             <div className="flex flex-col gap-2.5">
+               {[
+                 { q: "Do credits expire?", a: "No. Credits never expire — they roll over indefinitely until you use them." },
+                 { q: "What is the difference between free and premium voices?", a: "Free voices use Microsoft Edge TTS and do not consume credits. Premium voices use xAI Grok TTS and produce significantly more natural, expressive speech — these deduct credits at 2 credits per character." },
+                 { q: "Can I use VoiceForge AI for commercial projects?", a: "Yes. All generated audio is yours to use commercially, including in YouTube videos, podcasts, apps, and products." },
+                 { q: "What payment methods are accepted?", a: "We accept all major credit/debit cards via Stripe. No PayPal or crypto at this time." },
+                 { q: "Is there a refund policy?", a: "Due to the digital nature of credits, all purchases are final. Please use the free tier to evaluate the platform before purchasing." },
+               ].map((item, i) => (
+                 <FaqItem key={i} q={item.q} a={item.a} />
+               ))}
+             </div>
+             <div className="mt-6 text-center">
+               <Link href="/faq" className="text-sm text-primary hover:text-primary/80 font-semibold transition-colors inline-flex items-center gap-1.5">
+                 View full FAQ
+                 <ArrowRight className="size-3.5" />
+               </Link>
+             </div>
+           </motion.div>
+
+           {/* Enterprise CTA */}
+           <div className="mt-20 w-full pt-16 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
+             <div>
+               <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Need a custom enterprise solution?</h2>
+               <p className="text-sm text-neutral-400 mt-1">Volume discounts, dedicated support, and custom integrations available.</p>
+             </div>
+             <Button variant="outline" className="h-12 px-8 rounded-full border-white/10 hover:bg-white/5 font-bold shrink-0 group">
+               Contact Sales
+               <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
+             </Button>
            </div>
         </div>
       </main>
 
-      <footer className="w-full py-12 px-4 sm:px-6 lg:px-8 border-t border-white/5 bg-black/20">
-         <div className="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex items-center gap-3">
-               <div className="size-6 bg-primary rounded-sm" />
-               <span className="text-xl font-bold text-white">VoiceForge AI</span>
+      <footer className="w-full py-10 px-4 sm:px-6 lg:px-8 border-t border-white/5 shrink-0">
+        <div className="max-w-container-max mx-auto flex flex-col sm:flex-row justify-between items-center gap-5">
+          <div className="flex items-center gap-3">
+            <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-on-primary">
+              <Mic className="size-4" />
             </div>
-            <p className="text-on-surface-variant font-medium">© 2024 VoiceForge AI. All rights reserved.</p>
-         </div>
+            <span className="text-base font-bold text-white">VoiceForge AI</span>
+          </div>
+          <p className="text-sm text-on-surface-variant">&copy; 2024 VoiceForge AI. All rights reserved.</p>
+          <div className="flex gap-5 text-sm font-semibold text-on-surface-variant">
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <Link href="/faq" className="hover:text-white transition-colors">FAQ</Link>
+          </div>
+        </div>
       </footer>
     </div>
   );

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VoiceForge AI - Natural AI Voices</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Geist:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#b0b2ff",
+                        "primary-fixed-dim": "#adc6ff",
+                        "surface-container-highest": "#2d3449",
+                        "inverse-surface": "#dae2fd",
+                        "surface-tint": "#adc6ff",
+                        "surface": "#0b1326",
+                        "secondary-container": "#3131c0",
+                        "surface-bright": "#31394d",
+                        "on-secondary-fixed": "#07006c",
+                        "error-container": "#93000a",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-tertiary-fixed-variant": "#723600",
+                        "secondary-fixed": "#e1e0ff",
+                        "surface-container-high": "#222a3d",
+                        "on-primary": "#002e6a",
+                        "tertiary-fixed": "#ffdcc6",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed": "#311400",
+                        "surface-container-low": "#131b2e",
+                        "primary": "#adc6ff",
+                        "secondary": "#c0c1ff",
+                        "on-primary-fixed-variant": "#004395",
+                        "surface-container": "#171f33",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-primary-container": "#00285d",
+                        "inverse-primary": "#005ac2",
+                        "on-primary-fixed": "#001a42",
+                        "tertiary-container": "#df7412",
+                        "on-secondary": "#1000a9",
+                        "outline-variant": "#424754",
+                        "tertiary": "#ffb786",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed": "#d8e2ff",
+                        "outline": "#8c909f",
+                        "on-background": "#dae2fd",
+                        "on-tertiary-container": "#461f00",
+                        "on-surface-variant": "#c2c6d6",
+                        "error": "#ffb4ab",
+                        "on-tertiary": "#502400",
+                        "background": "#0b1326",
+                        "surface-container-lowest": "#060e20",
+                        "primary-container": "#4d8eff",
+                        "on-surface": "#dae2fd",
+                        "tertiary-fixed-dim": "#ffb786",
+                        "surface-variant": "#2d3449",
+                        "surface-dim": "#0b1326",
+                        "inverse-on-surface": "#283044"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "sm": "16px",
+                        "xl": "80px",
+                        "lg": "48px",
+                        "xs": "8px",
+                        "container-max": "1280px",
+                        "unit": "4px",
+                        "margin-mobile": "16px",
+                        "md": "24px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "label-sm": ["Geist"],
+                        "label-md": ["Geist"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-xl": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "display-xl": ["64px", { "lineHeight": "72px", "letterSpacing": "-0.04em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background-image: linear-gradient(to bottom, rgba(255,255,255,0.05), rgba(255,255,255,0));
+        }
+        .btn-primary {
+            background-color: #3B82F6; /* Fixed color based on prompt, though theme has primary colors */
+            color: white;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            color: white;
+        }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased overflow-x-hidden">
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-background dark group/design-root overflow-x-hidden" style='font-family: Inter, "Noto Sans", sans-serif;'>
+<div class="layout-container flex h-full grow flex-col">
+<div class="px-40 flex flex-1 justify-center py-5">
+<div class="layout-content-container flex flex-col max-w-container-max flex-1">
+<!-- TopNavBar (Shared Component, unaltered as per rules) -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-surface-container-highest px-10 py-3">
+<div class="flex items-center gap-4 text-white">
+<div class="size-4">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-white text-lg font-bold leading-tight tracking-[-0.015em]">VoiceForge AI</h2>
+</div>
+<div class="flex flex-1 justify-end gap-8">
+<div class="flex items-center gap-9">
+<a class="text-white text-sm font-medium leading-normal" href="#">Features</a>
+<a class="text-white text-sm font-medium leading-normal" href="#">Pricing</a>
+<a class="text-white text-sm font-medium leading-normal" href="#">FAQ</a>
+</div>
+<div class="flex gap-2">
+<button class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#3b83f6] text-white text-sm font-bold leading-normal tracking-[0.015em]">
+<span class="truncate">Start Free</span>
+</button>
+<button class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#223149] text-white text-sm font-bold leading-normal tracking-[0.015em]">
+<span class="truncate">Sign In</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Hero Section (Shared Component with image update) -->
+<div class="@container mt-xl">
+<div class="flex flex-col gap-6 px-4 py-10 @[480px]:gap-8 @[864px]:flex-row items-center">
+<div class="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-DEFAULT @[480px]:h-auto @[480px]:min-w-[400px] @[864px]:w-1/2 shadow-2xl" data-alt="A futuristic, abstract audio waveform visualization glowing with an intense electric blue light against a deep, dark charcoal background. The composition is sleek and minimal, conveying a sense of high-fidelity artificial intelligence technology. Soft, ambient lighting highlights the peaks and valleys of the sound waves, creating a sense of depth and precision characteristic of modern glassmorphic UI design." style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB_7rCsegpxK0ELZVC4N_-mnZLMsYk7655oSzClcJhe3fPg_poYc2ZkaUNID2Yy7TaN6B40P7d_MgmTXhhSDhZ1wCrkmSqJ0JFX7riytNJ-bvlPwww8m4jFPthMhJWY0VgQJ1mXGNRv06bqnFItVp1DakVGVUNseaJ6tEVXTIDP1hrPqKIiI1wZw8KXASF3EJwwCo9PJeRP1vDjNsclSpHxabU9C-SCiBy5eG3QQlftsCkTvm1mQKa8Z10rzWLO7y8CcYS7EYui3no");'>
+</div>
+<div class="flex flex-col gap-6 @[480px]:min-w-[400px] @[480px]:gap-8 @[864px]:justify-center @[864px]:w-1/2 pl-lg">
+<div class="flex flex-col gap-4 text-left">
+<h1 class="text-on-surface text-display-xl">
+                                    Generate Natural AI Voices with xAI
+                                </h1>
+<h2 class="text-on-surface-variant text-body-lg max-w-2xl">
+                                    Convert any script into realistic speech in seconds. Studio-quality text-to-speech for creators and developers.
+                                </h2>
+</div>
+<div class="flex-wrap gap-4 flex mt-4">
+<button class="btn-primary flex min-w-[120px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-12 px-6 text-base font-bold leading-normal tracking-[0.015em]">
+<span class="truncate">Start Free</span>
+</button>
+<button class="btn-secondary flex min-w-[120px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-12 px-6 text-base font-bold leading-normal tracking-[0.015em]">
+<span class="material-symbols-outlined mr-2 text-xl">play_circle</span>
+<span class="truncate">Listen to Demo</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Voice Samples (Shared Component Adaptation) -->
+<div class="mt-xl px-4">
+<h2 class="text-on-surface text-headline-lg pb-6">Voice Samples</h2>
+<div class="flex overflow-y-auto [-ms-scrollbar-style:none] [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden pb-8 gap-6">
+<div class="glass-card flex h-full flex-1 flex-col gap-4 rounded-DEFAULT p-4 min-w-[280px] hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-shadow">
+<div class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-DEFAULT flex flex-col" data-alt="A portrait of a sophisticated man in his thirties with a sharp, professional appearance, set against a dark, minimalist background. The lighting is cinematic and moody, highlighting his strong jawline and deep expression. The aesthetic is modern and premium, fitting seamlessly into a high-end, dark-mode technology interface with subtle blue undertones." style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDvtHzWYW9YJzgO_ZRR1_fwvCYGCE5I40t2H_nT91mQWjl56adu0N2kKqLKgfU22nQqPBKuyL7MynP0811hmBL_xZoZcRzkWWHjhOihdPB4D1vsB7r7HQ1uebjx6KJpiFk8b233ysRamZ8A1_4j6OZSVzwJxGQ3HSOIoI-9LbJy59tXbu1ZnPsIov4A9Wr-sOI1wxo-VQgvxkEfwpwYOfkopYZZKxqnm60BoQtEUSzdBX8TCAtr3a3Yh-rhnnUB3QygZepRyo6kmV4");'>
+</div>
+<div class="flex flex-col flex-1 justify-between gap-4">
+<div>
+<p class="text-on-surface text-headline-md">Antoni</p>
+<p class="text-primary-fixed-dim text-body-md mt-1">Professional, Deep</p>
+</div>
+<button class="btn-secondary w-full flex cursor-pointer items-center justify-center rounded-full h-10 px-4 text-sm font-bold">
+<span class="material-symbols-outlined mr-2">play_arrow</span> Play
+                                </button>
+</div>
+</div>
+<div class="glass-card flex h-full flex-1 flex-col gap-4 rounded-DEFAULT p-4 min-w-[280px] hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-shadow">
+<div class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-DEFAULT flex flex-col" data-alt="A portrait of a young woman with a soft, conversational demeanor, softly illuminated in a modern, dark studio setting. The lighting creates a gentle contrast, emphasizing her clear, approachable expression. The overall visual tone is elegant and high-fidelity, utilizing a muted palette that complements a sleek, glassmorphic UI design system." style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB3yNFip8ipSMpdIPkUH62nYg3INJqnyq-TYzXmHVpq2mOblZtDXHU7mUH1kXIcEzeU5pRbk3z-co0NZdouUqZgenIC9CzOzcm5vLxPv0lyWdcorypmqjNiZ3qvEICSkYGilD3I1zDIz1izW8Zm7PoIN3ureDYiW40G2tgkmnpZJ-c9TnPGMtnE9rBFdlUpNQ6Afj9F73PyJ4EwL_Oe6BCfIO4ADZkfAvfNYgv2mangcbceP0efVAGn8Xg8Zw4QpXbT9mXIlNaWaFQ");'>
+</div>
+<div class="flex flex-col flex-1 justify-between gap-4">
+<div>
+<p class="text-on-surface text-headline-md">Bella</p>
+<p class="text-primary-fixed-dim text-body-md mt-1">Conversational, Soft</p>
+</div>
+<button class="btn-secondary w-full flex cursor-pointer items-center justify-center rounded-full h-10 px-4 text-sm font-bold">
+<span class="material-symbols-outlined mr-2">play_arrow</span> Play
+                                </button>
+</div>
+</div>
+<div class="glass-card flex h-full flex-1 flex-col gap-4 rounded-DEFAULT p-4 min-w-[280px] hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-shadow">
+<div class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-DEFAULT flex flex-col" data-alt="An energetic portrait of a modern woman with bright, clear eyes, set against a deep charcoal backdrop. The crisp, high-key lighting on her face creates a striking contrast with the dark surroundings, conveying clarity and professionalism. The aesthetic aligns with a futuristic, minimalist digital platform, using deep blacks and subtle blue highlights." style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA2tgjHbZwPadn9cw8gkAsLy3BUQBYyoxAwGgVkLfOyM6HiZjVInAwRHZ1aW_apmv2jonV32Kt8XI9EP_naAtJe1iDk6A52iZXSjIl74mKvtM5bE3JvRw-3eomYwDnOaX0BKJRV8tVDFyzjtxOYVMLzTEQwVedzcpD_GEraL1Ox2JLl2XK43bwHtKAixzquKTfrV3kd_0LWxm1NRbjHKQCnRksMEV-1EyqOpag-yGBjGHJgwuPMkiQrwlqxgRbyI15wJl86LQg2tMA");'>
+</div>
+<div class="flex flex-col flex-1 justify-between gap-4">
+<div>
+<p class="text-on-surface text-headline-md">Rachel</p>
+<p class="text-primary-fixed-dim text-body-md mt-1">Energetic, Clear</p>
+</div>
+<button class="btn-secondary w-full flex cursor-pointer items-center justify-center rounded-full h-10 px-4 text-sm font-bold">
+<span class="material-symbols-outlined mr-2">play_arrow</span> Play
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Features (Shared Component Logic) -->
+<div class="flex flex-col gap-10 px-4 py-xl @container mt-xl">
+<div class="flex flex-col gap-4 text-center items-center">
+<h1 class="text-on-surface text-display-xl max-w-[800px]">
+                            Why Choose VoiceForge AI
+                        </h1>
+<p class="text-on-surface-variant text-body-lg max-w-[720px]">The most advanced text-to-speech features powered by xAI.</p>
+</div>
+<div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6 mt-8">
+<div class="glass-card flex flex-1 gap-6 rounded-DEFAULT p-8 flex-col items-center text-center">
+<div class="text-primary bg-surface-container p-4 rounded-full" data-icon="memory" data-size="32px" data-weight="regular">
+<span class="material-symbols-outlined text-3xl">memory</span>
+</div>
+<div class="flex flex-col gap-2">
+<h2 class="text-on-surface text-headline-md">xAI Powered</h2>
+<p class="text-on-surface-variant text-body-md">Industry-leading models for unmatched realism and emotional depth in every generated voice.</p>
+</div>
+</div>
+<div class="glass-card flex flex-1 gap-6 rounded-DEFAULT p-8 flex-col items-center text-center">
+<div class="text-primary bg-surface-container p-4 rounded-full" data-icon="language" data-size="32px" data-weight="regular">
+<span class="material-symbols-outlined text-3xl">language</span>
+</div>
+<div class="flex flex-col gap-2">
+<h2 class="text-on-surface text-headline-md">Global Languages</h2>
+<p class="text-on-surface-variant text-body-md">Over 100 languages and diverse accents supported to reach a truly global audience.</p>
+</div>
+</div>
+<div class="glass-card flex flex-1 gap-6 rounded-DEFAULT p-8 flex-col items-center text-center">
+<div class="text-primary bg-surface-container p-4 rounded-full" data-icon="mic" data-size="32px" data-weight="regular">
+<span class="material-symbols-outlined text-3xl">mic</span>
+</div>
+<div class="flex flex-col gap-2">
+<h2 class="text-on-surface text-headline-md">Custom Cloning</h2>
+<p class="text-on-surface-variant text-body-md">Instantly clone your own voice or any talent with just 1 minute of clear audio reference.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer (Simple implementation) -->
+<footer class="mt-xl border-t border-surface-container-highest py-10 px-4 flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-4 text-white">
+<div class="size-6 text-primary">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-on-surface text-lg font-bold">VoiceForge AI</h2>
+</div>
+<div class="text-on-surface-variant text-sm">
+                        © 2024 VoiceForge AI. All rights reserved.
+                    </div>
+</footer>
+</div>
+</div>
+</div>
+</div>
+</body></html>

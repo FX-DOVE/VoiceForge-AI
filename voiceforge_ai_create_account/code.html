@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sign Up - VoiceForge AI</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Theme Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary": "#c0c1ff",
+                    "on-tertiary-fixed": "#311400",
+                    "surface-container-highest": "#2d3449",
+                    "surface-variant": "#2d3449",
+                    "surface-bright": "#31394d",
+                    "primary-fixed": "#d8e2ff",
+                    "on-background": "#dae2fd",
+                    "tertiary": "#ffb786",
+                    "surface-container-low": "#131b2e",
+                    "outline-variant": "#424754",
+                    "surface-dim": "#0b1326",
+                    "on-surface-variant": "#c2c6d6",
+                    "on-primary-container": "#00285d",
+                    "surface-container-lowest": "#060e20",
+                    "secondary-fixed": "#e1e0ff",
+                    "background": "#0b1326",
+                    "on-secondary-fixed": "#07006c",
+                    "on-secondary": "#1000a9",
+                    "inverse-surface": "#dae2fd",
+                    "on-tertiary-container": "#461f00",
+                    "on-tertiary": "#502400",
+                    "on-primary-fixed": "#001a42",
+                    "secondary-container": "#3131c0",
+                    "outline": "#8c909f",
+                    "error-container": "#93000a",
+                    "on-primary-fixed-variant": "#004395",
+                    "on-tertiary-fixed-variant": "#723600",
+                    "tertiary-fixed": "#ffdcc6",
+                    "on-error-container": "#ffdad6",
+                    "tertiary-fixed-dim": "#ffb786",
+                    "on-primary": "#002e6a",
+                    "surface-container": "#171f33",
+                    "secondary-fixed-dim": "#c0c1ff",
+                    "on-error": "#690005",
+                    "surface-tint": "#adc6ff",
+                    "on-secondary-fixed-variant": "#2f2ebe",
+                    "inverse-primary": "#005ac2",
+                    "tertiary-container": "#df7412",
+                    "surface-container-high": "#222a3d",
+                    "primary-container": "#4d8eff",
+                    "surface": "#0b1326",
+                    "primary": "#adc6ff",
+                    "primary-fixed-dim": "#adc6ff",
+                    "error": "#ffb4ab",
+                    "on-secondary-container": "#b0b2ff",
+                    "on-surface": "#dae2fd",
+                    "inverse-on-surface": "#283044"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "4px",
+                    "xs": "8px",
+                    "margin-mobile": "16px",
+                    "md": "24px",
+                    "lg": "48px",
+                    "gutter": "24px",
+                    "sm": "16px",
+                    "container-max": "1280px",
+                    "xl": "80px"
+            },
+            "fontFamily": {
+                    "label-sm": ["Geist", "sans-serif"],
+                    "label-md": ["Geist", "sans-serif"],
+                    "body-lg": ["Inter", "sans-serif"],
+                    "headline-md": ["Inter", "sans-serif"],
+                    "headline-lg": ["Inter", "sans-serif"],
+                    "body-md": ["Inter", "sans-serif"],
+                    "display-xl": ["Inter", "sans-serif"],
+                    "headline-lg-mobile": ["Inter", "sans-serif"]
+            },
+            "fontSize": {
+                    "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                    "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                    "body-lg": ["18px", { "lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400" }],
+                    "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                    "headline-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                    "body-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+                    "display-xl": ["64px", { "lineHeight": "72px", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                    "headline-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-lg antialiased overflow-hidden min-h-screen">
+<div class="flex w-full h-screen">
+<!-- Left Pane: 3D Visual -->
+<div class="hidden lg:flex w-1/2 relative bg-surface-container-lowest border-r border-outline-variant/30">
+<img alt="VoiceForge AI Visualization" class="absolute inset-0 w-full h-full object-cover opacity-80 mix-blend-screen" data-alt="A stunning, high-fidelity 3D audio waveform visualization art piece. Glowing electric blue and deep neon purple digital frequencies float elegantly in a vast, infinite dark space. The overall aesthetic is premium, futuristic, and sophisticated, reflecting a cutting-edge light-mode-in-dark-mode glassmorphic style. Cinematic lighting highlights the intricate geometric details of the sound waves against a deep charcoal canvas, evoking a sense of effortless technological power." src="https://lh3.googleusercontent.com/aida-public/AB6AXuClYdI7HXEmXhvpPHMcqTSdJB_GZgHWPDEaIF4D4rUGMXakXZxhxYthkMTULe7hKJ-L_4ufivnSgMDuoFrpvGPK9vR1ijxzL1E1M69-gkb_7A2DUsYopZEV393g2ceVV_HyWaaf5q8ep-O8tJU4xrDtWiI7B8AaIAPfTJ3RLlwg0jMBt09_7rh8HEgxZnF-ZuoLeVeVvAZeKVUc-0NPHb1PvCp5B9ov7h8fkkj8sXBVrIB5Uzp2PWso5vpqm0B7irDKlMPoff_qrhI"/>
+<!-- Gradient Overlay for Depth -->
+<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-90"></div>
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-background opacity-100"></div>
+<div class="absolute bottom-xl left-xl z-10 max-w-md">
+<div class="flex items-center gap-sm text-primary mb-md">
+<div class="size-8 text-primary">
+<svg class="w-full h-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-headline-md tracking-[-0.015em] text-on-background">VoiceForge AI</h2>
+</div>
+<h3 class="text-display-xl text-on-background mb-sm">Shape the sound of tomorrow.</h3>
+<p class="text-body-lg text-on-surface-variant">Experience next-generation text-to-speech with unprecedented emotional range and clarity.</p>
+</div>
+</div>
+<!-- Right Pane: Minimal Form -->
+<div class="w-full lg:w-1/2 flex flex-col relative bg-background overflow-y-auto">
+<!-- Minimal Back Header -->
+<header class="absolute top-0 left-0 w-full p-md sm:p-lg flex items-center justify-between z-20">
+<a class="inline-flex items-center justify-center size-12 rounded-full hover:bg-surface-container transition-colors text-on-surface-variant hover:text-on-background backdrop-blur-md" href="#">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</a>
+<!-- Mobile Logo (Hidden on Desktop) -->
+<div class="flex lg:hidden items-center gap-2 text-primary">
+<div class="size-6">
+<svg class="w-full h-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
+</svg>
+</div>
+</div>
+</header>
+<!-- Form Container -->
+<main class="flex-1 flex flex-col justify-center px-sm sm:px-md py-xl lg:px-xl items-center lg:items-start max-w-[640px] w-full mx-auto">
+<div class="w-full max-w-[440px]">
+<h1 class="text-headline-lg text-on-background pb-xs text-center lg:text-left">Create your account</h1>
+<p class="text-body-md text-on-surface-variant pb-lg text-center lg:text-left">Join VoiceForge AI to start creating studio-quality voiceovers.</p>
+<!-- Social Logins -->
+<div class="flex flex-col sm:flex-row gap-sm mb-lg">
+<button class="flex-1 flex items-center justify-center gap-xs bg-surface-container/50 border border-outline-variant hover:bg-surface-container transition-colors rounded-full h-12 px-sm text-label-md text-on-background backdrop-blur-lg">
+<svg class="size-5" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+</svg>
+                            Google
+                        </button>
+<button class="flex-1 flex items-center justify-center gap-xs bg-surface-container/50 border border-outline-variant hover:bg-surface-container transition-colors rounded-full h-12 px-sm text-label-md text-on-background backdrop-blur-lg">
+<svg class="size-5" fill="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z" fill-rule="evenodd"></path>
+</svg>
+                            GitHub
+                        </button>
+</div>
+<div class="flex items-center gap-sm mb-lg">
+<div class="h-px flex-1 bg-outline-variant/50"></div>
+<span class="text-label-sm text-on-surface-variant">Or continue with email</span>
+<div class="h-px flex-1 bg-outline-variant/50"></div>
+</div>
+<!-- Shared Form Components Adapted -->
+<div class="flex flex-col gap-sm">
+<label class="flex flex-col w-full">
+<p class="text-on-background text-label-md pb-2">Name</p>
+<input class="form-input flex w-full min-w-0 resize-none overflow-hidden rounded-DEFAULT text-on-surface focus:outline-0 border border-outline-variant bg-surface-container/50 focus:border-primary focus:ring-1 focus:ring-primary h-14 placeholder:text-outline p-sm text-body-md transition-colors" placeholder="Enter your full name" type="text" value=""/>
+</label>
+<label class="flex flex-col w-full">
+<p class="text-on-background text-label-md pb-2">Email</p>
+<input class="form-input flex w-full min-w-0 resize-none overflow-hidden rounded-DEFAULT text-on-surface focus:outline-0 border border-outline-variant bg-surface-container/50 focus:border-primary focus:ring-1 focus:ring-primary h-14 placeholder:text-outline p-sm text-body-md transition-colors" placeholder="name@example.com" type="email" value=""/>
+</label>
+<label class="flex flex-col w-full">
+<p class="text-on-background text-label-md pb-2">Password</p>
+<div class="flex w-full items-stretch rounded-DEFAULT relative group">
+<input class="form-input flex w-full min-w-0 resize-none overflow-hidden rounded-DEFAULT text-on-surface focus:outline-0 border border-outline-variant bg-surface-container/50 focus:border-primary focus:ring-1 focus:ring-primary h-14 placeholder:text-outline p-sm pr-12 text-body-md transition-colors" placeholder="Create a strong password" type="password" value=""/>
+<!-- Eye Icon from Shared Component, adapted to overlay -->
+<div class="absolute right-0 top-0 h-full w-12 text-outline flex items-center justify-center cursor-pointer hover:text-on-surface-variant transition-colors" data-icon="Eye" data-size="24px" data-weight="regular">
+<svg fill="currentColor" height="24px" viewbox="0 0 256 256" width="24px" xmlns="http://www.w3.org/2000/svg">
+<path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"></path>
+</svg>
+</div>
+</div>
+</label>
+</div>
+<div class="mt-md">
+<button class="w-full bg-primary hover:bg-primary-container text-on-primary font-label-md rounded-full h-14 flex items-center justify-center transition-colors shadow-[0_0_24px_rgba(173,198,255,0.15)]">
+                            Sign Up
+                        </button>
+</div>
+<div class="mt-lg text-center">
+<p class="text-body-md text-on-surface-variant">
+                            Already have an account? 
+                            <a class="text-primary hover:text-primary-container font-medium transition-colors" href="#">Sign in</a>
+</p>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>

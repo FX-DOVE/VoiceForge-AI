@@ -10,6 +10,7 @@ const { synthesizeSpeech } = require("../integrations/xaiTts");
 const { synthesizeSpeechEdge } = require("../integrations/edgeTts");
 const { uploadBuffer } = require("../integrations/storage");
 const { getCharactersLimit } = require("../utils/planLimits");
+const { calculateCreditsForUsage } = require("../utils/creditCalc");
 
 async function resolveVoice({ voiceId, voiceSlug }) {
   if (voiceId) {
@@ -33,10 +34,10 @@ async function generateTts(userId, options) {
   const isFree = voiceTier === "free";
 
   if (!isFree) {
-    const limit = getCharactersLimit(user.plan);
-    if (user.charactersUsed + charCount > limit) {
+    const creditsToCharge = calculateCreditsForUsage(charCount);
+    if (user.creditsRemaining < creditsToCharge) {
       throw Object.assign(
-        new Error("You have reached your character limit for this billing period."),
+        new Error("Insufficient credits"),
         { statusCode: 402 }
       );
     }
@@ -143,13 +144,17 @@ async function generateTts(userId, options) {
     await generation.save();
 
     if (!isFree) {
+      const creditsToCharge = calculateCreditsForUsage(charCount);
       user.charactersUsed += charCount;
+      user.creditsUsed += creditsToCharge;
+      user.creditsRemaining -= creditsToCharge;
       await user.save();
       await UsageRecord.create({
         user: userId,
         type: "tts",
         amount: charCount,
         unit: "characters",
+        meta: { creditsCharged: creditsToCharge },
         referenceId: generation._id,
         referenceModel: "AudioGeneration",
       });

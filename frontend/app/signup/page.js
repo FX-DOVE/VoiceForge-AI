@@ -41,8 +41,8 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="bg-background text-on-surface antialiased overflow-hidden min-h-screen">
-      <div className="flex w-full h-screen">
+    <div className="bg-background text-on-surface antialiased min-h-screen overflow-x-hidden">
+      <div className="flex w-full min-h-screen lg:h-screen">
         {/* Left Pane: 3D Visual */}
         <div className="hidden lg:flex w-1/2 relative bg-surface-container-lowest border-r border-white/5">
           <motion.img 
@@ -89,9 +89,9 @@ export default function SignupPage() {
         </div>
 
         {/* Right Pane: Minimal Form */}
-        <div className="w-full lg:w-1/2 flex flex-col relative bg-background overflow-y-auto">
+        <div className="w-full lg:w-1/2 flex flex-col relative bg-background overflow-y-auto min-h-screen lg:min-h-0">
           {/* Minimal Back Header */}
-          <header className="absolute top-0 left-0 w-full p-8 flex items-center justify-between z-20">
+          <header className="sticky top-0 w-full px-6 sm:px-8 py-5 flex items-center justify-between z-20 bg-background/80 backdrop-blur-md border-b border-white/5 lg:absolute lg:border-0 lg:bg-transparent lg:backdrop-blur-none">
             <Button 
               variant="ghost" 
               className="size-12 rounded-full hover:bg-surface-container text-on-surface-variant hover:text-on-background backdrop-blur-md"
@@ -109,7 +109,7 @@ export default function SignupPage() {
           </header>
 
           {/* Form Container */}
-          <main className="flex-1 flex flex-col justify-center px-6 py-20 items-center lg:items-start max-w-[640px] w-full mx-auto">
+          <main className="flex-1 flex flex-col justify-center px-6 py-10 lg:py-20 items-center lg:items-start max-w-[640px] w-full mx-auto">
             <div className="w-full max-w-[440px]">
               <div className="text-center lg:text-left mb-10">
                 <h1 className="text-4xl font-bold text-on-background mb-2">Create your account</h1>
