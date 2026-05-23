@@ -1,22 +1,23 @@
 const { UsageRecord, User, AudioGeneration, TrainingJob, WelcomeGrant, BillingSetting } = require("../models");
 const { getCharactersLimit } = require("../utils/planLimits");
-const { calculateCreditsFromPayment } = require("../utils/creditCalc");
-const config = require("../config");
 
 async function getUsageSummary(userId) {
   const user = await User.findById(userId);
   let limit = getCharactersLimit(user.plan);
 
   // Auto-grant welcome credits retroactively if missing (Fixes existing bugged users)
-  if (user.totalCredits === 0) {
+  if (user.totalCredits === 0 && !user.hasReceivedWelcomeCredits) {
     const existingGrant = await WelcomeGrant.findOne({ email: user.email });
     if (!existingGrant) {
       const settings = await BillingSetting.getSettings();
-      const welcomeUsd = settings.welcomeCreditUsd || 0.01;
-      const credits = Math.floor(calculateCreditsFromPayment(welcomeUsd));
+      // Use the direct welcomeCredits value (default 2380), NOT calculateCreditsFromPayment
+      const MAX_WELCOME_CREDITS = 2380;
+      const credits = Math.min(settings.welcomeCredits || MAX_WELCOME_CREDITS, MAX_WELCOME_CREDITS);
       if (credits > 0) {
         user.totalCredits += credits;
         user.creditsRemaining += credits;
+        user.hasReceivedWelcomeCredits = true;
+        user.welcomeCreditsAwardedAt = new Date();
         await user.save();
         await WelcomeGrant.create({
           email: user.email,
@@ -25,6 +26,11 @@ async function getUsageSummary(userId) {
           creditsGranted: credits,
         });
       }
+    } else {
+      // WelcomeGrant exists but user flag not set — fix the flag
+      user.hasReceivedWelcomeCredits = true;
+      user.welcomeCreditsAwardedAt = existingGrant.createdAt;
+      await user.save();
     }
   }
 

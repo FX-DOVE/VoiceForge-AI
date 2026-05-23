@@ -428,8 +428,14 @@ async function updateBillingSettings(userId, data) {
   const settings = await BillingSetting.getSettings();
   if (data.creditsPerDollar !== undefined) settings.creditsPerDollar = Number(data.creditsPerDollar);
   if (data.minimumPaymentUsd !== undefined) settings.minimumPaymentUsd = Number(data.minimumPaymentUsd);
-  if (data.welcomeCredits !== undefined) settings.welcomeCredits = Number(data.welcomeCredits);
-  if (data.welcomeCreditUsd !== undefined) settings.welcomeCreditUsd = Number(data.welcomeCreditUsd);
+  if (data.welcomeCredits !== undefined) {
+    const wc = Number(data.welcomeCredits);
+    settings.welcomeCredits = Math.min(Math.max(0, wc), 10000); // Cap at 10,000
+  }
+  if (data.welcomeCreditUsd !== undefined) {
+    const wu = Number(data.welcomeCreditUsd);
+    settings.welcomeCreditUsd = Math.min(Math.max(0, wu), 1.00); // Cap at $1.00
+  }
   settings.updatedBy = userId;
   await settings.save();
   
@@ -642,21 +648,17 @@ async function getTtsAnalytics(period = "24h") {
 
 async function resetAllUserCredits(adminId) {
   // Reset all users' credits to 0 and give them the correct welcome bonus
-  const config = require("../config");
-  const { calculateCreditsFromPayment } = require("../utils/creditCalc");
   const BillingSetting = require("../models/BillingSetting");
   
   const settings = await BillingSetting.getSettings();
-  const welcomeUsd = settings.welcomeCreditUsd || config.welcomeCreditUsd || 0.01;
-  let welcomeCredits = Math.floor(calculateCreditsFromPayment(welcomeUsd));
   
-  // Cap at 2,380 credits max (fixed amount)
+  // Use the direct welcomeCredits value from settings (default 2380)
+  // NEVER calculate from USD — that caused the 1,588,095 credit bug
   const MAX_WELCOME_CREDITS = 2380;
-  welcomeCredits = Math.min(welcomeCredits, MAX_WELCOME_CREDITS);
+  let welcomeCredits = Math.min(settings.welcomeCredits || MAX_WELCOME_CREDITS, MAX_WELCOME_CREDITS);
   
-  // Fixed welcome bonus - always 2,380 credits
-  if (!welcomeCredits || welcomeCredits <= 0 || welcomeCredits > MAX_WELCOME_CREDITS) {
-    welcomeCredits = 2380;
+  if (!welcomeCredits || welcomeCredits <= 0) {
+    welcomeCredits = MAX_WELCOME_CREDITS;
   }
 
   // Update all users: reset credits to 0, then give welcome bonus

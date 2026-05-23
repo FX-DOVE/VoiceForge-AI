@@ -104,20 +104,14 @@ async function grantWelcomeCredits(user, ipAddress) {
   }
 
   const settings = await BillingSetting.getSettings();
-  const { calculateCreditsFromPayment } = require("../utils/creditCalc");
-  const config = require("../config");
   
-  // Use config as fallback, ensure reasonable limits (max 5,000 credits)
-  const welcomeUsd = settings.welcomeCreditUsd || config.welcomeCreditUsd || 0.01;
-  let credits = Math.floor(calculateCreditsFromPayment(welcomeUsd));
-  
-  // Cap welcome credits at 2,380 (fixed amount)
+  // Use the direct welcomeCredits value from settings (default 2380)
+  // NEVER calculate from USD — that caused the 1,588,095 credit bug
   const MAX_WELCOME_CREDITS = 2380;
-  credits = Math.min(credits, MAX_WELCOME_CREDITS);
+  let credits = Math.min(settings.welcomeCredits || MAX_WELCOME_CREDITS, MAX_WELCOME_CREDITS);
   
-  // Fixed welcome bonus - always 2,380 credits
-  if (!credits || credits <= 0 || credits > MAX_WELCOME_CREDITS) {
-    credits = 2380;
+  if (!credits || credits <= 0) {
+    credits = MAX_WELCOME_CREDITS;
   }
   
   if (!credits || credits <= 0) return 0;

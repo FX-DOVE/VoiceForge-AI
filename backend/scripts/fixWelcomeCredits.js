@@ -14,8 +14,8 @@ async function fixWelcomeCredits() {
   let fixed = 0;
 
   for (const user of users) {
-    user.totalCredits += 10000;
-    user.creditsRemaining += 10000;
+    user.totalCredits += 2380;
+    user.creditsRemaining += 2380;
     await user.save();
 
     await WelcomeGrant.updateOne(
@@ -24,13 +24,13 @@ async function fixWelcomeCredits() {
         $setOnInsert: { 
           ipAddress: "retroactive-fix", 
           user: user._id, 
-          creditsGranted: 10000 
+          creditsGranted: 2380 
         } 
       },
       { upsert: true }
     );
     fixed++;
-    console.log(`Granted 10000 credits to ${user.email}`);
+    console.log(`Granted 2380 credits to ${user.email}`);
   }
 
   console.log(`Fix complete. Granted credits to ${fixed} users.`);
