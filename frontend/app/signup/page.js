@@ -134,20 +134,110 @@ export default function SignupPage() {
       <meta name="robots" content="noindex, nofollow" />
       <div className="flex w-full min-h-screen lg:h-screen">
         {/* Left Pane: 3D Visual */}
-        <div className="hidden lg:flex w-1/2 relative bg-surface-container-lowest border-r border-white/5">
-          <motion.img 
-            initial={{ opacity: 0, scale: 1.1 }}
-            animate={{ opacity: 0.8, scale: 1 }}
+        <div className="hidden lg:flex w-1/2 relative bg-surface-container-lowest border-r border-white/5 overflow-hidden">
+          {/* Animated Audio Wave */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 1.5 }}
-            alt="VoiceForge AI Visualization" 
-            className="absolute inset-0 w-full h-full object-cover mix-blend-screen" 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuClYdI7HXEmXhvpPHMcqTSdJB_GZgHWPDEaIF4D4rUGMXakXZxhxYthkMTULe7hKJ-L_4ufivnSgMDuoFrpvGPK9vR1ijxzL1E1M69-gkb_7A2DUsYopZEV393g2ceVV_HyWaaf5q8ep-O8tJU4xrDtWiI7B8AaIAPfTJ3RLlwg0jMBt09_7rh8HEgxZnF-ZuoLeVeVvAZeKVUc-0NPHb1PvCp5B9ov7h8fkkj8sXBVrIB5Uzp2PWso5vpqm0B7irDKlMPoff_qrhI"
-          />
-          {/* Gradient Overlay for Depth */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-90"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-background opacity-100"></div>
+            className="absolute inset-0 flex items-center justify-center"
+          >
+            <style jsx>{`
+              @keyframes waveShift1 {
+                0% { transform: translateX(0); }
+                100% { transform: translateX(-50%); }
+              }
+              @keyframes waveShift2 {
+                0% { transform: translateX(0); }
+                100% { transform: translateX(-50%); }
+              }
+              @keyframes waveShift3 {
+                0% { transform: translateX(0); }
+                100% { transform: translateX(-50%); }
+              }
+              @keyframes pulseGlow {
+                0%, 100% { opacity: 0.4; }
+                50% { opacity: 0.8; }
+              }
+              .wave-layer-1 { animation: waveShift1 8s linear infinite; }
+              .wave-layer-2 { animation: waveShift2 12s linear infinite; }
+              .wave-layer-3 { animation: waveShift3 6s linear infinite; }
+              .wave-glow { animation: pulseGlow 4s ease-in-out infinite; }
+            `}</style>
+            
+            {/* Glow background */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="wave-glow w-[120%] h-[300px] bg-gradient-to-r from-purple-600/20 via-cyan-400/30 to-pink-500/20 blur-[80px] rounded-full" />
+            </div>
+            
+            {/* Wave Layer 1 - Cyan/Blue (front) */}
+            <svg className="absolute w-[200%] h-[400px]" viewBox="0 0 2400 400" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="waveGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#a855f7" stopOpacity="0.6" />
+                  <stop offset="25%" stopColor="#6366f1" stopOpacity="0.8" />
+                  <stop offset="50%" stopColor="#22d3ee" stopOpacity="0.9" />
+                  <stop offset="75%" stopColor="#6366f1" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="#ec4899" stopOpacity="0.6" />
+                </linearGradient>
+                <filter id="glow1">
+                  <feGaussianBlur stdDeviation="4" result="blur" />
+                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+              </defs>
+              <g className="wave-layer-1" filter="url(#glow1)">
+                <path d="M0,200 C50,160 100,240 150,200 C200,160 250,240 300,200 C350,160 400,240 450,200 C500,160 550,240 600,200 C650,160 700,240 750,200 C800,160 850,240 900,200 C950,160 1000,240 1050,200 C1100,160 1150,240 1200,200 C1250,160 1300,240 1350,200 C1400,160 1450,240 1500,200 C1550,160 1600,240 1650,200 C1700,160 1750,240 1800,200 C1850,160 1900,240 1950,200 C2000,160 2050,240 2100,200 C2150,160 2200,240 2250,200 C2300,160 2350,240 2400,200" fill="none" stroke="url(#waveGrad1)" strokeWidth="3" />
+                <path d="M0,200 C50,170 100,230 150,200 C200,170 250,230 300,200 C350,170 400,230 450,200 C500,170 550,230 600,200 C650,170 700,230 750,200 C800,170 850,230 900,200 C950,170 1000,230 1050,200 C1100,170 1150,230 1200,200 C1250,170 1300,230 1350,200 C1400,170 1450,230 1500,200 C1550,170 1600,230 1650,200 C1700,170 1750,230 1800,200 C1850,170 1900,230 1950,200 C2000,170 2050,230 2100,200 C2150,170 2200,230 2250,200 C2300,170 2350,230 2400,200" fill="none" stroke="url(#waveGrad1)" strokeWidth="2" opacity="0.5" />
+              </g>
+            </svg>
+
+            {/* Wave Layer 2 - Purple (middle) */}
+            <svg className="absolute w-[200%] h-[400px]" viewBox="0 0 2400 400" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="waveGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#c084fc" stopOpacity="0.4" />
+                  <stop offset="50%" stopColor="#818cf8" stopOpacity="0.7" />
+                  <stop offset="100%" stopColor="#f472b6" stopOpacity="0.4" />
+                </linearGradient>
+              </defs>
+              <g className="wave-layer-2">
+                <path d="M0,200 C60,150 120,250 180,200 C240,150 300,250 360,200 C420,150 480,250 540,200 C600,150 660,250 720,200 C780,150 840,250 900,200 C960,150 1020,250 1080,200 C1140,150 1200,250 1260,200 C1320,150 1380,250 1440,200 C1500,150 1560,250 1620,200 C1680,150 1740,250 1800,200 C1860,150 1920,250 1980,200 C2040,150 2100,250 2160,200 C2220,150 2280,250 2340,200 C2340,150 2370,250 2400,200" fill="none" stroke="url(#waveGrad2)" strokeWidth="2.5" />
+              </g>
+            </svg>
+
+            {/* Wave Layer 3 - Pink/Magenta (back) */}
+            <svg className="absolute w-[200%] h-[400px]" viewBox="0 0 2400 400" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="waveGrad3" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#e879f9" stopOpacity="0.3" />
+                  <stop offset="50%" stopColor="#38bdf8" stopOpacity="0.5" />
+                  <stop offset="100%" stopColor="#c084fc" stopOpacity="0.3" />
+                </linearGradient>
+              </defs>
+              <g className="wave-layer-3">
+                <path d="M0,200 C70,140 140,260 210,200 C280,140 350,260 420,200 C490,140 560,260 630,200 C700,140 770,260 840,200 C910,140 980,260 1050,200 C1120,140 1190,260 1260,200 C1330,140 1400,260 1470,200 C1540,140 1610,260 1680,200 C1750,140 1820,260 1890,200 C1960,140 2030,260 2100,200 C2170,140 2240,260 2310,200 C2310,140 2355,260 2400,200" fill="none" stroke="url(#waveGrad3)" strokeWidth="2" />
+              </g>
+            </svg>
+
+            {/* Particle dots along waves */}
+            <svg className="absolute w-[200%] h-[400px]" viewBox="0 0 2400 400" preserveAspectRatio="none">
+              <g className="wave-layer-1">
+                {[0,150,300,450,600,750,900,1050,1200,1350,1500,1650,1800,1950,2100,2250].map((x, i) => (
+                  <circle key={i} cx={x} cy={200 + Math.sin(x * 0.02) * 40} r="2" fill="#22d3ee" opacity={0.3 + Math.random() * 0.5}>
+                    <animate attributeName="opacity" values="0.3;0.8;0.3" dur={`${2 + i * 0.3}s`} repeatCount="indefinite" />
+                    <animate attributeName="r" values="1;3;1" dur={`${3 + i * 0.2}s`} repeatCount="indefinite" />
+                  </circle>
+                ))}
+              </g>
+            </svg>
+          </motion.div>
+
+          {/* Gradient Overlays for Depth */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-90 z-[1]"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-background opacity-100 z-[1]"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-transparent to-transparent opacity-60 z-[1]"></div>
           
-          <div className="absolute bottom-20 left-20 z-10 max-w-md">
+          <div className="absolute bottom-20 left-20 z-[2] max-w-md">
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
