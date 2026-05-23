@@ -9,5 +9,6 @@ const router = express.Router();
 router.use(authenticate);
 router.get("/profile", userController.getProfile);
 router.patch("/profile", updateProfileRules, validate, userController.updateProfile);
+router.post("/welcome-modal-seen", userController.markWelcomeModalSeen);
 
 module.exports = router;

@@ -80,6 +80,11 @@ export function AuthProvider({ children }) {
     
     // Fire backend logout with refresh token to revoke it
     authApi.logout(refreshToken).catch(() => {});
+    
+    // Redirect to landing page
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
   }, []);
 
   // Function to update user data locally (e.g., after email verification)

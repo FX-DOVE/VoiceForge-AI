@@ -31,6 +31,10 @@ const userSchema = new mongoose.Schema(
     emailVerificationToken: { type: String, select: false },
     emailVerificationExpires: { type: Date, select: false },
     emailVerifiedAt: { type: Date, default: null },
+    // Welcome credits tracking - only awarded after email verification
+    hasReceivedWelcomeCredits: { type: Boolean, default: false },
+    welcomeCreditsAwardedAt: { type: Date, default: null },
+    welcomeModalSeen: { type: Boolean, default: false },
     // Legal acceptance tracking
     termsAccepted: { type: Boolean, default: false },
     termsAcceptedAt: { type: Date, default: null },
@@ -71,6 +75,8 @@ userSchema.methods.toPublicJSON = function toPublicJSON() {
     totalPayments: this.totalPayments || 0,
     emailVerified: this.emailVerified || false,
     emailVerifiedAt: this.emailVerifiedAt || null,
+    hasReceivedWelcomeCredits: this.hasReceivedWelcomeCredits || false,
+    welcomeModalSeen: this.welcomeModalSeen || false,
   };
 };
 

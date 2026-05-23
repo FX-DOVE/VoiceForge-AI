@@ -13,4 +13,11 @@ const updateProfile = asyncHandler(async (req, res) => {
   sendSuccess(res, { user: req.user.toPublicJSON() }, "Profile updated successfully.");
 });
 
-module.exports = { getProfile, updateProfile };
+const markWelcomeModalSeen = asyncHandler(async (req, res) => {
+  // Mark that user has seen the welcome modal
+  req.user.welcomeModalSeen = true;
+  await req.user.save();
+  sendSuccess(res, { user: req.user.toPublicJSON() }, "Welcome modal marked as seen.");
+});
+
+module.exports = { getProfile, updateProfile, markWelcomeModalSeen };

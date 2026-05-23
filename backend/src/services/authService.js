@@ -57,10 +57,9 @@ async function register({ email, password, name, termsAccepted, termsVersion }, 
     emailVerified: false,
     emailVerificationToken: hashedToken,
     emailVerificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+    // Credits will be awarded AFTER email verification
+    hasReceivedWelcomeCredits: false,
   });
-
-  // Grant welcome credits once per email and IP
-  const creditsGranted = await grantWelcomeCredits(user, meta.ipAddress || "");
 
   // Send welcome email
   try {
@@ -81,9 +80,10 @@ async function register({ email, password, name, termsAccepted, termsVersion }, 
   const tokens = buildAuthPayload(user);
   await persistRefreshToken(user._id, tokens.refreshToken, meta);
   
-  // Add flag for welcome modal
-  tokens.welcomeCreditsGranted = creditsGranted > 0;
-  tokens.welcomeCreditsAmount = creditsGranted;
+  // Note: Welcome credits will be awarded AFTER email verification
+  // No credits granted at registration time
+  tokens.welcomeCreditsGranted = false;
+  tokens.welcomeCreditsAmount = 0;
   
   // Add verification status
   tokens.emailVerified = user.emailVerified;
@@ -93,6 +93,12 @@ async function register({ email, password, name, termsAccepted, termsVersion }, 
 }
 
 async function grantWelcomeCredits(user, ipAddress) {
+  // Idempotency check: already awarded?
+  if (user.hasReceivedWelcomeCredits) {
+    console.log(`[Welcome] User ${user.email} already received welcome credits`);
+    return 0;
+  }
+
   const settings = await BillingSetting.getSettings();
   const { calculateCreditsFromPayment } = require("../utils/creditCalc");
   const config = require("../config");
@@ -113,9 +119,15 @@ async function grantWelcomeCredits(user, ipAddress) {
   if (!credits || credits <= 0) return 0;
 
   try {
-    // Check if this email already received welcome credits
+    // Check if this email already received welcome credits (additional safety)
     const existingByEmail = await WelcomeGrant.findOne({ email: user.email });
-    if (existingByEmail) return 0;
+    if (existingByEmail) {
+      // Mark user as already received to prevent future checks
+      user.hasReceivedWelcomeCredits = true;
+      user.welcomeCreditsAwardedAt = existingByEmail.createdAt;
+      await user.save();
+      return 0;
+    }
 
     // Check if this IP already received welcome credits (skip if no IP)
     if (ipAddress && process.env.NODE_ENV === "production") {
@@ -123,9 +135,11 @@ async function grantWelcomeCredits(user, ipAddress) {
       if (existingByIp) return 0;
     }
 
-    // Grant credits
+    // Grant credits atomically with flag update
     user.totalCredits += credits;
     user.creditsRemaining += credits;
+    user.hasReceivedWelcomeCredits = true;
+    user.welcomeCreditsAwardedAt = new Date();
     await user.save();
 
     await WelcomeGrant.create({
@@ -135,7 +149,7 @@ async function grantWelcomeCredits(user, ipAddress) {
       creditsGranted: credits,
     });
     
-    console.log(`[Welcome] Granted ${credits} welcome credits to ${user.email}`);
+    console.log(`[Welcome] Granted ${credits} welcome credits to ${user.email} after email verification`);
     return credits;
   } catch (err) {
     // Duplicate key = already granted — silently skip
@@ -218,7 +232,7 @@ async function getMe(userId) {
   return user.toPublicJSON();
 }
 
-async function verifyEmail(token) {
+async function verifyEmail(token, ipAddress = "") {
   if (!token) {
     throw Object.assign(new Error("Verification token is required."), { statusCode: 400 });
   }
@@ -239,13 +253,31 @@ async function verifyEmail(token) {
   user.emailVerifiedAt = new Date();
   user.emailVerificationToken = undefined;
   user.emailVerificationExpires = undefined;
+  
+  // Save user first before granting credits to ensure verification is recorded
   await user.save();
 
   console.log(`[auth] Email verified for ${user.email}`);
+
+  // Award welcome credits ONLY after successful email verification
+  let creditsGranted = 0;
+  let welcomeBonusAwarded = false;
+  
+  if (!user.hasReceivedWelcomeCredits) {
+    creditsGranted = await grantWelcomeCredits(user, ipAddress);
+    welcomeBonusAwarded = creditsGranted > 0;
+    
+    if (welcomeBonusAwarded) {
+      console.log(`[Welcome] Awarded ${creditsGranted} credits to newly verified user ${user.email}`);
+    }
+  }
   
   return { 
     message: "Email verified successfully! You can now use all features.",
-    emailVerified: true 
+    emailVerified: true,
+    welcomeBonusAwarded,
+    creditsGranted,
+    user: user.toPublicJSON()
   };
 }
 

@@ -15,22 +15,37 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getApiUrl } from "@/lib/api/config";
 import { toast } from "sonner";
+import { WelcomeCreditsModal } from "@/components/modals/welcome-credits-modal";
+import { useAuth } from "@/contexts/auth-context";
 
 function VerifyEmailInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
   const email = searchParams.get("email") || "";
+  const { user, refreshUser, isEmailVerified, isAuthenticated } = useAuth();
 
   const [status, setStatus] = useState(token ? "verifying" : "input"); // input | verifying | success | error
   const [inputEmail, setInputEmail] = useState(email);
   const [error, setError] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [creditsAwarded, setCreditsAwarded] = useState(0);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Redirect already verified users to dashboard
+  useEffect(() => {
+    if (isAuthenticated && isEmailVerified && !isRedirecting) {
+      setIsRedirecting(true);
+      toast.info("Your email is already verified. Redirecting to dashboard...");
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, isEmailVerified, router, isRedirecting]);
 
   // Auto-verify if token in URL
   useEffect(() => {
-    if (!token) return;
+    if (!token || isRedirecting) return;
     
     async function verifyToken() {
       try {
@@ -40,7 +55,18 @@ function VerifyEmailInner() {
         if (data.success) {
           setStatus("success");
           toast.success(data.message || "Email verified successfully!");
-          setTimeout(() => router.push("/dashboard"), 2000);
+          
+          // CRITICAL: Refresh user data in auth context so emailVerified is updated
+          await refreshUser();
+          
+          // Check if welcome credits were awarded
+          if (data.welcomeBonusAwarded && data.creditsGranted > 0) {
+            setCreditsAwarded(data.creditsGranted);
+            setShowWelcomeModal(true);
+          } else {
+            // No credits awarded, redirect to dashboard after delay
+            setTimeout(() => router.push("/dashboard"), 2000);
+          }
         } else {
           setStatus("error");
           setError(data.message || "Invalid or expired verification link.");
@@ -52,7 +78,7 @@ function VerifyEmailInner() {
     }
     
     verifyToken();
-  }, [token, router]);
+  }, [token, router, refreshUser, isRedirecting]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -205,7 +231,7 @@ function VerifyEmailInner() {
                 </Link>
               </div>
             </form>
-          ) : status === "success" ? (
+          ) : status === "success" && !showWelcomeModal ? (
             <Button asChild className="h-14 bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold text-lg">
               <Link href="/dashboard">Go to Dashboard</Link>
             </Button>
@@ -238,6 +264,16 @@ function VerifyEmailInner() {
           </div>
         </div>
       </motion.div>
+      
+      {/* Welcome Modal - shown after successful verification with credits */}
+      <WelcomeCreditsModal 
+        isOpen={showWelcomeModal} 
+        onClose={() => {
+          setShowWelcomeModal(false);
+          router.push("/dashboard");
+        }} 
+        creditsAmount={creditsAwarded} 
+      />
     </div>
   );
 }

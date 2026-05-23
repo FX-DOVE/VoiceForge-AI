@@ -16,10 +16,11 @@ import {
   SlidersHorizontal,
   BarChart3,
   Mail,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
 
 const navItems = [
@@ -39,7 +40,7 @@ function Sidebar({ pathname, onClose }) {
   const handleSignOut = () => {
     logout();
     onClose?.();
-    router.push("/login");
+    // Logout now redirects to landing page (/) automatically
   };
   return (
     <aside className="flex h-full w-72 shrink-0 flex-col bg-surface-container border-r border-white/5 relative z-20 shadow-[4px_0_32px_rgba(0,0,0,0.3)] overflow-hidden">
@@ -128,7 +129,43 @@ function Sidebar({ pathname, onClose }) {
 
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading, isAuthenticated, isAdmin } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Admin protection: Only allow admin users
+  useEffect(() => {
+    if (loading) return; // Wait for auth to load
+    
+    if (!isAuthenticated) {
+      // Not logged in - redirect to login
+      setIsRedirecting(true);
+      router.push("/login?next=/admin");
+      return;
+    }
+    
+    if (!isAdmin) {
+      // Logged in but not admin - redirect to dashboard
+      setIsRedirecting(true);
+      router.push("/dashboard");
+      return;
+    }
+  }, [loading, isAuthenticated, isAdmin, router]);
+
+  // Show loading state while checking auth or redirecting
+  if (loading || isRedirecting) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Don't render admin layout if not admin (prevents flash of admin UI)
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background w-full relative">
@@ -184,7 +221,7 @@ export default function AdminLayout({ children }) {
           </Button>
         </header>
 
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+        <div className="flex-1 overflow-auto flex flex-col min-h-0">
           {children}
         </div>
       </div>

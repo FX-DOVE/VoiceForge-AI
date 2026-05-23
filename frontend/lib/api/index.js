@@ -14,6 +14,7 @@ export const authApi = {
 export const usersApi = {
   getProfile: () => apiRequest("/users/profile"),
   updateProfile: (body) => apiRequest("/users/profile", { method: "PATCH", body }),
+  markWelcomeModalSeen: () => apiRequest("/users/welcome-modal-seen", { method: "POST" }),
 };
 
 export const voicesApi = {

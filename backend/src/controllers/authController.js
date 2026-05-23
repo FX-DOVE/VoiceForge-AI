@@ -66,7 +66,7 @@ const me = asyncHandler(async (req, res) => {
 
 const verifyEmail = asyncHandler(async (req, res) => {
   const { token } = req.query;
-  const data = await authService.verifyEmail(token);
+  const data = await authService.verifyEmail(token, req.ip);
   sendSuccess(res, data, data.message);
 });
 

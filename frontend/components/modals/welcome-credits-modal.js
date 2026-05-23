@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Gift, Coins, Mic, Sparkles, CheckCircle, Wallet } from "lucide-react";
 import Link from "next/link";
+import { usersApi } from "@/lib/api";
 
 export function WelcomeCreditsModal({ isOpen, onClose, creditsAmount = 2380 }) {
   const [step, setStep] = useState(0);
@@ -14,6 +15,18 @@ export function WelcomeCreditsModal({ isOpen, onClose, creditsAmount = 2380 }) {
       setStep(0);
     }
   }, [isOpen]);
+
+  // Handle modal close with API call to mark as seen
+  const handleClose = async () => {
+    try {
+      // Mark welcome modal as seen in backend
+      await usersApi.markWelcomeModalSeen();
+    } catch (err) {
+      // Silently fail - modal should still close
+      console.error("Failed to mark welcome modal as seen:", err);
+    }
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -55,7 +68,7 @@ export function WelcomeCreditsModal({ isOpen, onClose, creditsAmount = 2380 }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          onClick={onClose}
+          onClick={handleClose}
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -148,7 +161,7 @@ export function WelcomeCreditsModal({ isOpen, onClose, creditsAmount = 2380 }) {
                   <>
                     <Button
                       variant="outline"
-                      onClick={onClose}
+                      onClick={handleClose}
                       className="flex-1 rounded-full border-white/10 hover:bg-white/5"
                     >
                       Skip
