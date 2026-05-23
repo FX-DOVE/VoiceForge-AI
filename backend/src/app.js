@@ -16,18 +16,21 @@ app.set("trust proxy", 1);
 
 const allowedOrigins = new Set([
   config.clientUrl,
+  "https://voiceforgeai.site",
+  "https://www.voiceforgeai.site",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 ]);
 
 app.use(
   cors({
-    origin(origin, callback) {
-      if (!origin || allowedOrigins.has(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, config.clientUrl);
-      }
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin)) return callback(null, true);
+      // Also allow if it ends with voiceforgeai.site (subdomains)
+      if (origin.endsWith("voiceforgeai.site")) return callback(null, true);
+      callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
@@ -40,15 +43,46 @@ app.use(
 );
 app.use(morgan(config.env === "development" ? "dev" : "combined"));
 app.use(cookieParser());
+app.use((req, res, next) => {
+  if (req.path === "/api/payments/paystack/webhook") {
+    let data = [];
+    req.on("data", (chunk) => data.push(chunk));
+    req.on("end", () => {
+      req.rawBody = Buffer.concat(data);
+      req.body = req.rawBody;
+      next();
+    });
+  } else {
+    next();
+  }
+});
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+// Lenient limiter for read-only, cacheable preview/list endpoints
+app.use(
+  /^\/api\/voices(\/[^/]+\/preview)?$/,
+  rateLimit({
+    windowMs: config.rateLimit.windowMs,
+    max: 600,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      success: false,
+      message: "Too many requests. Please wait a moment and try again.",
+      errors: {},
+    },
+  })
+);
+
+// Global limiter for all other routes (skip auth to avoid carrier NAT issues on mobile)
 app.use(
   rateLimit({
     windowMs: config.rateLimit.windowMs,
-    max: config.rateLimit.max,
+    max: Math.max(config.rateLimit.max, 300),
     standardHeaders: true,
     legacyHeaders: false,
+    skip: (req) => req.path.startsWith("/api/auth/"),
     message: {
       success: false,
       message: "Too many requests. Please wait a moment and try again.",

@@ -17,15 +17,37 @@ import {
   Timer,
   AudioLines,
   Sparkles,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useState, useRef } from "react";
+import { ttsApi } from "@/lib/api";
+import { toast } from "sonner";
 
-export function GenerationDetailModal({ open, generation, onClose }) {
+export function GenerationDetailModal({ open, generation, onClose, onDelete }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const audioRef = useRef(null);
+
+  async function handleDelete() {
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setDeleting(true);
+    try {
+      await ttsApi.delete(generation.id);
+      toast.success("Generation deleted.");
+      onDelete?.(generation.id);
+      onClose?.();
+    } catch (err) {
+      toast.error(err?.message || "Could not delete generation.");
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
 
   function handlePlayPause() {
     const el = audioRef.current;
@@ -54,6 +76,8 @@ export function GenerationDetailModal({ open, generation, onClose }) {
     if (open) {
       document.addEventListener("keydown", onKey);
       document.body.style.overflow = "hidden";
+    } else {
+      setConfirmDelete(false);
     }
     return () => {
       document.removeEventListener("keydown", onKey);
@@ -278,10 +302,23 @@ export function GenerationDetailModal({ open, generation, onClose }) {
                 <Button
                   type="button"
                   variant="ghost"
-                  className="rounded-full text-red-400 hover:bg-red-500/10 hover:text-red-400 font-bold"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className={cn(
+                    "rounded-full font-bold transition-colors",
+                    confirmDelete
+                      ? "text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30"
+                      : "text-red-400 hover:bg-red-500/10 hover:text-red-400"
+                  )}
                 >
-                  <Trash2 className="mr-2 size-4" />
-                  Delete
+                  {deleting ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                  ) : confirmDelete ? (
+                    <AlertTriangle className="mr-2 size-4" />
+                  ) : (
+                    <Trash2 className="mr-2 size-4" />
+                  )}
+                  {deleting ? "Deleting..." : confirmDelete ? "Confirm delete?" : "Delete"}
                 </Button>
                 <Button
                   type="button"

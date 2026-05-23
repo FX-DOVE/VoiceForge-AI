@@ -148,7 +148,7 @@ export default function TutorialsPage() {
               Suggest a tutorial
             </h3>
             <p className="text-on-surface-variant max-w-xl">
-              Tell us what you'd like to learn next and we'll build it.
+              Tell us what you&apos;d like to learn next and we&apos;ll build it.
             </p>
           </div>
           <Button

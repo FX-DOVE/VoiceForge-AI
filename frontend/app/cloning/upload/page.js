@@ -55,6 +55,6 @@ export default function CloningUploadPage() {
           </Button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

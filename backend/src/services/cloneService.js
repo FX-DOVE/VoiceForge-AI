@@ -1,6 +1,21 @@
+const crypto = require("crypto");
 const { VoiceClone, VoiceSample, TrainingJob, Voice, Notification } = require("../models");
 const { uploadFromPath } = require("../integrations/storage");
 const { enqueueTrainingJob } = require("../jobs/trainingQueue");
+const { matchVoiceFromReference, selectVoiceByGender } = require("../utils/voiceMatcher");
+const config = require("../config");
+
+// Helper to ensure URLs are absolute (for local dev where relative URLs break audio playback)
+function ensureAbsoluteUrl(url) {
+  if (!url) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  const baseUrl = config.serverUrl?.replace(/\/+$/, "") || `http://localhost:${config.port || 5000}`;
+  return `${baseUrl}${url.startsWith("/") ? url : `/${url}`}`;
+}
+
+function generateShareToken() {
+  return crypto.randomBytes(20).toString("hex");
+}
 
 const TRAINING_STEPS = [
   { key: "validate", label: "Validating audio samples" },
@@ -54,7 +69,7 @@ async function uploadSamples(userId, cloneId, files) {
   return { clone, samples };
 }
 
-async function configureClone(userId, { cloneId, name, description, visibility }) {
+async function configureClone(userId, { cloneId, name, description, visibility, gender }) {
   const clone = await VoiceClone.findOne({ _id: cloneId, user: userId });
   if (!clone) {
     throw Object.assign(new Error("Voice clone not found."), { statusCode: 404 });
@@ -69,7 +84,18 @@ async function configureClone(userId, { cloneId, name, description, visibility }
 
   clone.name = name;
   clone.description = description || "";
-  clone.visibility = visibility || "private";
+  const vis = visibility || "private";
+  clone.visibility = vis;
+  // Store gender for voice matching fallback
+  if (gender && ["male", "female"].includes(gender)) {
+    clone.gender = gender;
+  }
+  // Generate share token for unlisted; clear it for other modes
+  if (vis === "unlisted" && !clone.shareToken) {
+    clone.shareToken = generateShareToken();
+  } else if (vis !== "unlisted") {
+    clone.shareToken = null;
+  }
   clone.status = "configured";
   await clone.save();
 
@@ -155,10 +181,23 @@ async function getCloneStatus(userId, cloneId) {
   };
 }
 
-async function completeTraining(voiceCloneId, trainingJobId) {
+async function completeTraining(voiceCloneId, trainingJobId, xaiVoiceId = null) {
   const clone = await VoiceClone.findById(voiceCloneId);
   const job = await TrainingJob.findById(trainingJobId);
   if (!clone || !job) return;
+
+  // If xAI custom voice creation failed, use voice matcher to select fallback
+  let fallbackVoice = null;
+  let fallbackMessage = null;
+  
+  if (!xaiVoiceId) {
+    // Use voice matcher to find closest matching voice based on detected/known gender
+    const voiceMatch = selectVoiceByGender(clone.detectedGender || clone.gender);
+    fallbackVoice = voiceMatch.voiceId;
+    fallbackMessage = "Exact voice cloning is not available on this plan, so we selected the closest matching voice with the same gender, tone, language, and speaking style.";
+    
+    console.log(`[cloneService] Using voice matcher fallback: ${voiceMatch.voiceName} (${voiceMatch.reason})`);
+  }
 
   const slug = `clone-${clone._id.toString().slice(-8)}`;
   const voice = await Voice.create({
@@ -166,11 +205,16 @@ async function completeTraining(voiceCloneId, trainingJobId) {
     name: clone.name,
     description: clone.description,
     type: "cloned",
+    tier: "pro",
     owner: clone.user,
     isPublic: clone.visibility === "public",
-    xaiVoiceId: clone.name,
+    voiceCloneRef: clone._id,
+    // Use real xAI custom voice ID if available, otherwise use matched fallback voice
+    xaiVoiceId: xaiVoiceId || fallbackVoice,
     tags: ["Cloned"],
     creator: "You",
+    // Store fallback message for frontend display
+    metadata: fallbackMessage ? { fallbackMessage } : undefined,
   });
 
   clone.status = "ready";
@@ -194,14 +238,85 @@ async function completeTraining(voiceCloneId, trainingJobId) {
 }
 
 async function listClones(userId) {
-  const clones = await VoiceClone.find({ user: userId }).sort({ createdAt: -1 });
+  const clones = await VoiceClone.find({ user: userId })
+    .sort({ createdAt: -1 })
+    .populate("voice", "slug previewUrl");
   return clones.map((c) => ({
     id: c._id.toString(),
     name: c.name,
+    description: c.description,
+    visibility: c.visibility,
+    shareToken: c.shareToken || null,
     status: c.status,
     progress: c.progress,
+    voiceId: c.voice?._id?.toString() || null,
+    voiceSlug: c.voice?.slug || null,
+    voicePreviewUrl: ensureAbsoluteUrl(c.voice?.previewUrl) || null,
     createdAt: c.createdAt,
   }));
+}
+
+async function updateClone(userId, cloneId, { name, description, visibility }) {
+  const clone = await VoiceClone.findOne({ _id: cloneId, user: userId });
+  if (!clone) throw Object.assign(new Error("Voice clone not found."), { statusCode: 404 });
+
+  if (name !== undefined) clone.name = name.trim();
+  if (description !== undefined) clone.description = description;
+  if (visibility !== undefined) {
+    if (!["private", "public", "unlisted"].includes(visibility))
+      throw Object.assign(new Error("visibility must be private, public, or unlisted."), { statusCode: 400 });
+    clone.visibility = visibility;
+    if (visibility === "unlisted" && !clone.shareToken) {
+      clone.shareToken = generateShareToken();
+    } else if (visibility !== "unlisted") {
+      clone.shareToken = null;
+    }
+    if (clone.voice) {
+      await Voice.updateOne({ _id: clone.voice }, { isPublic: visibility === "public" });
+    }
+  }
+  await clone.save();
+  return {
+    id: clone._id.toString(),
+    name: clone.name,
+    visibility: clone.visibility,
+    shareToken: clone.shareToken || null,
+    status: clone.status,
+  };
+}
+
+async function deleteClone(userId, cloneId) {
+  const clone = await VoiceClone.findOne({ _id: cloneId, user: userId });
+  if (!clone) throw Object.assign(new Error("Voice clone not found."), { statusCode: 404 });
+
+  // Remove associated Voice record from public library
+  if (clone.voice) {
+    await Voice.deleteOne({ _id: clone.voice });
+  }
+
+  // Remove associated samples
+  await VoiceSample.deleteMany({ voiceClone: clone._id });
+
+  // Remove training jobs
+  await TrainingJob.deleteMany({ voiceClone: clone._id });
+
+  await clone.deleteOne();
+}
+
+async function getCloneByShareToken(token) {
+  const clone = await VoiceClone.findOne({ shareToken: token, visibility: "unlisted" })
+    .populate("voice", "name slug previewUrl")
+    .lean();
+  if (!clone) return null;
+  return {
+    id: clone._id.toString(),
+    name: clone.name,
+    description: clone.description,
+    status: clone.status,
+    voice: clone.voice
+      ? { id: clone.voice._id.toString(), name: clone.voice.name, slug: clone.voice.slug, previewUrl: clone.voice.previewUrl }
+      : null,
+  };
 }
 
 module.exports = {
@@ -211,5 +326,8 @@ module.exports = {
   getCloneStatus,
   completeTraining,
   listClones,
+  updateClone,
+  deleteClone,
+  getCloneByShareToken,
   TRAINING_STEPS,
 };

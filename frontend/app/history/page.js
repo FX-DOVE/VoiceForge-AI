@@ -22,7 +22,7 @@ export default function HistoryPage() {
   const [search, setSearch] = useState("");
   const [playingId, setPlayingId] = useState(null);
   const audioRef = useRef(null);
-  const { items: generations, loading } = useGenerations(search);
+  const { items: generations, loading, remove } = useGenerations(search);
 
   function handlePlayItem(item, e) {
     e.stopPropagation();
@@ -175,6 +175,7 @@ export default function HistoryPage() {
         open={!!selected}
         generation={selected}
         onClose={() => setSelected(null)}
+        onDelete={(id) => { remove(id); setSelected(null); }}
       />
     </>
   );

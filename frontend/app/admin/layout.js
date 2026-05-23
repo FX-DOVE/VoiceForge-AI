@@ -12,6 +12,10 @@ import {
   Activity,
   Menu,
   X,
+  Wallet,
+  SlidersHorizontal,
+  BarChart3,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,6 +26,10 @@ const navItems = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Users", href: "/admin/users", icon: Users },
   { name: "Billing", href: "/admin/billing", icon: CreditCard },
+  { name: "Billing Settings", href: "/admin/billing-settings", icon: SlidersHorizontal },
+  { name: "Grok Mgmt", href: "/admin/grok", icon: Wallet },
+  { name: "TTS Analytics", href: "/admin/tts-analytics", icon: BarChart3 },
+  { name: "Email Templates", href: "/admin/emails", icon: Mail },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
@@ -124,6 +132,7 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background w-full relative">
+      <meta name="robots" content="noindex, nofollow" />
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex">
         <Sidebar pathname={pathname} />
@@ -175,7 +184,7 @@ export default function AdminLayout({ children }) {
           </Button>
         </header>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           {children}
         </div>
       </div>

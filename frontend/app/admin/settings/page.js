@@ -98,7 +98,7 @@ export default function AdminSettingsPage() {
   const plans = cfg?.planLimits;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col min-h-0">
       <header className="hidden lg:flex h-16 border-b border-white/[0.06] bg-background/80 backdrop-blur-md sticky top-0 z-30 items-center justify-between px-8 shrink-0">
         <div className="flex items-center gap-3">
           <Settings className="size-5 text-primary" />
@@ -161,7 +161,7 @@ export default function AdminSettingsPage() {
 
               <SectionCard className="hidden" title="Platform Status " icon={Cpu} delay={0.06}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-3 overflow-y-auto overflow-x-hidden" >
-                  <ServiceCard icon={Zap} name="xAI TTS Engine" desc={api?.xaiModel} ok={api?.xaiConfigured} badgeTrue="Key Set" badgeFalse="No API Key" />
+                  <ServiceCard icon={Zap} name="VoiceForge TTS Engine" desc={api?.xaiModel} ok={api?.xaiConfigured} badgeTrue="Key Set" badgeFalse="No API Key" />
                   <ServiceCard icon={CreditCard} name="Stripe Payments" desc="Subscription billing" ok={services?.stripeConfigured} />
                   <ServiceCard icon={Mail} name="Email (Resend)" desc={services?.emailFrom} ok={services?.resendConfigured} />
                   <ServiceCard icon={Server} name="Redis Cache" desc="Session & rate-limit store" ok={services?.redisConfigured} badgeTrue="Connected" badgeFalse="Not Connected" />
@@ -174,7 +174,7 @@ export default function AdminSettingsPage() {
           {/* ── API CONFIG ── */}
           {activeTab === "api" && (
             <>
-              <SectionCard title="xAI Grok TTS" icon={Mic} delay={0}>
+              <SectionCard title="VoiceForge TTS" icon={Mic} delay={0}>
                 <div className="py-2">
                   <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
                     <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">API Key</span>

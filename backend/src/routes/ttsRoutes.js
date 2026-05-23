@@ -10,5 +10,6 @@ router.use(authenticate);
 router.post("/generate", generateTtsRules, validate, ttsController.generate);
 router.get("/history", ttsController.history);
 router.get("/:id", ttsController.getById);
+router.delete("/:id", ttsController.deleteById);
 
 module.exports = router;

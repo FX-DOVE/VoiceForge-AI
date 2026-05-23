@@ -1,35 +1,67 @@
 "use client";
 
+import { useState, useRef, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Mic, Clock, Sparkles, Bell, Lock, Crown, Upload, Settings2, Zap, CheckCircle2, Copy, Play, Square, RefreshCcw, User, Volume2, Loader2, Shield, Globe, Link2 } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { ApiError } from "@/lib/api/client";
+import { voicesApi, cloningApi } from "@/lib/api";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Upload, 
-  Settings2, 
-  Zap, 
-  CheckCircle2, 
-  Mic, 
-  Shield, 
-  Globe, 
-  MoreVertical, 
-  RefreshCcw,
-  AlertCircle,
-  Volume2,
-  Clock
-} from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
-import { cn } from "@/lib/utils";
 import { VoiceRecorder } from "@/components/cloning/voice-recorder";
-import { cloningApi } from "@/lib/api";
-import { toast } from "sonner";
-import { ApiError } from "@/lib/api/client";
+import Link from "next/link";
 
 export default function CloningPage() {
+  const { user } = useAuth();
+  const isEnterprise = user?.plan === "enterprise";
   const [step, setStep] = useState(1);
   const [inputMode, setInputMode] = useState("upload"); // upload | record
   const [clonedVoices, setClonedVoices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isTraining, setIsTraining] = useState(false);
+  // Sidebar preview state
+  const [sidebarPlayingId, setSidebarPlayingId] = useState(null);
+  const [sidebarPreviewLoadingId, setSidebarPreviewLoadingId] = useState(null);
+  const sidebarAudioRef = useRef(null);
+
+  async function handleSidebarPreview(v) {
+    if (sidebarPlayingId === v.id) {
+      sidebarAudioRef.current?.pause();
+      setSidebarPlayingId(null);
+      return;
+    }
+    if (sidebarAudioRef.current) {
+      sidebarAudioRef.current.pause();
+      sidebarAudioRef.current = null;
+      setSidebarPlayingId(null);
+    }
+    if (!v.voiceSlug) return toast.error("No voice available to preview.");
+    setSidebarPreviewLoadingId(v.id);
+    try {
+      // Use cached preview URL if available, otherwise fetch from API
+      let url = v.voicePreviewUrl;
+      if (!url) {
+        const data = await voicesApi.preview(v.voiceSlug);
+        url = data?.url;
+      }
+      if (!url) throw new Error("No preview URL");
+      const audio = new Audio(url);
+      sidebarAudioRef.current = audio;
+      audio.onended = () => setSidebarPlayingId(null);
+      audio.onerror = () => { 
+        setSidebarPlayingId(null); 
+        toast.error("Failed to load because no supported source was found.");
+      };
+      await audio.play();
+      setSidebarPlayingId(v.id);
+    } catch (err) {
+      toast.error(err?.message || "Could not load preview.");
+    } finally {
+      setSidebarPreviewLoadingId(null);
+    }
+  }
 
   // Form State
   const [samples, setSamples] = useState([]);
@@ -37,6 +69,8 @@ export default function CloningPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState("private");
+  const [gender, setGender] = useState(""); // "male" | "female"
+  const [shareToken, setShareToken] = useState(null);
   const [progress, setProgress] = useState(0);
 
   const fetchClones = useCallback(async () => {
@@ -80,9 +114,11 @@ export default function CloningPage() {
 
   async function handleUpload(files) {
     if (!files?.length) return;
+    const fileArray = Array.from(files);
+    setSamples(fileArray);
     setLoading(true);
     try {
-      const data = await cloningApi.upload(Array.from(files), cloneId);
+      const data = await cloningApi.upload(fileArray, cloneId);
       setCloneId(data.cloneId);
       toast.success("Samples uploaded.");
       setStep(2);
@@ -97,12 +133,14 @@ export default function CloningPage() {
     if (!name.trim()) return toast.error("Please enter a name.");
     setLoading(true);
     try {
-      await cloningApi.configure({
+      const res = await cloningApi.configure({
         cloneId,
         name,
         description,
         visibility,
+        gender,
       });
+      if (res.shareToken) setShareToken(res.shareToken);
       setStep(3);
       handleStartTraining();
     } catch (err) {
@@ -148,9 +186,11 @@ export default function CloningPage() {
             The better the input, the more accurate the clone.
           </p>
         </div>
-
-        {/* Wizard Progress */}
-        <div className="flex gap-2 sm:gap-3">
+        
+        {!isEnterprise ? null : (
+        <>
+          {/* Wizard Progress */}
+          <div className="flex gap-2 sm:gap-3">
           {steps.map((s) => {
             const done = step > s.id;
             const active = step === s.id;
@@ -158,7 +198,11 @@ export default function CloningPage() {
               <button
                 key={s.id}
                 type="button"
-                onClick={() => setStep(s.id)}
+                onClick={() => {
+                  if (s.id === 2 && !cloneId) return toast.error("Upload samples first.");
+                  if (s.id === 3 && step < 3) return;
+                  setStep(s.id);
+                }}
                 className={cn(
                   "flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl text-xs sm:text-sm font-bold transition-all border",
                   active
@@ -174,11 +218,27 @@ export default function CloningPage() {
               </button>
             );
           })}
-        </div>
+          </div>
+        </>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
           {/* Main Wizard Area */}
           <div className="lg:col-span-2 flex flex-col gap-8">
+            {!isEnterprise ? (
+              <div className="glass-panel p-8 sm:p-12 rounded-[2rem] border-white/5 bg-white/[0.02] flex flex-col items-center justify-center text-center gap-6 min-h-[400px]">
+                <div className="size-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-2 shadow-[0_0_30px_rgba(59,130,246,0.15)]">
+                  <Crown className="size-10" />
+                </div>
+                <h2 className="text-3xl font-bold text-white tracking-tight">Enterprise Feature</h2>
+                <p className="text-on-surface-variant max-w-md">
+                  Custom voice cloning is exclusive to our Enterprise plan. Upgrade your plan to create custom AI voices with incredible accuracy.
+                </p>
+                <Link href="/billing" className="mt-4 h-12 px-8 flex items-center justify-center bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold shadow-lg transition-all">
+                  Upgrade to Enterprise
+                </Link>
+              </div>
+            ) : (
              <AnimatePresence mode="wait">
                 {step === 1 && (
                   <motion.div
@@ -276,10 +336,18 @@ export default function CloningPage() {
                      <div className="flex justify-end pt-6 border-t border-white/5">
                         <Button
                           type="button"
-                          onClick={() => setStep(2)}
+                          onClick={() => {
+                            if (!cloneId) {
+                              if (samples.length > 0) handleUpload(samples);
+                              else toast.error("Please upload or record audio samples first.");
+                            } else {
+                              setStep(2);
+                            }
+                          }}
+                          disabled={loading}
                           className="h-12 px-10 bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold"
                         >
-                           Continue to Configure
+                           {loading ? "Uploading..." : cloneId ? "Continue to Configure" : samples.length ? "Upload & Continue" : "Continue to Configure"}
                         </Button>
                      </div>
                   </motion.div>
@@ -305,44 +373,99 @@ export default function CloningPage() {
                         </div>
 
                         <div className="flex flex-col gap-3">
+                           <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1">Voice Gender</label>
+                           <p className="text-xs text-neutral-500 ml-1">Select the gender of the voice you're cloning. This helps us match the closest available voice.</p>
+                           <div className="grid grid-cols-2 gap-3">
+                              {[
+                                { value: "female", Icon: User, label: "Female", desc: "Female voice characteristics" },
+                                { value: "male", Icon: User, label: "Male", desc: "Male voice characteristics" },
+                              ].map(({ value, Icon, label, desc }) => (
+                                <label
+                                  key={value}
+                                  className={cn(
+                                    "relative p-4 sm:p-5 rounded-2xl border cursor-pointer transition-all",
+                                    gender === value
+                                      ? "border-primary/50 bg-primary/10"
+                                      : "border-white/10 bg-white/5 hover:bg-white/[0.08]"
+                                  )}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="gender"
+                                    className="sr-only"
+                                    checked={gender === value}
+                                    onChange={() => setGender(value)}
+                                  />
+                                  <div className="flex flex-col gap-3">
+                                    <div className={cn(
+                                      "size-9 rounded-xl flex items-center justify-center border transition-colors",
+                                      gender === value
+                                        ? "bg-primary/20 border-primary/40 text-primary"
+                                        : "bg-white/5 border-white/10 text-on-surface-variant"
+                                    )}>
+                                      <Icon className="size-4" />
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className={cn("text-sm font-bold", gender === value ? "text-primary" : "text-white")}>{label}</span>
+                                      <span className="text-[11px] text-on-surface-variant leading-tight">{desc}</span>
+                                    </div>
+                                    {gender === value && (
+                                      <div className="absolute top-3 right-3 size-4 rounded-full bg-primary flex items-center justify-center">
+                                        <CheckCircle2 className="size-3 text-white" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </label>
+                              ))}
+                           </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3">
                            <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1">Visibility</label>
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <label className="relative p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-white/10 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all group">
-                                 <input 
-                                   type="radio" 
-                                   name="visibility" 
-                                   className="sr-only peer" 
-                                   checked={visibility === "private"} 
-                                   onChange={() => setVisibility("private")}
-                                 />
-                                 <div className="flex items-center gap-4 peer-checked:text-primary">
-                                    <div className="size-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 peer-checked:border-primary/50">
-                                       <Shield className="size-5" />
+                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              {[
+                                { value: "private",  Icon: Shield,  label: "Private",  desc: "Only you can use this voice" },
+                                { value: "unlisted", Icon: Link2,   label: "Link Only", desc: "Anyone with the link" },
+                                { value: "public",   Icon: Globe,   label: "Public",   desc: "Share with the community" },
+                              ].map(({ value, Icon, label, desc }) => (
+                                <label
+                                  key={value}
+                                  className={cn(
+                                    "relative p-4 sm:p-5 rounded-2xl border cursor-pointer transition-all",
+                                    visibility === value
+                                      ? "border-primary/50 bg-primary/10"
+                                      : "border-white/10 bg-white/5 hover:bg-white/[0.08]"
+                                  )}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="visibility"
+                                    className="sr-only"
+                                    checked={visibility === value}
+                                    onChange={() => setVisibility(value)}
+                                  />
+                                  <div className="flex flex-col gap-3">
+                                    <div className={cn(
+                                      "size-9 rounded-xl flex items-center justify-center border transition-colors",
+                                      visibility === value
+                                        ? "bg-primary/20 border-primary/40 text-primary"
+                                        : "bg-white/5 border-white/10 text-on-surface-variant"
+                                    )}>
+                                      <Icon className="size-4" />
                                     </div>
-                                    <div className="flex flex-col">
-                                       <span className="text-sm font-bold text-white group-peer-checked:text-primary">Private</span>
-                                       <span className="text-xs text-on-surface-variant mt-0.5">Only you can use this voice</span>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className={cn("text-sm font-bold", visibility === value ? "text-primary" : "text-white")}>{label}</span>
+                                      <span className="text-[11px] text-on-surface-variant leading-tight">{desc}</span>
                                     </div>
-                                 </div>
-                              </label>
-                              <label className="relative p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-white/10 bg-white/5 cursor-pointer hover:bg-white/[0.08] transition-all group">
-                                 <input 
-                                   type="radio" 
-                                   name="visibility" 
-                                   className="sr-only peer" 
-                                   checked={visibility === "public"}
-                                   onChange={() => setVisibility("public")}
-                                 />
-                                 <div className="flex items-center gap-4 peer-checked:text-primary">
-                                    <div className="size-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-                                       <Globe className="size-5" />
-                                    </div>
-                                    <div className="flex flex-col">
-                                       <span className="text-sm font-bold text-white group-peer-checked:text-primary">Public</span>
-                                       <span className="text-xs text-on-surface-variant mt-0.5">Share with the community</span>
-                                    </div>
-                                 </div>
-                              </label>
+                                    {/* Selected indicator */}
+                                    {visibility === value && (
+                                      <div className="absolute top-3 right-3 size-4 rounded-full bg-primary flex items-center justify-center">
+                                        <CheckCircle2 className="size-3 text-white" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </label>
+                              ))}
                            </div>
                         </div>
 
@@ -399,16 +522,50 @@ export default function CloningPage() {
                           className="h-full bg-gradient-to-r from-primary to-purple-500 rounded-full"
                         />
                      </div>
+
+                     {/* Share link — shown when visibility is unlisted */}
+                     {shareToken && visibility === "unlisted" && (
+                       <div className="w-full max-w-md flex flex-col gap-2">
+                         <p className="text-xs text-on-surface-variant text-center font-bold uppercase tracking-widest">Share Link</p>
+                         <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
+                           <Link2 className="size-4 text-primary shrink-0" />
+                           <span className="flex-1 text-xs text-white truncate select-all">
+                             {typeof window !== "undefined" ? `${window.location.origin}/cloning/shared/${shareToken}` : `/cloning/shared/${shareToken}`}
+                           </span>
+                           <button
+                             type="button"
+                             onClick={() => {
+                               const url = `${window.location.origin}/cloning/shared/${shareToken}`;
+                               navigator.clipboard.writeText(url).then(() => toast.success("Link copied!"));
+                             }}
+                             className="size-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-on-surface-variant hover:text-white transition-colors shrink-0"
+                             aria-label="Copy share link"
+                           >
+                             <Copy className="size-3.5" />
+                           </button>
+                         </div>
+                       </div>
+                     )}
                      <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-widest">
                         <span className="animate-pulse">{progress < 100 ? "Processing Neural Weights..." : "Completing..."}</span>
                         <span>{progress}%</span>
                      </div>
-                     <Button type="button" variant="outline" onClick={() => setStep(1)} className="mt-4 h-12 px-10 rounded-full border-white/10 hover:bg-white/5 font-bold">
-                        Go to Dashboard
+                     <Button type="button" variant="outline" onClick={() => {
+                        setStep(1);
+                        setCloneId(null);
+                        setSamples([]);
+                        setName("");
+                        setDescription("");
+                        setVisibility("private");
+                        setShareToken(null);
+                        setProgress(0);
+                     }} className="mt-4 h-12 px-10 rounded-full border-white/10 hover:bg-white/5 font-bold">
+                        Clone Another Voice
                      </Button>
                   </motion.div>
                 )}
              </AnimatePresence>
+            )}
           </div>
 
           {/* Right Column: Library */}
@@ -419,7 +576,7 @@ export default function CloningPage() {
                    <Button variant="ghost" size="sm" className="rounded-full text-xs font-bold text-primary hover:bg-primary/10" asChild>
                       <a href="/cloning/library">View all</a>
                    </Button>
-                   <Button variant="ghost" size="icon" className="size-10 rounded-full hover:bg-white/5">
+                   <Button variant="ghost" size="icon" className="size-10 rounded-full hover:bg-white/5" onClick={fetchClones}>
                       <RefreshCcw className="size-4 text-on-surface-variant" />
                    </Button>
                 </div>
@@ -445,25 +602,63 @@ export default function CloningPage() {
                         )}>
                            <Mic className="size-6" />
                         </div>
-                        <div className="flex flex-col">
-                           <span className="text-sm font-bold text-white">{v.name}</span>
-                           <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex flex-col min-w-0">
+                           <span className="text-sm font-bold text-white truncate">{v.name || "Unnamed"}</span>
+                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                               <span className={cn(
-                                "size-1.5 rounded-full",
+                                "size-1.5 rounded-full shrink-0",
                                 v.status === "ready" ? "bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]" : "bg-orange-400 animate-pulse"
                               )} />
                               <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
                                 {v.status === "ready" ? "Ready" : "Training"}
                               </span>
+                              {v.visibility === "public" ? (
+                                <Globe className="size-3 text-primary" />
+                              ) : v.visibility === "unlisted" ? (
+                                <Link2 className="size-3 text-on-surface-variant" />
+                              ) : (
+                                <Shield className="size-3 text-on-surface-variant" />
+                              )}
                            </div>
                         </div>
                      </div>
                      {v.status === "training" ? (
                        <span className="text-xs font-bold text-primary">{v.progress}%</span>
+                     ) : v.status === "ready" ? (
+                       <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                         {/* Preview */}
+                         {v.voiceSlug && (
+                           <button
+                             type="button"
+                             onClick={() => handleSidebarPreview(v)}
+                             disabled={sidebarPreviewLoadingId === v.id}
+                             className={cn(
+                               "size-8 rounded-full flex items-center justify-center border transition-all",
+                               sidebarPlayingId === v.id
+                                 ? "bg-primary/20 border-primary/40 text-primary"
+                                 : "bg-white/5 border-white/10 text-on-surface-variant hover:bg-primary/10 hover:border-primary/30 hover:text-primary"
+                             )}
+                             aria-label={sidebarPlayingId === v.id ? "Stop" : "Preview"}
+                           >
+                             {sidebarPreviewLoadingId === v.id ? (
+                               <Loader2 className="size-3 animate-spin" />
+                             ) : sidebarPlayingId === v.id ? (
+                               <Square className="size-3 fill-current" />
+                             ) : (
+                               <Play className="size-3 fill-current" />
+                             )}
+                           </button>
+                         )}
+                         {/* Use */}
+                         <Link
+                           href={`/studio${v.voiceSlug ? `?voice=${v.voiceSlug}` : ""}`}
+                           className="h-8 px-3 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-on-primary text-xs font-bold flex items-center transition-all"
+                         >
+                           Use
+                         </Link>
+                       </div>
                      ) : (
-                       <Button variant="ghost" size="icon" className="size-10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreVertical className="size-4" />
-                       </Button>
+                       <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{v.status}</span>
                      )}
                   </motion.div>
                 ))}

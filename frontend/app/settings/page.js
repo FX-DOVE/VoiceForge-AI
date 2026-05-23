@@ -307,7 +307,7 @@ export default function SettingsPage() {
                     )}>Active</span>
                   </div>
                   <p className="text-sm text-on-surface-variant">
-                    {planLabel === "Free" ? "Free tier — Edge TTS voices" : "Pay-as-you-go credits"}
+                    {planLabel === "Free" ? "Free tier — VoiceForge standard voices" : "Pay-as-you-go credits — VoiceForge premium voices"}
                   </p>
                 </div>
                 <Button variant="outline" className="h-10 px-6 rounded-full border-white/10 hover:bg-white/5 font-semibold text-sm shrink-0" asChild>

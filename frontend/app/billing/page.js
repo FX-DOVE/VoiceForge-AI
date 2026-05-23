@@ -6,9 +6,25 @@ import { Button } from "@/components/ui/button";
 import { CreditCard, Coins, Zap, BarChart2, Crown } from "lucide-react";
 import { useUsage } from "@/hooks/use-usage";
 import { cn } from "@/lib/utils";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 export default function BillingPage() {
-  const { usage, loading } = useUsage();
+  const { usage, loading, reload } = useUsage();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (searchParams.get("payment") === "success") {
+      toast.success("Payment successful! Your credits have been added.");
+      reload();
+      router.replace("/billing");
+    } else if (searchParams.get("payment") === "cancelled") {
+      toast.error("Payment cancelled.");
+      router.replace("/billing");
+    }
+  }, [searchParams, reload, router]);
 
   const totalCredits = usage?.totalCredits ?? 0;
   const creditsUsed = usage?.creditsUsed ?? 0;
@@ -109,27 +125,6 @@ export default function BillingPage() {
                  </div>
               </div>
 
-              <div className="glass-panel p-8 border-white/10">
-                <h3 className="font-bold mb-4">How Credits Work</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                    <p className="text-white font-bold">1 character = 2 credits</p>
-                    <p className="text-neutral-400 mt-1">Credits are deducted when using Pro xAI voices.</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                    <p className="text-white font-bold">Free voices = 0 credits</p>
-                    <p className="text-neutral-400 mt-1">Edge TTS voices never cost any credits.</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                    <p className="text-white font-bold">60% API value</p>
-                    <p className="text-neutral-400 mt-1">60% of your payment goes directly to API usage.</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                    <p className="text-white font-bold">Credits never expire</p>
-                    <p className="text-neutral-400 mt-1">Use your credits at your own pace.</p>
-                  </div>
-                </div>
-              </div>
            </div>
 
            {/* Sidebar */}
@@ -140,12 +135,12 @@ export default function BillingPage() {
                    {[5, 10, 25].map((amt) => (
                      <Link
                        key={amt}
-                       href="/checkout"
+                       href={`/checkout?amount=${amt}`}
                        className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 hover:bg-white/[0.06] transition-all"
                      >
                        <span className="text-white font-bold">${amt}</span>
                        <span className="text-xs text-neutral-400">
-                         {Math.floor((amt * 0.6 / 4.2) * 1000000 * 2).toLocaleString()} credits
+                         {Math.floor((amt * 0.5 / 4.2) * 1000000 * 2).toLocaleString()} credits
                        </span>
                      </Link>
                    ))}

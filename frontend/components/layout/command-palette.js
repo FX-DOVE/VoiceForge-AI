@@ -102,9 +102,14 @@ export function CommandPalette() {
     setOpen(false);
     if (cmd.id === "logout") {
       try {
-        document.cookie = "vf_session=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+        const isProduction = process.env.NODE_ENV === "production";
+        const cookieFlags = isProduction ? "; Secure; SameSite=None" : "; SameSite=Lax";
+        document.cookie = `vf_session=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/${cookieFlags}`;
+        document.cookie = `token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/${cookieFlags}`;
         if (typeof window !== "undefined") {
           window.localStorage?.removeItem("vf_session");
+          window.localStorage?.removeItem("vf_access_token");
+          window.localStorage?.removeItem("vf_refresh_token");
           window.sessionStorage?.removeItem("vf_session");
         }
       } catch {}

@@ -13,12 +13,13 @@ import { GenerationDetailModal } from "@/components/history/generation-detail-mo
 import { useGenerations } from "@/hooks/use-generations";
 import { useUsage } from "@/hooks/use-usage";
 import { getMediaUrl } from "@/lib/api/config";
+import { EmailVerificationBanner } from "@/components/email-verification-banner";
 
 export default function DashboardPage() {
   const [selected, setSelected] = useState(null);
   const [playingId, setPlayingId] = useState(null);
   const audioRef = useRef(null);
-  const { items: recentGenerations, loading, reload } = useGenerations();
+  const { items: recentGenerations, loading, reload, remove } = useGenerations();
   const { usage, loading: usageLoading } = useUsage();
 
   function handlePlayItem(item, e) {
@@ -112,6 +113,8 @@ export default function DashboardPage() {
 
       <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-8 pb-16">
 
+        <EmailVerificationBanner />
+
         {/* Stats Grid — premium cards with sparklines matching design ref */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {stats.map((s, i) => (
@@ -173,9 +176,9 @@ export default function DashboardPage() {
           <div className="relative">
             <h3 className="text-lg font-bold text-white">Ready to create?</h3>
             <p className="text-sm text-neutral-400 mt-1.5 max-w-md leading-relaxed">
-              Free voices use Edge TTS and{" "}
+              Free voices use VoiceForge standard TTS and{" "}
               <span className="text-emerald-400 font-semibold">don&apos;t use credits</span>.
-              Pro voices use xAI Grok TTS and deduct credits.
+              Pro voices use VoiceForge premium TTS and deduct credits.
             </p>
           </div>
           <Button size="lg" className="rounded-full bg-primary hover:bg-primary/90 text-on-primary px-8 shrink-0 font-semibold shadow-lg shadow-primary/20" asChild>
@@ -306,6 +309,7 @@ export default function DashboardPage() {
         open={!!selected}
         generation={selected}
         onClose={() => setSelected(null)}
+        onDelete={(id) => { remove(id); setSelected(null); }}
       />
     </>
   );

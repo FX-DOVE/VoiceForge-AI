@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { UserShell } from "@/components/layout/user-shell";
 import { CloningWizardHeader } from "@/components/cloning/wizard-header";
+import { ProtectedRoute } from "@/components/protected-route";
 
 export default function CloningLayout({ children }) {
   const pathname = usePathname();
@@ -10,9 +11,11 @@ export default function CloningLayout({ children }) {
   const isWizardSubpage = wizardPaths.includes(pathname);
 
   return (
-    <UserShell>
-      {isWizardSubpage && <CloningWizardHeader />}
-      {children}
-    </UserShell>
+    <ProtectedRoute>
+      <UserShell>
+        {isWizardSubpage && <CloningWizardHeader />}
+        {children}
+      </UserShell>
+    </ProtectedRoute>
   );
 }

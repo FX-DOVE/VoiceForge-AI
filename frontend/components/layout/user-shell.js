@@ -29,6 +29,7 @@ export function UserShell({ children }) {
 
   return (
     <div className="flex min-h-screen h-screen w-full bg-background overflow-hidden relative">
+      <meta name="robots" content="noindex, nofollow" />
       {/* Sidebar - Desktop */}
       <DashboardSidebar className="hidden lg:flex" />
 

@@ -2,47 +2,57 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Mail,
   ArrowLeft,
-  ArrowRight,
   CheckCircle2,
   ShieldAlert,
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-const CODE_LENGTH = 6;
+import { getApiUrl } from "@/lib/api/config";
+import { toast } from "sonner";
 
 function VerifyEmailInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get("email") || "your inbox";
-  const initialToken = searchParams.get("token") || "";
+  const token = searchParams.get("token") || "";
+  const email = searchParams.get("email") || "";
 
-  const [status, setStatus] = useState(initialToken ? "verifying" : "input"); // input | verifying | success | error
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
+  const [status, setStatus] = useState(token ? "verifying" : "input"); // input | verifying | success | error
+  const [inputEmail, setInputEmail] = useState(email);
   const [error, setError] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
-  const inputsRef = useRef([]);
+  const [resendLoading, setResendLoading] = useState(false);
 
   // Auto-verify if token in URL
   useEffect(() => {
-    if (!initialToken) return;
-    const timer = setTimeout(() => {
-      if (initialToken.length >= 6) {
-        setStatus("success");
-        setTimeout(() => router.push("/dashboard"), 2000);
-      } else {
+    if (!token) return;
+    
+    async function verifyToken() {
+      try {
+        const response = await fetch(`${getApiUrl()}/auth/verify-email?token=${token}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          setStatus("success");
+          toast.success(data.message || "Email verified successfully!");
+          setTimeout(() => router.push("/dashboard"), 2000);
+        } else {
+          setStatus("error");
+          setError(data.message || "Invalid or expired verification link.");
+        }
+      } catch (err) {
         setStatus("error");
-        setError("This verification link is invalid or has expired.");
+        setError("Failed to verify email. Please try again.");
       }
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [initialToken, router]);
+    }
+    
+    verifyToken();
+  }, [token, router]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -50,54 +60,31 @@ function VerifyEmailInner() {
     return () => clearInterval(t);
   }, [resendCooldown]);
 
-  function handleDigit(i, v) {
-    const digit = v.replace(/\D/g, "").slice(-1);
-    const next = [...code];
-    next[i] = digit;
-    setCode(next);
-    if (digit && i < CODE_LENGTH - 1) inputsRef.current[i + 1]?.focus();
-  }
-
-  function handleKey(i, e) {
-    if (e.key === "Backspace" && !code[i] && i > 0) {
-      inputsRef.current[i - 1]?.focus();
-    }
-    if (e.key === "ArrowLeft" && i > 0) inputsRef.current[i - 1]?.focus();
-    if (e.key === "ArrowRight" && i < CODE_LENGTH - 1) inputsRef.current[i + 1]?.focus();
-  }
-
-  function handlePaste(e) {
-    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, CODE_LENGTH);
-    if (!text) return;
-    e.preventDefault();
-    const next = Array.from({ length: CODE_LENGTH }, (_, i) => text[i] || "");
-    setCode(next);
-    inputsRef.current[Math.min(text.length, CODE_LENGTH - 1)]?.focus();
-  }
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
-    const value = code.join("");
-    if (value.length < CODE_LENGTH) {
-      setError("Enter all 6 digits.");
-      return;
-    }
-    setStatus("verifying");
-    setTimeout(() => {
-      // Demo: accept any code that isn't all zeros
-      if (value === "000000") {
-        setStatus("error");
-        setError("Invalid verification code. Try again.");
+  async function handleResend(e) {
+    e?.preventDefault();
+    if (!inputEmail || resendLoading) return;
+    
+    setResendLoading(true);
+    try {
+      const response = await fetch(`${getApiUrl()}/auth/resend-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: inputEmail }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(data.message || "Verification email sent!");
+        setResendCooldown(60);
       } else {
-        setStatus("success");
-        setTimeout(() => router.push("/dashboard"), 1500);
+        toast.error(data.message || "Failed to resend verification email.");
       }
-    }, 800);
-  }
-
-  function handleResend() {
-    setResendCooldown(30);
+    } catch (err) {
+      toast.error("Failed to resend verification email. Please try again.");
+    } finally {
+      setResendLoading(false);
+    }
   }
 
   return (
@@ -159,40 +146,34 @@ function VerifyEmailInner() {
                 {status === "success"
                   ? "Your email is confirmed. Redirecting you to your dashboard..."
                   : status === "verifying"
-                  ? "Hang on while we confirm your code."
+                  ? "Hang on while we verify your email..."
                   : status === "error"
-                  ? error || "We couldn't verify this code."
+                  ? error || "We couldn't verify your email."
                   : (
                     <>
-                      We sent a 6-digit code to{" "}
-                      <span className="text-white font-semibold">{email}</span>.
-                      Enter it below to activate your account.
+                      We sent a verification link to{" "}
+                      <span className="text-white font-semibold">{email || "your inbox"}</span>.
+                      Click the link in the email to activate your account.
                     </>
                   )}
               </p>
             </div>
           </div>
 
-          {status === "input" || (status === "error" && !initialToken) ? (
-            <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-              <div
-                className="flex justify-between gap-2 sm:gap-3"
-                onPaste={handlePaste}
-              >
-                {code.map((digit, i) => (
-                  <input
-                    key={i}
-                    ref={(el) => (inputsRef.current[i] = el)}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleDigit(i, e.target.value)}
-                    onKeyDown={(e) => handleKey(i, e)}
-                    aria-label={`Digit ${i + 1}`}
-                    className="w-full h-14 sm:h-16 text-center text-2xl sm:text-3xl font-bold bg-white/5 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
-                  />
-                ))}
+          {status === "input" || (status === "error" && !token) ? (
+            <form className="flex flex-col gap-6" onSubmit={handleResend}>
+              <div className="text-center mb-4">
+                <p className="text-on-surface-variant mb-4">
+                  Enter your email below and we&apos;ll send you a new verification link.
+                </p>
+                <input
+                  type="email"
+                  value={inputEmail}
+                  onChange={(e) => setInputEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="w-full h-14 px-4 bg-white/5 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                  required
+                />
               </div>
 
               {error && (
@@ -204,22 +185,24 @@ function VerifyEmailInner() {
 
               <Button
                 type="submit"
-                className="h-14 bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold text-lg shadow-[0_0_30px_rgba(59,130,246,0.2)] group"
+                disabled={resendLoading || !inputEmail}
+                className="h-14 bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold text-lg shadow-[0_0_30px_rgba(59,130,246,0.2)] disabled:opacity-50"
               >
-                Verify Email
-                <ArrowRight className="ml-2 size-5 group-hover:translate-x-1 transition-transform" />
+                {resendLoading ? (
+                  <Loader2 className="size-5 animate-spin" />
+                ) : (
+                  "Resend Verification Email"
+                )}
               </Button>
 
               <div className="flex items-center justify-center gap-2 text-sm text-on-surface-variant">
-                <span>Didn't receive a code?</span>
-                <button
-                  type="button"
-                  onClick={handleResend}
-                  disabled={resendCooldown > 0}
-                  className="text-primary font-bold hover:underline underline-offset-4 disabled:opacity-50 disabled:no-underline"
+                <span>Already verified?</span>
+                <Link
+                  href="/login"
+                  className="text-primary font-bold hover:underline underline-offset-4"
                 >
-                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend"}
-                </button>
+                  Sign in
+                </Link>
               </div>
             </form>
           ) : status === "success" ? (
@@ -227,16 +210,19 @@ function VerifyEmailInner() {
               <Link href="/dashboard">Go to Dashboard</Link>
             </Button>
           ) : status === "error" ? (
-            <Button
-              onClick={() => {
-                setStatus("input");
-                setError("");
-              }}
-              variant="outline"
-              className="h-14 rounded-full border-white/10 hover:bg-white/5 font-bold"
-            >
-              Try a Different Code
-            </Button>
+            <div className="flex flex-col gap-4">
+              <p className="text-red-400 text-center">{error}</p>
+              <Button
+                onClick={() => {
+                  setStatus("input");
+                  setError("");
+                }}
+                variant="outline"
+                className="h-14 rounded-full border-white/10 hover:bg-white/5 font-bold"
+              >
+                Request New Link
+              </Button>
+            </div>
           ) : null}
 
           <div className="pt-6 sm:pt-8 border-t border-white/5 text-center">

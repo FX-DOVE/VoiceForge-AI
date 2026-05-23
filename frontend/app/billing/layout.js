@@ -1,5 +1,10 @@
 import { UserShell } from "@/components/layout/user-shell";
+import { ProtectedRoute } from "@/components/protected-route";
 
 export default function BillingLayout({ children }) {
-  return <UserShell>{children}</UserShell>;
+  return (
+    <ProtectedRoute>
+      <UserShell>{children}</UserShell>
+    </ProtectedRoute>
+  );
 }

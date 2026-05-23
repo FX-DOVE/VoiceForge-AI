@@ -10,7 +10,14 @@ const userSchema = new mongoose.Schema(
     avatarUrl: { type: String, default: null },
     role: { type: String, enum: ["user", "admin"], default: "user" },
     plan: { type: String, enum: ["free", "pro", "enterprise"], default: "free" },
-    status: { type: String, enum: ["active", "suspended", "invited"], default: "active" },
+    status: { type: String, enum: ["active", "suspended", "invited", "banned", "restricted"], default: "active" },
+    banReason: { type: String, default: null },
+    bannedAt: { type: Date, default: null },
+    bannedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    restrictionReason: { type: String, default: null },
+    restrictedAt: { type: Date, default: null },
+    restrictedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    restrictions: { type: [String], default: [] }, // e.g., ["tts", "cloning", "payments"]
     charactersUsed: { type: Number, default: 0 },
     usageResetAt: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
     totalCredits: { type: Number, default: 0 },
@@ -21,6 +28,15 @@ const userSchema = new mongoose.Schema(
     resetPasswordExpires: { type: Date, select: false },
     stripeCustomerId: { type: String, default: null },
     emailVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String, select: false },
+    emailVerificationExpires: { type: Date, select: false },
+    emailVerifiedAt: { type: Date, default: null },
+    // Legal acceptance tracking
+    termsAccepted: { type: Boolean, default: false },
+    termsAcceptedAt: { type: Date, default: null },
+    termsVersion: { type: String, default: null },
+    refundPolicyAccepted: { type: Boolean, default: false },
+    refundPolicyAcceptedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -36,7 +52,6 @@ userSchema.methods.comparePassword = function comparePassword(candidate) {
 };
 
 userSchema.methods.toPublicJSON = function toPublicJSON() {
-  const limit = getCharactersLimit(this.plan);
   return {
     id: this._id.toString(),
     email: this.email,
@@ -45,15 +60,17 @@ userSchema.methods.toPublicJSON = function toPublicJSON() {
     role: this.role,
     plan: this.plan,
     status: this.status,
-    usage: {
-      charactersUsed: this.charactersUsed,
-      charactersLimit: limit,
-      resetAt: this.usageResetAt,
-    },
-    totalCredits: this.totalCredits,
-    creditsUsed: this.creditsUsed,
-    creditsRemaining: this.creditsRemaining,
-    totalPayments: this.totalPayments,
+    banReason: this.banReason,
+    bannedAt: this.bannedAt,
+    restrictionReason: this.restrictionReason,
+    restrictedAt: this.restrictedAt,
+    restrictions: this.restrictions || [],
+    totalCredits: this.totalCredits || 0,
+    creditsUsed: this.creditsUsed || 0,
+    creditsRemaining: this.creditsRemaining || 0,
+    totalPayments: this.totalPayments || 0,
+    emailVerified: this.emailVerified || false,
+    emailVerifiedAt: this.emailVerifiedAt || null,
   };
 };
 

@@ -27,14 +27,16 @@ export default function AdminBillingPage() {
     !txSearch || t.customer.toLowerCase().includes(txSearch.toLowerCase()) || t.id.toLowerCase().includes(txSearch.toLowerCase())
   );
 
-  const mrr = billing?.mrr ?? 0;
-  const activeSubs = billing?.activeSubscriptions ?? 0;
+  const totalRevenue = billing?.totalRevenue ?? 0;
+  const monthlyRevenue = billing?.monthlyRevenue ?? 0;
+  const payingCustomers = billing?.payingCustomers ?? 0;
   const totalUsers = billing?.totalUsers ?? 0;
   const split = billing?.subscriptionSplit || [];
   const stripeOk = billing?.stripeConfigured ?? false;
+  const paystackOk = billing?.paystackConfigured ?? false;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col min-h-0">
       <header className="hidden lg:flex h-16 border-b border-white/[0.06] bg-background/80 backdrop-blur-md sticky top-0 z-30 items-center justify-between px-8 shrink-0">
         <div>
           <h2 className="text-lg font-bold text-white">Billing & Financials</h2>
@@ -59,21 +61,22 @@ export default function AdminBillingPage() {
 
           {/* Top metrics */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {/* MRR card */}
+            {/* Total Revenue card */}
             <motion.div
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
               className="lg:col-span-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl p-7 flex flex-col gap-5 overflow-hidden relative group"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-widest mb-2">Monthly Recurring Revenue</p>
+                  <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-widest mb-2">Total Revenue (Paystack)</p>
                   <div className="flex items-baseline gap-3">
-                    <h2 className="text-5xl font-bold text-white">${mrr.toLocaleString()}</h2>
+                    <h2 className="text-5xl font-bold text-white">${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
                     <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
                       <TrendingUp className="size-3" />Live
                     </span>
                   </div>
-                  <p className="text-xs text-neutral-500 mt-2">{activeSubs} paid subscribers · {totalUsers} total users</p>
+                  <p className="text-xs text-neutral-500 mt-2">{payingCustomers} paying customers · {totalUsers} total users</p>
+                  <p className="text-xs text-emerald-400 mt-1">+${monthlyRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} this month</p>
                 </div>
                 <div className="size-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
                   <DollarSign className="size-6 text-emerald-400" />
@@ -138,23 +141,25 @@ export default function AdminBillingPage() {
               <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-widest">Payment Gateways</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className={cn("flex items-center gap-4 p-4 rounded-xl border transition-all", stripeOk ? "bg-emerald-500/5 border-emerald-500/20" : "bg-white/[0.02] border-white/[0.06]")}>
+              <div className={cn("flex items-center gap-4 p-4 rounded-xl border transition-all", paystackOk ? "bg-emerald-500/5 border-emerald-500/20" : "bg-white/[0.02] border-white/[0.06]")}>
+                <div className="size-10 rounded-xl bg-[#0AA688] flex items-center justify-center text-white font-black text-lg shrink-0">P</div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">Paystack</p>
+                  <p className="text-xs text-neutral-500">Primary Processor (NGN/USD)</p>
+                </div>
+                <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border", paystackOk ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" : "text-neutral-500 bg-white/5 border-white/10")}>
+                  {paystackOk ? "Active" : "Not Set"}
+                </span>
+              </div>
+              <div className={cn("flex items-center gap-4 p-4 rounded-xl border transition-all", stripeOk ? "bg-blue-500/5 border-blue-500/20" : "bg-white/[0.02] border-white/[0.06] opacity-50")}>
                 <div className="size-10 rounded-xl bg-white flex items-center justify-center text-black font-black text-lg italic shrink-0">S</div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-white">Stripe</p>
-                  <p className="text-xs text-neutral-500">Primary Processor</p>
+                  <p className="text-xs text-neutral-500">Alternative Processor</p>
                 </div>
-                <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border", stripeOk ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" : "text-neutral-500 bg-white/5 border-white/10")}>
+                <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border", stripeOk ? "text-blue-400 bg-blue-500/10 border-blue-500/20" : "text-neutral-500 bg-white/5 border-white/10")}>
                   {stripeOk ? "Configured" : "Not Set"}
                 </span>
-              </div>
-              <div className="flex items-center gap-4 p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] opacity-50">
-                <div className="size-10 rounded-xl bg-[#003087] flex items-center justify-center text-white font-black text-lg italic shrink-0">P</div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-white">PayPal</p>
-                  <p className="text-xs text-neutral-500">Legacy Processor</p>
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border text-neutral-500 bg-white/5 border-white/10">Inactive</span>
               </div>
             </div>
           </motion.div>
@@ -167,7 +172,7 @@ export default function AdminBillingPage() {
             <div className="px-6 py-4 border-b border-white/[0.06] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="flex items-center gap-3">
                 <CreditCard className="size-4 text-primary" />
-                <h3 className="text-sm font-bold text-white">Recent Usage Transactions</h3>
+                <h3 className="text-sm font-bold text-white">Recent Paystack Payments</h3>
                 <span className="text-xs text-neutral-500">{billing?.transactions?.length ?? 0} records</span>
               </div>
               <div className="relative">
@@ -184,20 +189,20 @@ export default function AdminBillingPage() {
             {transactions.length === 0 ? (
               <div className="py-16 text-center">
                 <Receipt className="size-8 text-neutral-700 mx-auto mb-3" />
-                <p className="text-neutral-400 text-sm font-medium">No transactions yet.</p>
-                <p className="text-neutral-600 text-xs mt-1">Usage records from Pro users will appear here.</p>
+                <p className="text-neutral-400 text-sm font-medium">No payments yet.</p>
+                <p className="text-neutral-600 text-xs mt-1">Paystack payment records will appear here when customers purchase credits.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
                     <tr className="border-b border-white/[0.06] bg-white/[0.02]">
-                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">ID</th>
+                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Reference</th>
                       <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Customer</th>
                       <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Date</th>
-                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Characters</th>
-                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Plan</th>
-                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Status</th>
+                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Amount</th>
+                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Credits</th>
+                      <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Gateway</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/[0.04]">
@@ -216,27 +221,15 @@ export default function AdminBillingPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-xs text-neutral-500">{t.date}</td>
-                        <td className="px-6 py-4 text-xs font-semibold text-white">{(t.characters || 0).toLocaleString()} chars</td>
+                        <td className="px-6 py-4 text-xs font-semibold text-emerald-400">{t.amount}</td>
+                        <td className="px-6 py-4 text-xs text-white">{(t.credits || 0).toLocaleString()}</td>
                         <td className="px-6 py-4">
                           <span className={cn(
                             "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border",
-                            t.plan === "Enterprise" ? "bg-violet-500/10 text-violet-400 border-violet-500/20" :
-                            t.plan === "Pro" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                            t.gateway === "Paystack" ? "bg-[#0AA688]/10 text-[#0AA688] border-[#0AA688]/20" :
+                            t.gateway === "Stripe" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
                             "bg-white/5 text-neutral-400 border-white/10"
-                          )}>{t.plan}</span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                            t.status === "Paid" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                            t.status === "Free" ? "bg-white/5 text-neutral-400 border-white/10" :
-                            "bg-orange-500/10 text-orange-400 border-orange-500/20"
-                          )}>
-                            <span className={cn("size-1.5 rounded-full",
-                              t.status === "Paid" ? "bg-emerald-400" : t.status === "Free" ? "bg-neutral-500" : "bg-orange-400"
-                            )} />
-                            {t.status}
-                          </span>
+                          )}>{t.gateway || "Paystack"}</span>
                         </td>
                       </tr>
                     ))}

@@ -9,13 +9,15 @@ import {
   ArrowLeft, 
   Eye,
   EyeOff,
-  Mic
+  Mic,
+  AlertTriangle
 } from "lucide-react";
 import { GithubIcon as Github, GoogleIcon as Google } from "@/components/ui/icons";
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api/client";
+import { WelcomeCreditsModal } from "@/components/modals/welcome-credits-modal";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -24,24 +26,50 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [welcomeCredits, setWelcomeCredits] = useState(2380);
 
   const handleSignup = async (e) => {
     e.preventDefault();
+    if (!termsAccepted) {
+      toast.error("You must accept the Terms of Service, Privacy Policy, and Refund Policy to create an account.");
+      return;
+    }
     setSubmitting(true);
     try {
-      await register({ email, password, name });
+      const result = await register({ email, password, name, termsAccepted, termsVersion: "2026-05-18" });
       toast.success("Account created successfully.");
-      router.push("/dashboard");
+      
+      // Show welcome modal if credits were granted
+      if (result.welcomeCreditsGranted) {
+        setWelcomeCredits(result.welcomeCreditsAmount || 2380);
+        setShowWelcomeModal(true);
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Sign up failed.");
     } finally {
       setSubmitting(false);
     }
   };
+  
+  const handleWelcomeModalClose = () => {
+    setShowWelcomeModal(false);
+    router.push("/dashboard");
+  };
 
   return (
-    <div className="bg-background text-on-surface antialiased min-h-screen overflow-x-hidden">
+    <>
+      <WelcomeCreditsModal 
+        isOpen={showWelcomeModal} 
+        onClose={handleWelcomeModalClose}
+        creditsAmount={welcomeCredits}
+      />
+      <div className="bg-background text-on-surface antialiased min-h-screen overflow-x-hidden">
+      <meta name="robots" content="noindex, nofollow" />
       <div className="flex w-full min-h-screen lg:h-screen">
         {/* Left Pane: 3D Visual */}
         <div className="hidden lg:flex w-1/2 relative bg-surface-container-lowest border-r border-white/5">
@@ -183,7 +211,42 @@ export default function SignupPage() {
                   </div>
                 </div>
 
-                <Button type="submit" disabled={submitting} className="w-full h-14 bg-primary hover:bg-primary/90 text-on-primary rounded-full text-lg font-bold shadow-[0_0_24px_rgba(59,130,246,0.15)] mt-4">
+                {/* Anti-Abuse Notice */}
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+                  <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-200/80">
+                    Creating multiple accounts to obtain additional free credits is strictly prohibited and may result in account suspension, credit forfeiture, and permanent bans.
+                  </p>
+                </div>
+
+                {/* Legal Acceptance Checkbox */}
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="size-5 rounded border border-white/20 bg-white/5 peer-checked:bg-primary peer-checked:border-primary transition-all flex items-center justify-center">
+                      <svg className="size-3 text-white opacity-0 peer-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <span className="text-sm text-on-surface-variant leading-relaxed">
+                    I have read and agree to the{" "}
+                    <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link>,{" "}
+                    <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>, and{" "}
+                    <Link href="/refund-policy" className="text-primary hover:underline">Refund Policy</Link>.
+                  </span>
+                </label>
+
+                <Button 
+                  type="submit" 
+                  disabled={submitting || !termsAccepted} 
+                  className="w-full h-14 bg-primary hover:bg-primary/90 text-on-primary rounded-full text-lg font-bold shadow-[0_0_24px_rgba(59,130,246,0.15)] mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {submitting ? "Creating account..." : "Sign Up"}
                 </Button>
               </form>
@@ -201,5 +264,6 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
@@ -21,16 +21,20 @@ import {
   Sparkles,
   Languages,
   CheckCircle2,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { voicesApi } from "@/lib/api";
+import { getMediaUrl } from "@/lib/api/config";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const SAMPLE_CLIPS = [
-  { title: "Narration", duration: "0:24", text: "The first travelers arrived at dawn, their footsteps echoing across the empty plaza." },
-  { title: "Conversational", duration: "0:18", text: "Hey, did you check out the new release? I think you'll really like it." },
-  { title: "Promotional", duration: "0:12", text: "Introducing the next evolution in synthetic voice technology." },
-  { title: "Emotional", duration: "0:30", text: "After all these years, she still remembered the smell of jasmine on the porch." },
+  { title: "Narration",      text: "The first travelers arrived at dawn, their footsteps echoing across the empty plaza." },
+  { title: "Conversational", text: "Hey, did you check out the new release? I think you'll really like it." },
+  { title: "Promotional",    text: "Introducing the next evolution in synthetic voice technology." },
+  { title: "Emotional",      text: "After all these years, she still remembered the smell of jasmine on the porch." },
 ];
 
 export default function VoiceDetailPage() {
@@ -42,9 +46,14 @@ export default function VoiceDetailPage() {
   const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFoundState, setNotFoundState] = useState(false);
-  const [activeClip, setActiveClip] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+
+  // Audio playback state
+  const audioRef = useRef(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [loadingClip, setLoadingClip] = useState(null); // index | null
+  const [playingClip, setPlayingClip] = useState(null); // index | null
+  const [clipError, setClipError] = useState(null);    // index | null
 
   useEffect(() => {
     if (!id) return;
@@ -58,6 +67,59 @@ export default function VoiceDetailPage() {
       .catch(() => setNotFoundState(true))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Stop audio when navigating away
+  useEffect(() => () => { audioRef.current?.pause(); }, []);
+
+  const handleClipPlay = useCallback(async (index) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    // Toggle off
+    if (playingClip === index) {
+      audio.pause();
+      setPlayingClip(null);
+      return;
+    }
+
+    // Deduplicate
+    if (loadingClip === index) return;
+
+    audio.pause();
+    setPlayingClip(null);
+    setClipError(null);
+    setLoadingClip(index);
+
+    try {
+      // Fetch preview URL once and cache it; all clips share the same voice audio
+      let url = previewUrl;
+      if (!url) {
+        const slug = voice?.slug || id;
+        const data = await voicesApi.preview(slug);
+        url = getMediaUrl(data?.url || data?.audioUrl || data);
+        setPreviewUrl(url);
+      }
+
+      await new Promise((resolve, reject) => {
+        const onReady = () => { audio.removeEventListener("canplay", onReady); audio.removeEventListener("error", onFail); resolve(); };
+        const onFail  = () => { audio.removeEventListener("canplay", onReady); audio.removeEventListener("error", onFail); reject(new Error("Audio load failed")); };
+        audio.addEventListener("canplay", onReady);
+        audio.addEventListener("error", onFail);
+        audio.src = url;
+        audio.load();
+      });
+
+      setLoadingClip(null);
+      setPlayingClip(index);
+      await audio.play();
+    } catch (err) {
+      console.error("[VoiceDetail clip]", err);
+      setLoadingClip(null);
+      setClipError(index);
+      toast.error("Could not play sample clip.");
+      setTimeout(() => setClipError((p) => p === index ? null : p), 3000);
+    }
+  }, [id, voice, previewUrl, playingClip, loadingClip]);
 
   if (loading) {
     return (
@@ -108,12 +170,14 @@ export default function VoiceDetailPage() {
             )}
             <button
               type="button"
-              onClick={() => setIsPlaying((p) => !p)}
+              onClick={() => handleClipPlay(playingClip === 0 ? null : 0)}
               className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
-              aria-label={isPlaying ? "Pause sample" : "Play sample"}
+              aria-label={playingClip !== null ? "Pause" : "Play sample"}
             >
               <span className="size-20 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-2xl">
-                {isPlaying ? (
+                {loadingClip === 0 ? (
+                  <Loader2 className="size-8 animate-spin" />
+                ) : playingClip !== null ? (
                   <Pause className="size-8 fill-current" />
                 ) : (
                   <Play className="size-8 fill-current ml-1" />
@@ -244,57 +308,79 @@ export default function VoiceDetailPage() {
           {/* Sample Clips */}
           <div className="lg:col-span-2 glass-panel rounded-[1.5rem] sm:rounded-[2rem] border-white/5 p-6 sm:p-8 flex flex-col gap-6">
             <div className="flex items-center justify-between gap-4 flex-wrap">
-              <h3 className="text-lg font-bold text-white tracking-tight">
-                Sample Clips
-              </h3>
+              <h3 className="text-lg font-bold text-white tracking-tight">Sample Clips</h3>
               <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
                 {SAMPLE_CLIPS.length} clips
               </span>
             </div>
 
+            {/* Hidden audio element */}
+            <audio ref={audioRef} onEnded={() => setPlayingClip(null)} className="hidden" />
+
             <div className="flex flex-col gap-3">
-              {SAMPLE_CLIPS.map((clip, i) => (
-                <button
-                  type="button"
-                  key={clip.title}
-                  onClick={() => {
-                    setActiveClip(i);
-                    setIsPlaying(true);
-                  }}
-                  className={cn(
-                    "flex items-center gap-4 p-4 rounded-2xl border text-left transition-all",
-                    activeClip === i
-                      ? "bg-primary/10 border-primary/30"
-                      : "bg-white/[0.02] border-white/5 hover:bg-white/5"
-                  )}
-                >
-                  <div
+              {SAMPLE_CLIPS.map((clip, i) => {
+                const isActive  = playingClip === i;
+                const isLoading = loadingClip === i;
+                const hasError  = clipError === i;
+                return (
+                  <button
+                    type="button"
+                    key={clip.title}
+                    onClick={() => handleClipPlay(i)}
+                    disabled={isLoading}
                     className={cn(
-                      "size-10 rounded-full flex items-center justify-center shrink-0",
-                      activeClip === i
-                        ? "bg-primary text-on-primary"
-                        : "bg-white/5 text-on-surface-variant"
+                      "flex items-center gap-4 p-4 rounded-2xl border text-left transition-all",
+                      isActive
+                        ? "bg-primary/10 border-primary/30"
+                        : hasError
+                        ? "bg-red-500/5 border-red-500/20"
+                        : "bg-white/[0.02] border-white/5 hover:bg-white/5",
+                      "disabled:opacity-60"
                     )}
                   >
-                    {activeClip === i && isPlaying ? (
-                      <Pause className="size-4 fill-current" />
-                    ) : (
-                      <Play className="size-4 fill-current ml-0.5" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="text-sm font-bold text-white">{clip.title}</span>
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-on-surface-variant">
-                        {clip.duration}
-                      </span>
+                    <div
+                      className={cn(
+                        "size-10 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                        isActive   ? "bg-primary text-on-primary" :
+                        hasError   ? "bg-red-500/20 text-red-400" :
+                        isLoading  ? "bg-white/10 text-white" :
+                                     "bg-white/5 text-on-surface-variant"
+                      )}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : hasError ? (
+                        <AlertCircle className="size-4" />
+                      ) : isActive ? (
+                        <Pause className="size-4 fill-current" />
+                      ) : (
+                        <Play className="size-4 fill-current ml-0.5" />
+                      )}
                     </div>
-                    <p className="text-xs text-on-surface-variant line-clamp-2">
-                      &ldquo;{clip.text}&rdquo;
-                    </p>
-                  </div>
-                </button>
-              ))}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-sm font-bold text-white">{clip.title}</span>
+                        {isActive && (
+                          <span className="flex gap-0.5 items-end h-3">
+                            {[0.6,1,0.7,0.9,0.5].map((h,k) => (
+                              <motion.span
+                                key={k}
+                                className="w-0.5 rounded-full bg-primary"
+                                animate={{ scaleY: [h, 1, h * 0.4, 0.9, h] }}
+                                transition={{ duration: 0.8, repeat: Infinity, delay: k * 0.1 }}
+                                style={{ height: "100%", transformOrigin: "bottom" }}
+                              />
+                            ))}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-on-surface-variant line-clamp-2">
+                        &ldquo;{clip.text}&rdquo;
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

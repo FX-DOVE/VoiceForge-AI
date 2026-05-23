@@ -1,55 +1,43 @@
-/**
- * Migration script: Convert existing character balances to credits.
- *
- * Run with: node scripts/migrateCredits.js
- *
- * For each user who has legacy character data:
- *   creditsRemaining = existingCharactersRemaining * 2
- *   creditsUsed      = existingCharactersUsed * 2
- *   totalCredits     = creditsRemaining + creditsUsed
- */
 require("dotenv").config();
 const mongoose = require("mongoose");
+const { User } = require("../src/models");
 const config = require("../src/config");
 
 async function migrate() {
+  console.log("Connecting to database...");
   await mongoose.connect(config.mongodbUri);
-  console.log("[Migration] Connected to MongoDB");
+  console.log("Connected.");
 
-  const User = require("../src/models/User");
-  const { getCharactersLimit } = require("../src/utils/planLimits");
-
+  console.log("Migrating users to credit system...");
+  
   const users = await User.find({});
   let migrated = 0;
 
   for (const user of users) {
-    // Skip users who already have credit data
-    if (user.totalCredits > 0 || user.creditsUsed > 0 || user.creditsRemaining > 0) {
-      console.log(`[Skip] ${user.email} — already has credit data`);
-      continue;
+    if (user.totalCredits === 0 && user.charactersUsed > 0) {
+      // Legacy limits from plan
+      let existingCharactersRemaining = 0;
+      if (user.plan === "free") existingCharactersRemaining = 10000 - user.charactersUsed;
+      if (user.plan === "pro") existingCharactersRemaining = 100000 - user.charactersUsed;
+      if (user.plan === "enterprise") existingCharactersRemaining = 1000000 - user.charactersUsed;
+
+      if (existingCharactersRemaining < 0) existingCharactersRemaining = 0;
+
+      const creditsRemaining = existingCharactersRemaining * 2;
+      const creditsUsed = user.charactersUsed * 2;
+      const totalCredits = creditsRemaining + creditsUsed;
+
+      user.creditsRemaining = creditsRemaining;
+      user.creditsUsed = creditsUsed;
+      user.totalCredits = totalCredits;
+      
+      await user.save();
+      migrated++;
     }
-
-    const limit = getCharactersLimit(user.plan);
-    const charsUsed = user.charactersUsed || 0;
-    const charsRemaining = Math.max(0, limit - charsUsed);
-
-    user.creditsUsed = charsUsed * 2;
-    user.creditsRemaining = charsRemaining * 2;
-    user.totalCredits = user.creditsUsed + user.creditsRemaining;
-
-    await user.save();
-    migrated++;
-    console.log(
-      `[Migrated] ${user.email}: charsUsed=${charsUsed}, charsRemaining=${charsRemaining} → creditsUsed=${user.creditsUsed}, creditsRemaining=${user.creditsRemaining}, totalCredits=${user.totalCredits}`
-    );
   }
 
-  console.log(`\n[Done] Migrated ${migrated} of ${users.length} users.`);
-  await mongoose.disconnect();
+  console.log(`Migration complete. Migrated ${migrated} users.`);
   process.exit(0);
 }
 
-migrate().catch((err) => {
-  console.error("[Migration Error]", err);
-  process.exit(1);
-});
+migrate().catch(console.error);

@@ -2,13 +2,13 @@ import { LegalPageShell, LegalSection } from "@/components/layout/legal-page-she
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
-  { id: "data-we-collect", label: "Data We Collect" },
-  { id: "how-we-use", label: "How We Use Data" },
-  { id: "voice-data", label: "Voice Data & Cloning" },
-  { id: "sharing", label: "Sharing & Disclosure" },
+  { id: "information-we-collect", label: "Information We Collect" },
+  { id: "how-we-use", label: "How We Use Information" },
+  { id: "data-security", label: "Data Security" },
+  { id: "data-sharing", label: "Data Sharing" },
   { id: "retention", label: "Retention" },
-  { id: "your-rights", label: "Your Rights" },
-  { id: "security", label: "Security" },
+  { id: "your-rights", label: "User Rights" },
+  { id: "voice-data", label: "Voice Data & Cloning" },
   { id: "contact", label: "Contact" },
 ];
 
@@ -16,6 +16,9 @@ export const metadata = {
   title: "Privacy Policy — VoiceForge AI",
   description:
     "How VoiceForge AI collects, uses, and protects your personal and voice data.",
+  alternates: {
+    canonical: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {
@@ -23,7 +26,7 @@ export default function PrivacyPage() {
     <LegalPageShell
       eyebrow="Legal"
       title="Privacy Policy"
-      lastUpdated="October 24, 2026"
+      lastUpdated="May 18, 2026"
       sections={SECTIONS}
     >
       <LegalSection id="overview" title="1. Overview">
@@ -39,45 +42,110 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection id="data-we-collect" title="2. Data We Collect">
+      <LegalSection id="information-we-collect" title="2. Information We Collect">
         <p>We collect the following categories of information:</p>
         <ul className="list-disc pl-6 flex flex-col gap-2">
           <li>
-            <strong className="text-white">Account data:</strong> name, email,
-            password hash, billing address, and profile preferences.
+            <strong className="text-white">Name and email address:</strong> used for account creation and communication.
           </li>
           <li>
-            <strong className="text-white">Usage data:</strong> generation
-            history, voices used, prompt text, audio length, and feature usage.
+            <strong className="text-white">Account credentials:</strong> password hashes for secure authentication.
           </li>
           <li>
-            <strong className="text-white">Voice samples:</strong> audio
-            recordings or files you upload to clone a voice (see Section 4).
+            <strong className="text-white">Uploaded audio and generated content:</strong> voice samples and TTS outputs.
           </li>
           <li>
-            <strong className="text-white">Device data:</strong> browser type,
-            operating system, IP address, and approximate location.
+            <strong className="text-white">Usage data and API logs:</strong> generation history, voices used, prompt text, audio length, and feature usage.
           </li>
           <li>
-            <strong className="text-white">Payment data:</strong> handled by our
-            PCI-compliant processor; we do not store full card numbers.
+            <strong className="text-white">IP address and device information:</strong> browser type, operating system, and approximate location for security and analytics.
+          </li>
+          <li>
+            <strong className="text-white">Payment information:</strong> processed by third-party payment providers (Paystack); we do not store full card numbers.
           </li>
         </ul>
       </LegalSection>
 
-      <LegalSection id="how-we-use" title="3. How We Use Data">
-        <p>We use the data we collect to:</p>
+      <LegalSection id="how-we-use" title="3. How We Use Information">
+        <p>We use the information we collect to:</p>
         <ul className="list-disc pl-6 flex flex-col gap-2">
-          <li>Provide, operate, and maintain the service.</li>
+          <li>Provide and improve the service.</li>
+          <li>Process payments and manage your account.</li>
+          <li>Detect fraud, abuse, and policy violations.</li>
+          <li>Enforce our legal policies and terms of service.</li>
+          <li>Communicate with users about their accounts and the service.</li>
           <li>Generate audio output from your prompts.</li>
-          <li>Train and improve generic models when you opt in.</li>
-          <li>Send transactional notifications (billing, security, generation status).</li>
-          <li>Detect abuse, fraud, and policy violations.</li>
           <li>Comply with legal obligations.</li>
         </ul>
       </LegalSection>
 
-      <LegalSection id="voice-data" title="4. Voice Data & Cloning">
+      <LegalSection id="data-security" title="4. Data Security">
+        <p>
+          We implement industry-standard technical and organizational safeguards to 
+          protect user data from unauthorized access, disclosure, alteration, or destruction.
+        </p>
+        <ul className="list-disc pl-6 flex flex-col gap-2 mt-4">
+          <li>TLS encryption for data in transit.</li>
+          <li>AES-256 encryption for data at rest.</li>
+          <li>Role-based access control.</li>
+          <li>Continuous security monitoring.</li>
+          <li>Regular security assessments.</li>
+        </ul>
+        <p className="mt-4">
+          No system is perfectly secure; report vulnerabilities to{" "}
+          <a className="text-primary hover:underline" href="mailto:security@voiceforge.ai">
+            security@voiceforge.ai
+          </a>.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="data-sharing" title="5. Data Sharing">
+        <p>
+          We do not sell your personal information. Data may be shared only with 
+          trusted service providers necessary to operate the platform, such as:
+        </p>
+        <ul className="list-disc pl-6 flex flex-col gap-2">
+          <li>Hosting and infrastructure providers.</li>
+          <li>Payment processors (Paystack).</li>
+          <li>Analytics services.</li>
+          <li>Authorities when legally compelled.</li>
+          <li>Acquirers in the event of a merger or acquisition (with notice).</li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection id="retention" title="6. Retention">
+        <p>
+          Data is retained only as long as necessary for business, security, and legal purposes.
+        </p>
+        <ul className="list-disc pl-6 flex flex-col gap-2 mt-4">
+          <li>Generated audio is retained for the duration shown on the generation card (typically 7–30 days, depending on plan).</li>
+          <li>Account data is retained for the life of your account.</li>
+          <li>Deletion is available on request and is processed within 30 days.</li>
+          <li>Aggregate, non-identifying analytics may be kept indefinitely.</li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection id="your-rights" title="7. User Rights">
+        <p>
+          Users may request access, correction, or deletion of their personal information, 
+          subject to legal and operational requirements.
+        </p>
+        <ul className="list-disc pl-6 flex flex-col gap-2 mt-4">
+          <li>Right to access your personal data.</li>
+          <li>Right to correct inaccurate information.</li>
+          <li>Right to delete your account and associated data.</li>
+          <li>Right to object to or restrict certain processing.</li>
+        </ul>
+        <p className="mt-4">
+          Depending on your jurisdiction, you may have additional rights. Contact us at{" "}
+          <a className="text-primary hover:underline" href="mailto:privacy@voiceforge.ai">
+            privacy@voiceforge.ai
+          </a>{" "}
+          to exercise these rights.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="voice-data" title="8. Voice Data & Cloning">
         <p>
           Voice cloning requires us to process samples of a real person's voice.
           You must own or have explicit, verifiable consent from the speaker for
@@ -98,51 +166,6 @@ export default function PrivacyPage() {
             24 hours and from backups within 30 days.
           </li>
         </ul>
-      </LegalSection>
-
-      <LegalSection id="sharing" title="5. Sharing & Disclosure">
-        <p>
-          We do not sell your personal information. We share data only with:
-        </p>
-        <ul className="list-disc pl-6 flex flex-col gap-2">
-          <li>Service providers under contract (hosting, payments, analytics).</li>
-          <li>Authorities when legally compelled.</li>
-          <li>Acquirers in the event of a merger or acquisition (with notice).</li>
-        </ul>
-      </LegalSection>
-
-      <LegalSection id="retention" title="6. Retention">
-        <p>
-          Generated audio is retained for the duration shown on the generation
-          card (typically 7–30 days, depending on plan). Account data is
-          retained for the life of your account; deletion is available on
-          request and is processed within 30 days. Aggregate, non-identifying
-          analytics may be kept indefinitely.
-        </p>
-      </LegalSection>
-
-      <LegalSection id="your-rights" title="7. Your Rights">
-        <p>
-          Depending on your jurisdiction, you may have rights to access,
-          correct, export, or delete your personal data, and to object to or
-          restrict certain processing. Contact us at{" "}
-          <a className="text-primary hover:underline" href="mailto:privacy@voiceforge.ai">
-            privacy@voiceforge.ai
-          </a>{" "}
-          to exercise these rights.
-        </p>
-      </LegalSection>
-
-      <LegalSection id="security" title="8. Security">
-        <p>
-          We use industry-standard safeguards including TLS in transit, AES-256
-          at rest, role-based access control, and continuous monitoring. No
-          system is perfectly secure; report vulnerabilities to{" "}
-          <a className="text-primary hover:underline" href="mailto:security@voiceforge.ai">
-            security@voiceforge.ai
-          </a>
-          .
-        </p>
       </LegalSection>
 
       <LegalSection id="contact" title="9. Contact">

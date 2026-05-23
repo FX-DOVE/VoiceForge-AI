@@ -1,9 +1,32 @@
-const { UsageRecord, User, AudioGeneration, TrainingJob } = require("../models");
+const { UsageRecord, User, AudioGeneration, TrainingJob, WelcomeGrant, BillingSetting } = require("../models");
 const { getCharactersLimit } = require("../utils/planLimits");
+const { calculateCreditsFromPayment } = require("../utils/creditCalc");
+const config = require("../config");
 
 async function getUsageSummary(userId) {
   const user = await User.findById(userId);
-  const limit = getCharactersLimit(user.plan);
+  let limit = getCharactersLimit(user.plan);
+
+  // Auto-grant welcome credits retroactively if missing (Fixes existing bugged users)
+  if (user.totalCredits === 0) {
+    const existingGrant = await WelcomeGrant.findOne({ email: user.email });
+    if (!existingGrant) {
+      const settings = await BillingSetting.getSettings();
+      const welcomeUsd = settings.welcomeCreditUsd || 0.01;
+      const credits = Math.floor(calculateCreditsFromPayment(welcomeUsd));
+      if (credits > 0) {
+        user.totalCredits += credits;
+        user.creditsRemaining += credits;
+        await user.save();
+        await WelcomeGrant.create({
+          email: user.email,
+          ipAddress: "retroactive-usage-fix",
+          user: user._id,
+          creditsGranted: credits,
+        });
+      }
+    }
+  }
 
   const [ttsCount, freeCount, cloneCount, recentUsage] = await Promise.all([
     AudioGeneration.countDocuments({ user: userId, status: "completed" }),

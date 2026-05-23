@@ -4,9 +4,12 @@ const { authenticate } = require("../middleware/auth");
 
 const router = express.Router();
 
+// Webhook body is captured as raw Buffer by app.js middleware before express.json() runs
+router.post("/paystack/webhook", paymentController.webhook);
+
 router.use(authenticate);
-router.post("/purchase", paymentController.purchaseCredits);
-router.get("/estimate", paymentController.estimateCredits);
+router.post("/paystack/initialize", paymentController.initialize);
+router.post("/paystack/verify", paymentController.verify);
 router.get("/balance", paymentController.getBalance);
 
 module.exports = router;

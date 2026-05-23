@@ -10,4 +10,13 @@ module.exports = {
   Notification: require("./Notification"),
   ActivityLog: require("./ActivityLog"),
   SystemSetting: require("./SystemSetting"),
+  WelcomeGrant: require("./WelcomeGrant"),
+  Payment: require("./Payment"),
+  BillingSetting: require("./BillingSetting"),
+  // Grok Management models
+  GrokFunding: require("./GrokFunding"),
+  GrokUsage: require("./GrokUsage"),
+  GrokApiKey: require("./GrokApiKey"),
+  GrokAlert: require("./GrokAlert"),
+  GrokSettings: require("./GrokSettings"),
 };

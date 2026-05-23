@@ -21,4 +21,9 @@ const history = asyncHandler(async (req, res) => {
   sendSuccess(res, data);
 });
 
-module.exports = { generate, getById, history };
+const deleteById = asyncHandler(async (req, res) => {
+  await ttsService.deleteGeneration(req.user._id, req.params.id);
+  sendSuccess(res, {}, "Generation deleted.");
+});
+
+module.exports = { generate, getById, history, deleteById };

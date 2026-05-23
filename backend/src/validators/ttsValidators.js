@@ -1,7 +1,7 @@
 const { body } = require("express-validator");
 
 const generateTtsRules = [
-  body("text").trim().notEmpty().withMessage("Text is required.").isLength({ max: 5000 }),
+  body("text").trim().notEmpty().withMessage("Text is required.").isLength({ max: 10000 }),
   body("voiceId").optional().trim(),
   body("voiceSlug").optional().trim(),
   body("language").optional().trim(),

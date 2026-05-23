@@ -29,7 +29,7 @@ const configure = asyncHandler(async (req, res) => {
   const clone = await cloneService.configureClone(req.user._id, req.body);
   sendSuccess(
     res,
-    { cloneId: clone._id.toString(), status: clone.status, name: clone.name },
+    { cloneId: clone._id.toString(), status: clone.status, name: clone.name, visibility: clone.visibility, shareToken: clone.shareToken || null, gender: clone.gender },
     "Voice clone configured successfully."
   );
 });
@@ -60,4 +60,20 @@ const list = asyncHandler(async (req, res) => {
   sendSuccess(res, { clones });
 });
 
-module.exports = { upload, configure, start, status, list };
+const update = asyncHandler(async (req, res) => {
+  const result = await cloneService.updateClone(req.user._id, req.params.id, req.body);
+  sendSuccess(res, result, "Voice clone updated.");
+});
+
+const deleteClone = asyncHandler(async (req, res) => {
+  await cloneService.deleteClone(req.user._id, req.params.id);
+  sendSuccess(res, {}, "Voice clone deleted.");
+});
+
+const getShared = asyncHandler(async (req, res) => {
+  const data = await cloneService.getCloneByShareToken(req.params.token);
+  if (!data) throw Object.assign(new Error("Shared voice not found."), { statusCode: 404 });
+  sendSuccess(res, data);
+});
+
+module.exports = { upload, configure, start, status, list, update, deleteClone, getShared };

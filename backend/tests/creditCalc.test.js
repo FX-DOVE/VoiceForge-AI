@@ -6,32 +6,33 @@ const {
 } = require("../src/utils/creditCalc");
 
 describe("calculateCreditsFromPayment", () => {
-  it("$1 payment adds 285,714 credits", () => {
-    assert.strictEqual(calculateCreditsFromPayment(1), 285714);
+  // 50% split: $1 * 0.5 / 4.20 * 1,000,000 * 2 = 238,095 credits
+  it("$1 payment adds 238,095 credits", () => {
+    assert.strictEqual(calculateCreditsFromPayment(1), 238095);
   });
 
-  it("$5 payment adds 1,428,571 credits", () => {
-    assert.strictEqual(calculateCreditsFromPayment(5), 1428571);
+  it("$5 payment adds 1,190,476 credits", () => {
+    assert.strictEqual(calculateCreditsFromPayment(5), 1190476);
   });
 
-  it("$10 payment adds 2,857,142 credits", () => {
-    assert.strictEqual(calculateCreditsFromPayment(10), 2857142);
+  it("$10 payment adds 2,380,952 credits", () => {
+    assert.strictEqual(calculateCreditsFromPayment(10), 2380952);
   });
 
-  it("$100 payment adds 28,571,428 credits", () => {
-    assert.strictEqual(calculateCreditsFromPayment(100), 28571428);
+  it("$100 payment adds 23,809,523 credits", () => {
+    assert.strictEqual(calculateCreditsFromPayment(100), 23809523);
   });
 
-  it("$2 payment adds 571,428 credits", () => {
-    assert.strictEqual(calculateCreditsFromPayment(2), 571428);
+  it("$2 payment adds 476,190 credits", () => {
+    assert.strictEqual(calculateCreditsFromPayment(2), 476190);
   });
 
-  it("$25 payment adds 7,142,857 credits", () => {
-    assert.strictEqual(calculateCreditsFromPayment(25), 7142857);
+  it("$25 payment adds 5,952,380 credits", () => {
+    assert.strictEqual(calculateCreditsFromPayment(25), 5952380);
   });
 
-  it("$50 payment adds 14,285,714 credits", () => {
-    assert.strictEqual(calculateCreditsFromPayment(50), 14285714);
+  it("$50 payment adds 11,904,761 credits", () => {
+    assert.strictEqual(calculateCreditsFromPayment(50), 11904761);
   });
 
   it("$0 payment returns 0 credits", () => {
@@ -91,10 +92,10 @@ describe("business rule consistency", () => {
     }
   });
 
-  it("platform keeps 40%, user gets 60% API value", () => {
+  it("platform keeps 50%, user gets 50% API value", () => {
     const payment = 10;
-    const apiValue = payment * 0.6;
-    assert.strictEqual(apiValue, 6);
+    const apiValue = payment * 0.5;
+    assert.strictEqual(apiValue, 5);
     const chars = (apiValue / 4.2) * 1_000_000;
     const credits = Math.floor(chars * 2);
     assert.strictEqual(credits, calculateCreditsFromPayment(payment));

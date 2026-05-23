@@ -4,7 +4,11 @@ const config = require("./config");
 const { connectDB } = require("./config/db");
 const { seedDefaultVoices } = require("./utils/seedVoices");
 const { syncEdgeVoices } = require("./utils/syncEdgeVoices");
+const { syncXaiVoices } = require("./utils/syncXaiVoices");
+const { generateAllPreviews } = require("./utils/generateVoicePreviews");
 const { User } = require("./models");
+const { cleanupExpired } = require("./services/ttsService");
+const { verifyConnection } = require("./integrations/email");
 
 async function ensureAdminUser() {
   if (!config.adminEmail) return;
@@ -21,12 +25,38 @@ async function start() {
   await connectDB();
   await seedDefaultVoices();
   await ensureAdminUser();
-  syncEdgeVoices(); // non-blocking — runs in background
+
+  // Verify email SMTP connection
+  const emailConnected = await verifyConnection();
+  if (emailConnected) {
+    console.log("✓ Email SMTP configured (Namecheap Private Email)");
+  } else {
+    console.warn("⚠ Email SMTP not configured - emails will be logged to console");
+  }
+
+  // Background sync: Edge TTS voices
+  syncEdgeVoices();
+
+  // Background sync: xAI voice catalog + previews
+  (async () => {
+    try {
+      const result = await syncXaiVoices();
+      if (result.imported > 0) {
+        await generateAllPreviews({ force: false, concurrency: 2, source: "xai" });
+      }
+    } catch (err) {
+      console.warn("[Startup] xAI voice sync/preview generation failed:", err.message);
+    }
+  })();
 
   const server = app.listen(config.port, () => {
     console.log(`VoiceForge API running on http://localhost:${config.port}`);
     console.log(`Health: http://localhost:${config.port}/api/health`);
   });
+
+  // Cleanup expired generations every hour (files auto-deleted after 28 hrs)
+  cleanupExpired().catch(() => {});
+  setInterval(() => cleanupExpired().catch(() => {}), 60 * 60 * 1000);
 
   server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {

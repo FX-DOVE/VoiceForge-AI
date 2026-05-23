@@ -9,6 +9,7 @@ const adminRoutes = require("./adminRoutes");
 const fileRoutes = require("./fileRoutes");
 const notificationRoutes = require("./notificationRoutes");
 const paymentRoutes = require("./paymentRoutes");
+const grokRoutes = require("./grokRoutes");
 const { health } = require("../controllers/healthController");
 
 const router = express.Router();
@@ -21,6 +22,7 @@ router.use("/cloning", cloneRoutes);
 router.use("/tts", ttsRoutes);
 router.use("/usage", usageRoutes);
 router.use("/admin", adminRoutes);
+router.use("/admin/grok", grokRoutes);
 router.use("/files", fileRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/payments", paymentRoutes);

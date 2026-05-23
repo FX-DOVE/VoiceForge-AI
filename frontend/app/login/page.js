@@ -170,6 +170,7 @@ export default function LoginPage() {
       animate={{ opacity: 1, y: 0 }}
       className="bg-background text-on-surface antialiased min-h-screen flex items-center justify-center relative overflow-hidden"
     >
+      <meta name="robots" content="noindex, nofollow" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

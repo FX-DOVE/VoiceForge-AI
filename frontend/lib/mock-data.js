@@ -181,7 +181,7 @@ export const faqItems = [
 export const featureBlocks = [
   {
     icon: "sparkles",
-    title: "xAI Realism",
+    title: "VoiceForge Realism",
     desc: "Studio quality with natural inflections.",
   },
   {

@@ -133,7 +133,7 @@ export default function AdminDashboardPage() {
   }));
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col min-h-0">
       <header className="hidden lg:flex h-16 border-b border-white/[0.06] bg-background/80 backdrop-blur-md sticky top-0 z-30 items-center justify-between px-8 shrink-0">
         <h2 className="text-lg font-bold text-white">Overview</h2>
         <div className="flex items-center gap-3">

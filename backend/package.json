@@ -7,7 +7,10 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "worker": "node src/jobs/worker.js",
-    "test": "node --test tests/health.test.js"
+    "test": "node --test tests/health.test.js",
+    "sync:xai-voices": "node scripts/syncXaiVoices.js",
+    "generate:voice-previews": "node scripts/generateVoicePreviews.js",
+    "refresh:voices": "node scripts/refreshVoices.js"
   },
   "engines": {
     "node": ">=18"

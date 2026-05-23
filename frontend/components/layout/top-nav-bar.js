@@ -7,11 +7,13 @@ import { Menu, X, ArrowRight, Mic } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/auth-context";
 
 export function TopNavBar() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -57,15 +59,31 @@ export function TopNavBar() {
         </nav>
 
         <div className="hidden lg:flex items-center gap-6">
-          <Link href="/login" className="text-sm font-bold uppercase tracking-widest text-on-surface-variant hover:text-white transition-colors">
-            Sign In
-          </Link>
-          <Button className="bg-primary hover:bg-primary/90 text-on-primary rounded-full px-8 h-12 font-bold shadow-[0_0_20px_rgba(59,130,246,0.2)] group" asChild>
-            <Link href="/signup">
-              Start Building
-              <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </Button>
+          {!isAuthenticated ? (
+            <>
+              <Link href="/login" className="text-sm font-bold uppercase tracking-widest text-on-surface-variant hover:text-white transition-colors">
+                Sign In
+              </Link>
+              <Button className="bg-primary hover:bg-primary/90 text-on-primary rounded-full px-8 h-12 font-bold shadow-[0_0_20px_rgba(59,130,246,0.2)] group" asChild>
+                <Link href="/signup">
+                  Start Building
+                  <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" className="border-white/10 hover:bg-white/5 rounded-full px-6 h-10 font-bold" asChild>
+                <Link href="/checkout">Buy Credits</Link>
+              </Button>
+              <Button className="bg-primary hover:bg-primary/90 text-on-primary rounded-full px-8 h-12 font-bold shadow-[0_0_20px_rgba(59,130,246,0.2)] group" asChild>
+                <Link href="/dashboard">
+                  Dashboard
+                  <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -129,12 +147,25 @@ export function TopNavBar() {
               </div>
               <div className="h-px bg-white/5" />
               <div className="flex flex-col gap-3 pb-4">
-                <Button variant="outline" className="h-14 rounded-full border-white/10 font-bold text-base" asChild>
-                  <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Sign In</Link>
-                </Button>
-                <Button className="h-14 rounded-full bg-primary text-on-primary font-bold text-base shadow-lg shadow-primary/20" asChild>
-                  <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started Free</Link>
-                </Button>
+                {!isAuthenticated ? (
+                  <>
+                    <Button variant="outline" className="h-14 rounded-full border-white/10 font-bold text-base" asChild>
+                      <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Sign In</Link>
+                    </Button>
+                    <Button className="h-14 rounded-full bg-primary text-on-primary font-bold text-base shadow-lg shadow-primary/20" asChild>
+                      <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started Free</Link>
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" className="h-14 rounded-full border-white/10 font-bold text-base" asChild>
+                      <Link href="/checkout" onClick={() => setIsMobileMenuOpen(false)}>Buy Credits</Link>
+                    </Button>
+                    <Button className="h-14 rounded-full bg-primary text-on-primary font-bold text-base shadow-lg shadow-primary/20" asChild>
+                      <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</Link>
+                    </Button>
+                  </>
+                )}
               </div>
             </motion.div>
           </>

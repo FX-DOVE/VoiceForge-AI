@@ -24,5 +24,9 @@ export function useGenerations(search = "") {
     load();
   }, [load]);
 
-  return { items, loading, reload: load };
+  const remove = useCallback((id) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+  return { items, loading, reload: load, remove };
 }

@@ -27,6 +27,13 @@ function getCloudinary() {
   return cloudinary;
 }
 
+function getLocalBaseUrl() {
+  // Construct base URL from config or default to localhost
+  const port = config.port || 5000;
+  const host = config.serverUrl?.replace(/\/+$/, "") || `http://localhost:${port}`;
+  return host;
+}
+
 async function uploadBuffer(buffer, { folder, filename, mimeType }) {
   const key = `${folder}/${uuidv4()}-${filename}`;
 
@@ -60,11 +67,12 @@ async function uploadBuffer(buffer, { folder, filename, mimeType }) {
   fs.writeFileSync(localPath, buffer);
 
   const relative = `/uploads/${folder}/${path.basename(key)}`;
-  const absoluteUrl = `${config.serverUrl}${relative}`;
+  // Return full URL so files can be accessed from frontend
+  const fullUrl = `${getLocalBaseUrl()}${relative}`;
   return {
     storageKey: key,
-    url: absoluteUrl,
-    downloadUrl: absoluteUrl,
+    url: fullUrl,
+    downloadUrl: fullUrl,
     localPath,
   };
 }

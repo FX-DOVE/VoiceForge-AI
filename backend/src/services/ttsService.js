@@ -1,9 +1,11 @@
 const path = require("path");
+const fs = require("fs");
 const {
   Voice,
   AudioGeneration,
   UsageRecord,
   User,
+  GrokUsage,
 } = require("../models");
 const config = require("../config");
 const { synthesizeSpeech } = require("../integrations/xaiTts");
@@ -11,6 +13,44 @@ const { synthesizeSpeechEdge } = require("../integrations/edgeTts");
 const { uploadBuffer } = require("../integrations/storage");
 const { getCharactersLimit } = require("../utils/planLimits");
 const { calculateCreditsForUsage } = require("../utils/creditCalc");
+
+/**
+ * Record xAI API usage for Grok Management tracking
+ */
+async function recordXaiUsage({ userId, result, voiceId, text, status = "success" }) {
+  try {
+    // Extract usage data from xAI response if available
+    const usage = result?.usage || {};
+    const charCount = text?.length || 0;
+
+    // Use actual cost from xAI if available, otherwise estimate
+    const costUsd = usage.costUsd || (usage.costInUsdTicks ? usage.costInUsdTicks / 10000000000 : 0);
+    const estimatedCost = costUsd || (charCount * 0.0000042); // $4.20 per 1M chars
+
+    await GrokUsage.create({
+      userId,
+      serviceType: "tts",
+      model: usage.modelUsed || voiceId || "tts-1",
+      charactersUsed: usage.charactersProcessed || charCount,
+      requestCount: 1,
+      costUsd: estimatedCost,
+      costInUsdTicks: usage.costInUsdTicks || 0,
+      status,
+      requestId: usage.requestId || null,
+      metadata: {
+        voiceId,
+        characters: charCount,
+        actualCost: costUsd,
+        estimatedCost: costUsd === 0 ? estimatedCost : 0,
+      },
+    });
+
+    console.log(`[Grok Usage] Recorded TTS usage: $${estimatedCost.toFixed(6)} for ${charCount} chars`);
+  } catch (err) {
+    // Don't fail the TTS request if usage recording fails
+    console.error("[Grok Usage] Failed to record usage:", err.message);
+  }
+}
 
 async function resolveVoice({ voiceId, voiceSlug }) {
   if (voiceId) {
@@ -24,14 +64,25 @@ async function resolveVoice({ voiceId, voiceSlug }) {
   return null;
 }
 
+async function resolveVoiceWithClone({ voiceId, voiceSlug }) {
+  const voice = await resolveVoice({ voiceId, voiceSlug });
+  if (!voice) return null;
+  if (voice.type === "cloned" && voice.voiceCloneRef) {
+    await voice.populate("voiceCloneRef");
+  }
+  return voice;
+}
+
 async function generateTts(userId, options) {
   const user = await User.findById(userId);
   const charCount = options.text.length;
 
   // Resolve voice first so we can check tier before enforcing limits
-  const voice = await resolveVoice(options);
+  const voice = await resolveVoiceWithClone(options);
   const voiceTier = voice?.tier || "pro";
-  const isFree = voiceTier === "free";
+  const isClonedCheck = voice?.type === "cloned";
+  // Cloned voices use xAI TTS and should charge credits like pro voices
+  const isFree = voiceTier === "free" && !isClonedCheck;
 
   if (!isFree) {
     const creditsToCharge = calculateCreditsForUsage(charCount);
@@ -43,8 +94,13 @@ async function generateTts(userId, options) {
     }
   }
 
+  const isCloned = isClonedCheck;
   const xaiVoiceId =
     voice?.xaiVoiceId || options.xaiVoiceId || config.xai.defaultVoiceId;
+  // edgeVoiceId: use the stored Edge voice if explicitly set, otherwise derive from xaiVoiceId
+  // so XAI_TO_EDGE_VOICE can map voice names like "Roger" → "en-US-GuyNeural" correctly
+  const edgeVoiceId =
+    voice?.edgeVoiceId || xaiVoiceId || "en-US-JennyNeural";
 
   const generation = await AudioGeneration.create({
     user: userId,
@@ -62,54 +118,78 @@ async function generateTts(userId, options) {
     tone: options.tone || "",
     status: "processing",
     charactersUsed: isFree ? 0 : charCount,
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    expiresAt: new Date(Date.now() + 28 * 60 * 60 * 1000), // 28 hours
   });
 
   try {
     let result;
 
-    if (isFree) {
-      console.log(`[TTS] Free voice "${voice?.name}" → Edge TTS (${xaiVoiceId}) speed=${generation.speed} stability=${generation.stability}`);
+    if (isFree && !isCloned) {
+      // Free stock voices → Edge TTS only
+      console.log(`[TTS] Free voice "${voice?.name}" → Edge TTS (${edgeVoiceId}) speed=${generation.speed}`);
       result = await synthesizeSpeechEdge({
         text: options.text,
-        xaiVoiceId,
+        xaiVoiceId: edgeVoiceId,
         speed: generation.speed ?? 1,
         stability: generation.stability ?? 0.75,
       });
+    } else if (isCloned) {
+      // Cloned voice: use xAI TTS with the assigned stock voice
+      const cloneVoice = xaiVoiceId || config.xai.defaultVoiceId || "ara";
+      console.log(`[TTS] Cloned voice "${voice?.name}" → xAI TTS (${cloneVoice})`);
+      try {
+        result = await synthesizeSpeech({
+          text: options.text,
+          voiceId: cloneVoice,
+          language: options.language || "auto",
+        });
+        // Record xAI usage for Grok Management
+        await recordXaiUsage({ userId, result, voiceId: cloneVoice, text: options.text, status: "success" });
+      } catch (err) {
+        // Record failed usage attempt
+        if (err.usage) {
+          await recordXaiUsage({ userId, result: { usage: err.usage }, voiceId: cloneVoice, text: options.text, status: "failed" });
+        }
+        // Auth errors: throw immediately — never silently serve robotic Edge TTS
+        if (err.isCreditOrAuth) throw err;
+        // Network-only fallback
+        console.warn(`[TTS] xAI network error for cloned voice: ${err.message} — falling back to Edge TTS`);
+        result = await synthesizeSpeechEdge({
+          text: options.text,
+          xaiVoiceId: edgeVoiceId || "en-US-JennyNeural",
+          speed: generation.speed ?? 1,
+          stability: generation.stability ?? 0.75,
+        });
+      }
     } else {
-      console.log(`[TTS] Pro voice "${voice?.name}" → xAI TTS (${xaiVoiceId}) speed=${generation.speed}`);
+      // Pro stock voices → xAI TTS, throw on auth errors
+      console.log(`[TTS] Pro voice "${voice?.name}" → xAI TTS (${xaiVoiceId}) language=${options.language || "auto"}`);
       try {
         result = await synthesizeSpeech({
           text: options.text,
           voiceId: xaiVoiceId,
-          codec: generation.codec,
-          speed: generation.speed ?? 1,
+          language: options.language || "auto",
         });
+        // Record xAI usage for Grok Management
+        await recordXaiUsage({ userId, result, voiceId: xaiVoiceId, text: options.text, status: "success" });
       } catch (err) {
-        // Only credit (402/429) or auth (401/403) errors should propagate
-        // to the user so they know to top up / fix their key. Anything else
-        // (model name wrong, voice id rejected, gateway down, etc.) should
-        // gracefully fall back to Edge TTS so the user still gets audio.
-        const shouldFallback =
-          !config.xai.apiKey ||
-          err.code === "ECONNREFUSED" ||
-          err.code === "ENOTFOUND" ||
-          (!err.isCreditOrAuth && config.ttsProvider !== "xai");
-
-        if (shouldFallback) {
-          console.warn(
-            `[TTS] xAI failed (${err.statusCode || "?"}: ${err.message})${
-              err.xaiDetail ? ` — detail: ${err.xaiDetail}` : ""
-            } — falling back to Edge TTS`
-          );
+        // Record failed usage attempt
+        if (err.usage) {
+          await recordXaiUsage({ userId, result: { usage: err.usage }, voiceId: xaiVoiceId, text: options.text, status: "failed" });
+        }
+        // Auth/credit errors: surface them directly — do NOT fall back to robotic Edge TTS
+        if (err.isCreditOrAuth) throw err;
+        // Network-only fallback (ECONNREFUSED, ENOTFOUND, timeout)
+        const isNetworkError = err.code === "ECONNREFUSED" || err.code === "ENOTFOUND" || err.code === "ETIMEDOUT";
+        if (isNetworkError || !config.xai.apiKey) {
+          console.warn(`[TTS] xAI network error (${err.message}) — falling back to Edge TTS`);
           result = await synthesizeSpeechEdge({
             text: options.text,
-            xaiVoiceId,
+            xaiVoiceId: edgeVoiceId,
             speed: generation.speed ?? 1,
             stability: generation.stability ?? 0.75,
           });
         } else {
-          // Credit exhausted or auth invalid — surface to user
           throw err;
         }
       }
@@ -130,6 +210,10 @@ async function generateTts(userId, options) {
       audioUrl = uploaded.url;
       downloadUrl = uploaded.downloadUrl;
       storageKey = uploaded.storageKey;
+    } else if (result.type === "url") {
+      // Cloned voice sample served directly
+      audioUrl = result.url;
+      downloadUrl = result.url;
     } else if (result.data?.audio_url) {
       audioUrl = result.data.audio_url;
       downloadUrl = result.data.download_url || result.data.audio_url;
@@ -213,4 +297,42 @@ async function getHistory(userId, { page = 1, limit = 20, search = "" }) {
   };
 }
 
-module.exports = { generateTts, getGeneration, getHistory, formatGeneration };
+async function deleteGeneration(userId, id) {
+  const doc = await AudioGeneration.findOne({ _id: id, user: userId });
+  if (!doc) throw Object.assign(new Error("Generation not found."), { statusCode: 404 });
+
+  // Delete local file if stored on disk (storageKey format: "tts/uuid-filename.mp3")
+  if (doc.storageKey && !doc.storageKey.startsWith("http")) {
+    try {
+      const { uploadsDir } = require("../middleware/upload");
+      const localPath = path.join(uploadsDir, doc.storageKey);
+      if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+    } catch (e) {
+      console.warn(`[TTS Delete] Could not remove file for ${id}:`, e.message);
+    }
+  }
+
+  await doc.deleteOne();
+}
+
+async function cleanupExpired() {
+  const expired = await AudioGeneration.find({ expiresAt: { $lte: new Date() }, status: "completed" });
+  let deleted = 0;
+  for (const doc of expired) {
+    try {
+      if (doc.storageKey && !doc.storageKey.startsWith("http")) {
+        const { uploadsDir } = require("../middleware/upload");
+        const localPath = path.join(uploadsDir, doc.storageKey);
+        if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+      }
+      await doc.deleteOne();
+      deleted++;
+    } catch (e) {
+      console.warn(`[TTS Cleanup] Failed to delete ${doc._id}:`, e.message);
+    }
+  }
+  if (deleted > 0) console.log(`[TTS Cleanup] Deleted ${deleted} expired generation(s).`);
+  return deleted;
+}
+
+module.exports = { generateTts, getGeneration, getHistory, deleteGeneration, cleanupExpired, formatGeneration, recordXaiUsage };
