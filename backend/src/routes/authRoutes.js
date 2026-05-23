@@ -19,5 +19,6 @@ router.post("/reset-password", resetPasswordRules, validate, authController.rese
 router.get("/me", authenticate, authController.me);
 router.get("/verify-email", authController.verifyEmail);
 router.post("/resend-verification", forgotPasswordRules, validate, authController.resendVerification);
+router.post("/google", authController.googleAuth);
 
 module.exports = router;

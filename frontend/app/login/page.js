@@ -2,23 +2,89 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { Mail, Lock, ArrowRight, Activity } from "lucide-react";
-import { GithubIcon as Github, GoogleIcon as Chrome } from "@/components/ui/icons";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api/client";
+import Script from "next/script";
+import { WelcomeCreditsModal } from "@/components/modals/welcome-credits-modal";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [welcomeCredits, setWelcomeCredits] = useState(2380);
+  const googleButtonRef = useRef(null);
+  const googleInitialized = useRef(false);
+
+  // Function to render Google button
+  const renderGoogleButton = useCallback(() => {
+    if (!window.google?.accounts?.id || !googleButtonRef.current) return;
+    
+    if (!googleInitialized.current) {
+      window.google.accounts.id.initialize({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        callback: async (credentialResponse) => {
+          if (credentialResponse.credential) {
+            setGoogleLoading(true);
+            try {
+              const result = await googleLogin(credentialResponse.credential);
+              
+              if (result.isNewUser && result.welcomeCreditsGranted) {
+                setWelcomeCredits(result.welcomeCreditsAmount);
+                setShowWelcomeModal(true);
+                toast.success(`Welcome! ${result.welcomeCreditsAmount} credits added to your account.`);
+              } else {
+                toast.success("Signed in successfully with Google.");
+                const next = searchParams.get("next");
+                if (result.user?.role === "admin") {
+                  router.push(next?.startsWith("/admin") ? next : "/admin");
+                } else {
+                  router.push(next && !next.startsWith("/admin") ? next : "/dashboard");
+                }
+              }
+            } catch (err) {
+              console.error("[Google Sign-In] Error:", err);
+              toast.error(err?.message || "Google sign in failed. Please try again.");
+            } finally {
+              setGoogleLoading(false);
+            }
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      googleInitialized.current = true;
+    }
+
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      theme: "outline",
+      size: "large",
+      width: "100%",
+      text: "continue_with",
+      shape: "rectangular",
+    });
+  }, [googleLogin, router, searchParams]);
+
+  // Try to render when component mounts (if SDK already loaded)
+  useEffect(() => {
+    renderGoogleButton();
+  }, [renderGoogleButton]);
+
+  // Listen for Google SDK load event (global callback)
+  useEffect(() => {
+    window.__googleSignInCallback = renderGoogleButton;
+    return () => { delete window.__googleSignInCallback; };
+  }, [renderGoogleButton]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -148,16 +214,19 @@ function LoginForm() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="grid grid-cols-2 gap-4"
+        className="flex flex-col gap-4"
       >
-        <Button variant="outline" className="h-12 border-outline-variant hover:bg-white/5 rounded-2xl" type="button" disabled>
-          <Github className="mr-2 size-5" />
-          Github
-        </Button>
-        <Button variant="outline" className="h-12 border-outline-variant hover:bg-white/5 rounded-2xl" type="button" disabled>
-          <Chrome className="mr-2 size-5" />
-          Google
-        </Button>
+        {/* Google Sign-In with ID Token flow - ref-based container */}
+        <div ref={googleButtonRef} className="w-full min-h-[44px]" />
+        
+        <WelcomeCreditsModal 
+          isOpen={showWelcomeModal} 
+          onClose={() => {
+            setShowWelcomeModal(false);
+            router.push("/dashboard");
+          }}
+          creditsAmount={welcomeCredits}
+        />
       </motion.div>
     </motion.div>
   );
@@ -165,6 +234,14 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
+    <>
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={() => {
+          if (window.__googleSignInCallback) window.__googleSignInCallback();
+        }}
+      />
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -218,5 +295,6 @@ export default function LoginPage() {
         </motion.div>
       </main>
     </motion.div>
+    </>
   );
 }

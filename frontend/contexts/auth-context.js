@@ -52,6 +52,26 @@ export function AuthProvider({ children }) {
     return data.user;
   }, []);
 
+  // Google OAuth login/signup - handles both new users and existing users
+  const googleLogin = useCallback(async (idToken) => {
+    const data = await authApi.googleAuth(idToken);
+    setTokens({
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+    });
+    setUser(data.user);
+    
+    // Google users are pre-verified by Google
+    // Return full data including welcome credits info for new users
+    return {
+      user: data.user,
+      isNewUser: data.isNewUser || false,
+      welcomeCreditsGranted: data.welcomeCreditsGranted || false,
+      welcomeCreditsAmount: data.welcomeCreditsAmount || 0,
+      emailVerified: data.user?.emailVerified || true,
+    };
+  }, []);
+
   const register = useCallback(async ({ email, password, name, termsAccepted, termsVersion }) => {
     const data = await authApi.register({ email, password, name, termsAccepted, termsVersion });
     setTokens({
@@ -137,11 +157,12 @@ export function AuthProvider({ children }) {
       isEmailVerified: user?.emailVerified || false,
       login,
       register,
+      googleLogin,
       logout,
       refreshUser,
       updateUser,
     }),
-    [user, loading, login, register, logout, refreshUser, updateUser]
+    [user, loading, login, register, googleLogin, logout, refreshUser, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

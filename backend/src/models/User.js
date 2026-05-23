@@ -5,9 +5,10 @@ const { getCharactersLimit } = require("../utils/planLimits");
 const userSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true, minlength: 8, select: false },
+    password: { type: String, required: false, minlength: 8, select: false }, // Not required for OAuth users
     name: { type: String, trim: true, default: "" },
     avatarUrl: { type: String, default: null },
+    provider: { type: String, enum: ["local", "google"], default: "local" }, // Track OAuth provider
     role: { type: String, enum: ["user", "admin"], default: "user" },
     plan: { type: String, enum: ["free", "pro", "enterprise"], default: "free" },
     status: { type: String, enum: ["active", "suspended", "invited", "banned", "restricted"], default: "active" },
@@ -46,7 +47,7 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre("save", async function hashPassword(next) {
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("password") || !this.password) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
@@ -61,6 +62,7 @@ userSchema.methods.toPublicJSON = function toPublicJSON() {
     email: this.email,
     name: this.name,
     avatarUrl: this.avatarUrl,
+    provider: this.provider || "local",
     role: this.role,
     plan: this.plan,
     status: this.status,

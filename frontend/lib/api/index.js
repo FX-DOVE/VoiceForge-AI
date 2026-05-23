@@ -9,6 +9,7 @@ export const authApi = {
     apiRequest("/auth/forgot-password", { method: "POST", body: { email }, skipAuth: true }),
   resetPassword: (body) =>
     apiRequest("/auth/reset-password", { method: "POST", body, skipAuth: true }),
+  googleAuth: (idToken) => apiRequest("/auth/google", { method: "POST", body: { idToken }, skipAuth: true }),
 };
 
 export const usersApi = {

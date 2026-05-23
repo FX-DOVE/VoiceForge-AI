@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { OAuth2Client } = require("google-auth-library");
 const { User, RefreshToken, WelcomeGrant, BillingSetting } = require("../models");
 const config = require("../config");
 const {
@@ -7,6 +8,9 @@ const {
   verifyRefreshToken,
 } = require("../utils/tokens");
 const { sendPasswordResetEmail, sendWelcomeEmail, sendVerificationEmail } = require("../integrations/email");
+
+// Google OAuth2 client for ID token verification
+const googleClient = new OAuth2Client(config.google.clientId);
 
 function buildAuthPayload(user) {
   const accessToken = signAccessToken({ sub: user._id.toString(), role: user.role });
@@ -313,6 +317,128 @@ async function resendVerificationEmail(email) {
   return { message: "If that email exists, we sent verification instructions." };
 }
 
+// Google OAuth - Verify Google ID Token and authenticate user
+async function verifyGoogleToken(idToken) {
+  try {
+    // Use google-auth-library for secure token verification
+    // This validates audience, issuer, expiration automatically
+    const ticket = await googleClient.verifyIdToken({
+      idToken: idToken,
+      audience: config.google.clientId, // Must match the client ID used in frontend
+    });
+    
+    const payload = ticket.getPayload();
+    
+    if (!payload) {
+      throw new Error("Invalid Google token - no payload found");
+    }
+    
+    // Additional validation
+    if (!payload.email) {
+      throw new Error("Invalid Google token - no email found");
+    }
+    
+    // Verify issuer (should be Google)
+    if (payload.iss !== "https://accounts.google.com" && payload.iss !== "accounts.google.com") {
+      throw new Error("Invalid token issuer");
+    }
+    
+    console.log("[Google OAuth] Token verified successfully for:", payload.email);
+    
+    return {
+      email: payload.email,
+      name: payload.name || payload.given_name || payload.email.split("@")[0],
+      picture: payload.picture || null,
+      emailVerified: payload.email_verified === true,
+      sub: payload.sub, // Google user ID
+    };
+  } catch (err) {
+    console.error("[Google OAuth] Token verification failed:", err.message);
+    throw Object.assign(new Error("Invalid Google authentication token: " + err.message), { statusCode: 401 });
+  }
+}
+
+// Authenticate with Google - handles both signup and login
+async function authenticateWithGoogle({ idToken, termsAccepted, termsVersion }, meta = {}) {
+  // Verify the Google token
+  const googleUser = await verifyGoogleToken(idToken);
+  
+  // Check if user exists
+  let user = await User.findOne({ email: googleUser.email });
+  let isNewUser = false;
+  
+  if (!user) {
+    // Create new user from Google data
+    isNewUser = true;
+    const role = config.adminEmail && googleUser.email.toLowerCase() === config.adminEmail ? "admin" : "user";
+    
+    user = await User.create({
+      email: googleUser.email,
+      password: null, // OAuth users don't need passwords
+      name: googleUser.name,
+      avatarUrl: googleUser.picture,
+      role,
+      provider: "google",
+      termsAccepted: true, // Implicit acceptance through OAuth
+      termsAcceptedAt: new Date(),
+      termsVersion: termsVersion || "2026-05-18",
+      emailVerified: googleUser.emailVerified, // Google has verified the email
+      emailVerifiedAt: googleUser.emailVerified ? new Date() : null,
+      hasReceivedWelcomeCredits: false, // Will be granted below
+    });
+    
+    console.log(`[Google OAuth] New user created: ${user.email}`);
+  } else {
+    // Existing user - update avatar if changed
+    if (googleUser.picture && !user.avatarUrl) {
+      user.avatarUrl = googleUser.picture;
+      await user.save();
+    }
+    console.log(`[Google OAuth] Existing user logged in: ${user.email}`);
+  }
+  
+  // Check user status
+  if (user.status === "banned") {
+    throw Object.assign(new Error(`Your account has been banned. Reason: ${user.banReason || "Violation of terms"}. Contact support for assistance.`), { statusCode: 403 });
+  }
+  
+  if (user.status === "suspended") {
+    throw Object.assign(new Error("Your account has been suspended. Contact support for assistance."), { statusCode: 403 });
+  }
+  
+  // Grant welcome credits for NEW Google users only (idempotent)
+  let welcomeCreditsGranted = false;
+  let welcomeCreditsAmount = 0;
+  
+  if (isNewUser && !user.hasReceivedWelcomeCredits) {
+    try {
+      welcomeCreditsAmount = await grantWelcomeCredits(user, meta.ipAddress);
+      welcomeCreditsGranted = welcomeCreditsAmount > 0;
+      
+      if (welcomeCreditsGranted) {
+        console.log(`[Google OAuth] Welcome credits granted to new user: ${user.email} (${welcomeCreditsAmount} credits)`);
+      }
+    } catch (err) {
+      console.error("[Google OAuth] Failed to grant welcome credits:", err.message);
+      // Don't fail authentication if credit granting fails
+    }
+  }
+  
+  // Build auth response
+  const tokens = buildAuthPayload(user);
+  await persistRefreshToken(user._id, tokens.refreshToken, meta);
+  
+  // Add additional response data
+  tokens.welcomeCreditsGranted = welcomeCreditsGranted;
+  tokens.welcomeCreditsAmount = welcomeCreditsAmount;
+  tokens.emailVerified = user.emailVerified;
+  tokens.requiresEmailVerification = !user.emailVerified;
+  tokens.provider = user.provider;
+  tokens.isNewUser = isNewUser;
+  
+  return tokens;
+}
+
 module.exports = {
   register,
   login,
@@ -322,4 +448,5 @@ module.exports = {
   buildAuthPayload,
   verifyEmail,
   resendVerificationEmail,
+  authenticateWithGoogle,
 };

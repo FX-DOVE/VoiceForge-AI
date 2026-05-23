@@ -12,24 +12,86 @@ import {
   Mic,
   AlertTriangle
 } from "lucide-react";
-import { GithubIcon as Github, GoogleIcon as Google } from "@/components/ui/icons";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api/client";
 import { WelcomeCreditsModal } from "@/components/modals/welcome-credits-modal";
+import Script from "next/script";
 
 export default function SignupPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [welcomeCredits, setWelcomeCredits] = useState(2380);
+
+  const googleButtonRef = useRef(null);
+  const googleInitialized = useRef(false);
+
+  // Function to render Google button
+  const renderGoogleButton = useCallback(() => {
+    if (!window.google?.accounts?.id || !googleButtonRef.current) return;
+    
+    if (!googleInitialized.current) {
+      window.google.accounts.id.initialize({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        callback: async (credentialResponse) => {
+          if (credentialResponse.credential) {
+            setGoogleLoading(true);
+            try {
+              const result = await googleLogin(credentialResponse.credential);
+              
+              if (result.isNewUser && result.welcomeCreditsGranted) {
+                setWelcomeCredits(result.welcomeCreditsAmount);
+                setShowWelcomeModal(true);
+                toast.success(`Welcome! ${result.welcomeCreditsAmount} credits added to your account.`);
+              } else if (result.isNewUser) {
+                toast.success("Account created successfully with Google!");
+                router.push("/dashboard");
+              } else {
+                toast.success("Signed in successfully with Google.");
+                router.push("/dashboard");
+              }
+            } catch (err) {
+              console.error("[Google Sign-Up] Error:", err);
+              toast.error(err?.message || "Google sign up failed. Please try again.");
+            } finally {
+              setGoogleLoading(false);
+            }
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      googleInitialized.current = true;
+    }
+
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      theme: "outline",
+      size: "large",
+      width: "100%",
+      text: "continue_with",
+      shape: "rectangular",
+    });
+  }, [googleLogin, router]);
+
+  // Try to render when component mounts (if SDK already loaded)
+  useEffect(() => {
+    renderGoogleButton();
+  }, [renderGoogleButton]);
+
+  // Listen for Google SDK load event
+  useEffect(() => {
+    window.__googleSignUpCallback = renderGoogleButton;
+    return () => { delete window.__googleSignUpCallback; };
+  }, [renderGoogleButton]);
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -144,16 +206,9 @@ export default function SignupPage() {
                 <p className="text-on-surface-variant">Join VoiceForge AI to start creating studio-quality voiceovers.</p>
               </div>
 
-              {/* Social Logins */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                <Button variant="outline" className="h-12 rounded-full border-white/10 bg-white/5 hover:bg-white/10">
-                   <Google className="mr-2 size-5 text-red-500" />
-                   Google
-                </Button>
-                <Button variant="outline" className="h-12 rounded-full border-white/10 bg-white/5 hover:bg-white/10">
-                   <Github className="mr-2 size-5" />
-                   GitHub
-                </Button>
+              {/* Google OAuth Signup - ref-based container */}
+              <div className="mb-8">
+                <div ref={googleButtonRef} className="w-full min-h-[44px]" />
               </div>
 
               <div className="flex items-center gap-4 mb-8">
@@ -264,6 +319,13 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+      <Script
+        src="https://accounts.google.com/gsi/client"
+        strategy="afterInteractive"
+        onLoad={() => {
+          if (window.__googleSignUpCallback) window.__googleSignUpCallback();
+        }}
+      />
     </>
   );
 }

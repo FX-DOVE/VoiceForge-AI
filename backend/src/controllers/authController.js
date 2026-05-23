@@ -76,4 +76,19 @@ const resendVerification = asyncHandler(async (req, res) => {
   sendSuccess(res, data, data.message);
 });
 
-module.exports = { register, login, logout, forgotPassword, resetPassword, me, verifyEmail, resendVerification };
+const googleAuth = asyncHandler(async (req, res) => {
+  const { idToken } = req.body;
+  const data = await authService.authenticateWithGoogle(req.body, {
+    userAgent: req.headers["user-agent"],
+    ipAddress: req.ip,
+  });
+  res.cookie("token", data.accessToken, COOKIE_OPTIONS);
+  
+  const message = data.isNewUser 
+    ? "Account created successfully with Google."
+    : "Signed in successfully with Google.";
+  
+  sendSuccess(res, data, message, data.isNewUser ? 201 : 200);
+});
+
+module.exports = { register, login, logout, forgotPassword, resetPassword, me, verifyEmail, resendVerification, googleAuth };
