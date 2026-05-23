@@ -17,9 +17,10 @@ const audioGenerationSchema = new mongoose.Schema(
     tone: { type: String, default: "" },
     status: {
       type: String,
-      enum: ["pending", "processing", "completed", "failed"],
-      default: "pending",
+      enum: ["queued", "processing", "completed", "failed"],
+      default: "queued",
     },
+    jobId: { type: String, default: null }, // BullMQ job id when queued
     charactersUsed: { type: Number, default: 0 },
     durationSeconds: { type: Number, default: 0 },
     audioUrl: { type: String, default: null },
@@ -27,6 +28,9 @@ const audioGenerationSchema = new mongoose.Schema(
     storageKey: { type: String, default: null },
     errorMessage: { type: String, default: null },
     expiresAt: { type: Date, default: null },
+    // Metrics
+    processingTimeMs: { type: Number, default: null },
+    queuedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

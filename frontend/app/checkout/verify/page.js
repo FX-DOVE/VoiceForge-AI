@@ -41,7 +41,7 @@ export default function CheckoutVerifyPage() {
         setStatus("error");
         setMessage(err.message || "Failed to verify payment. If you were charged, please contact support.");
       });
-  }, [reference]);
+  }, [reference, router]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">

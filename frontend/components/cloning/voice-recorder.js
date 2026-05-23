@@ -32,7 +32,6 @@ export function VoiceRecorder({ onUse }) {
 
   useEffect(() => {
     return () => cleanup();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function cleanup() {

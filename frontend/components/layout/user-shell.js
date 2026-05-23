@@ -29,7 +29,6 @@ export function UserShell({ children }) {
 
   return (
     <div className="flex min-h-screen h-screen w-full bg-background overflow-hidden relative">
-      <meta name="robots" content="noindex, nofollow" />
       {/* Sidebar - Desktop */}
       <DashboardSidebar className="hidden lg:flex" />
 
@@ -232,6 +231,7 @@ function DashboardSidebar({ className, onClose }) {
               className="flex items-center gap-3 p-4 group hover:bg-white/[0.04] transition-colors"
             >
               <div className="size-9 rounded-full bg-surface-variant border border-white/10 flex-shrink-0 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={avatarSrc}
                   alt="Avatar"

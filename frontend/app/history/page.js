@@ -14,15 +14,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRef, useState } from "react";
-import { GenerationDetailModal } from "@/components/history/generation-detail-modal";
 import { useGenerations } from "@/hooks/use-generations";
+import { GenerationDetailModal } from "@/components/history/generation-detail-modal";
 
 export default function HistoryPage() {
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
   const [playingId, setPlayingId] = useState(null);
   const audioRef = useRef(null);
-  const { items: generations, loading, remove } = useGenerations(search);
+  const { items: generations, loading, remove, isRefreshing } = useGenerations(search);
 
   function handlePlayItem(item, e) {
     e.stopPropagation();
@@ -47,6 +47,11 @@ export default function HistoryPage() {
             <HistoryIcon className="size-4" />
           </div>
           <h2 className="text-base font-bold tracking-tight">Generation History</h2>
+          {isRefreshing && (
+            <span className="ml-3 text-[11px] text-on-surface-variant/70 flex items-center gap-1">
+              <span className="size-1.5 bg-primary rounded-full animate-pulse" /> updating
+            </span>
+          )}
         </div>
       </header>
 
@@ -130,18 +135,33 @@ export default function HistoryPage() {
                       <span>{item.time}</span>
                       <span className="opacity-30">•</span>
                       <span>{item.duration}</span>
+                      {item.processingTime && (item.rawStatus === "completed" || item.status === "neutral") && (
+                        <>
+                          <span className="opacity-30">•</span>
+                          <span className="text-emerald-400/80">Generated in {item.processingTime}</span>
+                        </>
+                      )}
                    </div>
                 </div>
               </div>
 
               <div className="flex items-center justify-between lg:justify-end gap-2 sm:gap-4 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-white/5">
+                {/* Status Badge */}
                 <div className={cn(
                   "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold border",
-                  item.status === "warning" ? "bg-red-500/10 text-red-400 border-red-500/20" :
-                  "bg-white/5 text-on-surface-variant border-white/10"
+                  item.status === "queued" && "bg-amber-500/10 text-amber-400 border-amber-500/20",
+                  item.status === "processing" && "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                  item.status === "failed" && "bg-red-500/10 text-red-400 border-red-500/20",
+                  item.status === "warning" && "bg-orange-500/10 text-orange-400 border-orange-500/20",
+                  item.status === "expired" && "bg-neutral-500/10 text-neutral-400 border-neutral-500/20",
+                  (item.status === "neutral" || item.status === "completed") && "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                 )}>
-                  <Timer className="size-3.5" />
-                  <span>{item.expiry}</span>
+                  {item.status === "queued" && "Queued"}
+                  {item.status === "processing" && "Processing..."}
+                  {item.status === "failed" && "Failed"}
+                  {item.status === "warning" && item.expiry}
+                  {item.status === "expired" && "Expired"}
+                  {(item.status === "neutral" || item.status === "completed") && item.expiry}
                 </div>
                 <div className="flex items-center gap-1">
                   <Button

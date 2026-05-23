@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Tell Turbopack that this frontend directory is the project root
+  // (prevents warning about multiple lockfiles in the parent directory)
+  turbopack: {
+    root: import.meta.dirname,
+  },
+
   images: {
     remotePatterns: [
       {

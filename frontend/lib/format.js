@@ -31,6 +31,23 @@ export function mapGenerationToListItem(gen) {
     new Date(gen.expiresAt).getTime() - Date.now() < 3 * 24 * 60 * 60 * 1000;
   const expired = gen.expiresAt && new Date(gen.expiresAt) < new Date();
 
+  // Real backend statuses: queued | processing | completed | failed
+  const rawStatus = gen.status || "completed";
+
+  let displayStatus = "neutral";
+  if (rawStatus === "queued") displayStatus = "queued";
+  else if (rawStatus === "processing") displayStatus = "processing";
+  else if (rawStatus === "failed") displayStatus = "failed";
+  else if (expired) displayStatus = "expired";
+  else if (warning) displayStatus = "warning";
+
+  // Format processing time nicely
+  let processingTime = null;
+  if (gen.processingTimeMs && gen.processingTimeMs > 0) {
+    const seconds = Math.round(gen.processingTimeMs / 1000);
+    processingTime = seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  }
+
   return {
     id: gen.id,
     text: gen.text,
@@ -38,8 +55,11 @@ export function mapGenerationToListItem(gen) {
     time: formatDate(gen.createdAt),
     duration: formatDuration(gen.durationSeconds),
     expiry: expiryLabel(gen.expiresAt),
-    status: expired ? "expired" : warning ? "warning" : "neutral",
+    status: displayStatus,
+    rawStatus,
     audioUrl: gen.playbackUrl || gen.audioUrl,
     downloadUrl: gen.downloadUrl,
+    processingTime,           // e.g. "47s"
+    processingTimeMs: gen.processingTimeMs || null,
   };
 }

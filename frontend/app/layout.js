@@ -25,14 +25,8 @@ export const metadata = {
     description: "Generate realistic AI voices with our pay-as-you-go text to speech API, multilingual voices, and voice cloning platform.",
     url: baseUrl,
     siteName: "VoiceForge AI",
-    images: [
-      {
-        url: `${baseUrl}/og-image.jpg`,
-        width: 1200,
-        height: 630,
-        alt: "VoiceForge AI Text to Speech Platform",
-      },
-    ],
+    // TODO: Add real og-image.jpg (1200x630) to /public when available
+    // images: [{ url: `${baseUrl}/og-image.jpg`, width: 1200, height: 630, alt: "VoiceForge AI" }],
     locale: "en_US",
     type: "website",
   },
@@ -40,7 +34,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "VoiceForge AI — Natural AI Voices",
     description: "Studio-quality text-to-speech and voice cloning.",
-    images: [`${baseUrl}/og-image.jpg`],
+    // images: [`${baseUrl}/og-image.jpg`], // TODO: Add og-image.jpg to public/
   },
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION || "",
@@ -64,7 +58,7 @@ export default function RootLayout({ children }) {
             data={{
               name: "VoiceForge AI",
               url: baseUrl,
-              logo: `${baseUrl}/logo.png`,
+              // logo: `${baseUrl}/logo.png`, // TODO: Add logo.png to /public
               sameAs: [
                 "https://twitter.com/voiceforgeai",
                 "https://github.com/voiceforgeai",

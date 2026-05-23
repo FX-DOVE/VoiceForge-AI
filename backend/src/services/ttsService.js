@@ -10,9 +10,12 @@ const {
 const config = require("../config");
 const { synthesizeSpeech } = require("../integrations/xaiTts");
 const { synthesizeSpeechEdge } = require("../integrations/edgeTts");
+const { enqueueTtsJob, QUEUE_NAME: TTS_QUEUE_NAME } = require("../jobs/ttsQueue");
 const { uploadBuffer } = require("../integrations/storage");
 const { getCharactersLimit } = require("../utils/planLimits");
 const { calculateCreditsForUsage } = require("../utils/creditCalc");
+
+const LONG_TTS_CHAR_THRESHOLD = 2200; // Above this → use background queue for better UX
 
 /**
  * Record xAI API usage for Grok Management tracking
@@ -116,10 +119,45 @@ async function generateTts(userId, options) {
     speed: options.speed ?? 1,
     stability: options.stability ?? 0.5,
     tone: options.tone || "",
-    status: "processing",
+    status: "queued",
     charactersUsed: isFree ? 0 : charCount,
     expiresAt: new Date(Date.now() + 28 * 60 * 60 * 1000), // 28 hours
   });
+
+  // Decide: short text or free voice → fast path (synchronous)
+  // Long text on paid/cloned voices → background queue for good UX
+  const shouldQueue = !isFree && charCount > LONG_TTS_CHAR_THRESHOLD;
+
+  if (shouldQueue) {
+    console.log(`[TTS] Long generation (${charCount} chars) → queuing to BullMQ (threshold ${LONG_TTS_CHAR_THRESHOLD})`);
+
+    const bullJob = await enqueueTtsJob({
+      generationId: generation._id.toString(),
+      userId: userId.toString(),
+      voiceId: generation.voice?.toString() || null,
+    });
+
+    generation.jobId = bullJob?.id || null;
+    generation.status = bullJob?.inline ? "processing" : "queued";
+    await generation.save();
+
+    if (bullJob?.inline) {
+      // Fallback: run immediately in background
+      setImmediate(() => {
+        const { processTtsJob } = require("../jobs/ttsGeneration");
+        processTtsJob({ data: { generationId: generation._id.toString() } }).catch((e) =>
+          console.error("[inline-tts]", e.message)
+        );
+      });
+    }
+
+    return formatGeneration(generation); // Return early — client will poll
+  }
+
+  // === Fast path for short text / free voices ===
+  console.log(`[TTS] Fast path (${charCount} chars) — processing synchronously`);
+  generation.status = "processing";
+  await generation.save();
 
   try {
     let result;
@@ -268,6 +306,8 @@ function formatGeneration(doc) {
     charactersUsed: doc.charactersUsed,
     createdAt: doc.createdAt,
     expiresAt: doc.expiresAt,
+    processingTimeMs: doc.processingTimeMs || null,
+    jobId: doc.jobId || null,
   };
 }
 

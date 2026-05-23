@@ -23,6 +23,7 @@ function StudioPageInner() {
   const [voiceFilter, setVoiceFilter] = useState("all");
   const [selectedSlug, setSelectedSlug] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(null); // { elapsed: number, message: string }
   const [lastAudioUrl, setLastAudioUrl] = useState(null);
   const [previewingSlug, setPreviewingSlug] = useState(null);
   const [loadingPreviewSlug, setLoadingPreviewSlug] = useState(null);
@@ -117,9 +118,52 @@ function StudioPageInner() {
   const allVoices = useMemo(() => [...voices, ...clonedVoices], [voices, clonedVoices]);
   const selectedVoice = allVoices.find((v) => (v.slug || v.id) === selectedSlug);
 
+  async function pollGenerationUntilReady(generationId, maxAttempts = 45) {
+    const startTime = Date.now();
+    const estimatedSeconds = Math.max(25, Math.round((8000 / 8000) * 55)); // rough heuristic
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setGenerationProgress({
+        elapsed,
+        message: `Generating long audio... ${elapsed}s elapsed`,
+      });
+
+      await new Promise((r) => setTimeout(r, 2600));
+
+      try {
+        const { generation } = await ttsApi.get(generationId);
+
+        if (generation.status === "completed") {
+          setGenerationProgress(null);
+          const url = getMediaUrl(generation.playbackUrl || generation.audioUrl);
+          setLastAudioUrl(url);
+          toast.success("Long audio generated successfully!");
+          setTimeout(() => {
+            generatedAudioRef.current?.play().catch(() => {});
+          }, 80);
+          return true;
+        }
+
+        if (generation.status === "failed") {
+          setGenerationProgress(null);
+          toast.error(generation.errorMessage || "Generation failed.");
+          return false;
+        }
+      } catch (e) {
+        console.warn("[TTS Poll] temporary error", e);
+      }
+    }
+
+    setGenerationProgress(null);
+    toast.error("Still generating. Check History page for updates.");
+    return false;
+  }
+
   async function handleGenerate() {
     if (!text.trim() || !selectedSlug) return;
     setGenerating(true);
+
     try {
       const data = await ttsApi.generate({
         text,
@@ -127,16 +171,27 @@ function StudioPageInner() {
         speed,
         stability: stability / 100,
       });
-      const url = getMediaUrl(data.generation?.playbackUrl || data.generation?.audioUrl);
-      setLastAudioUrl(url);
-      toast.success("Audio generated successfully.");
-      setTimeout(() => {
-        generatedAudioRef.current?.play().catch(() => {});
-      }, 100);
+
+      const gen = data.generation;
+
+      if (gen.status === "queued" || gen.status === "processing") {
+        // Long generation — poll in background
+        toast.info("Generating long audio... This may take 30–90 seconds.", { duration: 4000 });
+        await pollGenerationUntilReady(gen.id);
+      } else {
+        // Fast path (short text)
+        const url = getMediaUrl(gen.playbackUrl || gen.audioUrl);
+        setLastAudioUrl(url);
+        toast.success("Audio generated successfully.");
+        setTimeout(() => {
+          generatedAudioRef.current?.play().catch(() => {});
+        }, 100);
+      }
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Generation failed.");
     } finally {
       setGenerating(false);
+      setGenerationProgress(null);
     }
   }
 
@@ -418,6 +473,23 @@ function StudioPageInner() {
                   <Bolt className="size-4 mr-2 fill-current" />
                   {generating ? "Generating..." : "Generate Audio"}
                 </Button>
+
+                {/* Live progress for long generations */}
+                {generating && generationProgress && (
+                  <div className="text-center space-y-1.5 pt-1">
+                    <div className="text-xs text-on-surface-variant font-medium">
+                      {generationProgress.message}
+                    </div>
+                    <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary/70 transition-all duration-500"
+                        style={{ width: `${Math.min(95, (generationProgress.elapsed / 70) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-on-surface-variant/70">Large requests run in the background</p>
+                  </div>
+                )}
+
                 {lastAudioUrl && (
                   <audio ref={generatedAudioRef} controls src={lastAudioUrl} autoPlay playsInline preload="none" className="w-full rounded-xl h-10" />
                 )}
