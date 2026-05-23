@@ -331,7 +331,7 @@ function StudioPageInner() {
                                 <div className={`size-2 rounded-full ${tier === "free" ? "bg-emerald-400 shadow-[0_0_8px_#34d399]" : "bg-amber-400 shadow-[0_0_8px_#fbbf24]"}`} />
                               ) : (
                                 <button type="button" onClick={(e) => handlePreview(slug, e)} disabled={loadingPreviewSlug === slug}
-                                  className="size-7 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-60"
+                                  className="size-7 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors disabled:opacity-60"
                                   aria-label={`Preview ${v.name}`}
                                 >
                                   {loadingPreviewSlug === slug ? <Loader2 className="size-3.5 text-primary animate-spin" /> : previewingSlug === slug ? <Pause className="size-3.5 text-primary fill-current" /> : <Play className="size-3.5 text-neutral-400 fill-current" />}
@@ -394,7 +394,7 @@ function StudioPageInner() {
                                 <div className="size-2 rounded-full bg-primary shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
                               ) : (
                                 <button type="button" onClick={(e) => handlePreview(slug, e)} disabled={loadingPreviewSlug === slug}
-                                  className="size-7 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-60"
+                                  className="size-7 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors disabled:opacity-60"
                                   aria-label={`Preview ${v.name}`}
                                 >
                                   {loadingPreviewSlug === slug ? <Loader2 className="size-3.5 text-primary animate-spin" /> : previewingSlug === slug ? <Pause className="size-3.5 text-primary fill-current" /> : <Play className="size-3.5 text-neutral-400 fill-current" />}
