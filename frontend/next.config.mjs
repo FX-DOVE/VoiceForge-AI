@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enable standalone output for smaller Docker images
+  output: 'standalone',
+
   // Tell Turbopack that this frontend directory is the project root
-  // (prevents warning about multiple lockfiles in the parent directory)
   turbopack: {
     root: import.meta.dirname,
   },
@@ -25,11 +27,14 @@ const nextConfig = {
       },
     ],
   },
+
   async rewrites() {
+    // Use BACKEND_URL env var in Docker (http://api:5000), fallback to localhost for local dev
+    const backend = process.env.BACKEND_URL || 'http://localhost:5000';
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:5000/api/:path*",
+        destination: `${backend}/api/:path*`,
       },
     ];
   },

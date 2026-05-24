@@ -85,21 +85,23 @@ services:
     #       cpus: '2'
     #       memory: 2G
 
-  # Frontend (Next.js) - Uncomment when ready
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   container_name: voiceforge-frontend
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3000:3000"
-  #   env_file:
-  #     - ./frontend/.env.local
-  #   depends_on:
-  #     - api
-  #   networks:
-  #     - voiceforge-network
+  # Frontend (Next.js) - Production
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: voiceforge-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - BACKEND_URL=http://api:5000
+    depends_on:
+      - api
+    networks:
+      - voiceforge-network
 
 volumes:
   redis_data:
