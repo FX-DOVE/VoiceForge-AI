@@ -49,9 +49,10 @@ async function start() {
     }
   })();
 
-  const server = app.listen(config.port, () => {
-    console.log(`VoiceForge API running on http://localhost:${config.port}`);
-    console.log(`Health: http://localhost:${config.port}/api/health`);
+  // Listen on 0.0.0.0 so it works inside Docker and on VPS
+  const server = app.listen(config.port, "0.0.0.0", () => {
+    console.log(`VoiceForge API running on http://0.0.0.0:${config.port}`);
+    console.log(`Health check: http://localhost:${config.port}/api/health`);
   });
 
   // Cleanup expired generations every hour (files auto-deleted after 28 hrs)

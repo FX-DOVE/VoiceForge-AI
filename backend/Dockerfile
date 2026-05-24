@@ -12,7 +12,10 @@ RUN npm ci --only=production && npm cache clean --force
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Create non-root user for security
+# Install dumb-init for proper signal handling in Docker
+RUN apk add --no-cache dumb-init
+
+# Create non-root user for security (best practice)
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodeuser -u 1001
 
@@ -28,12 +31,15 @@ RUN chown -R nodeuser:nodejs /app
 # Switch to non-root user
 USER nodeuser
 
-# Expose port (adjust if your API uses different port)
+# Expose port
 EXPOSE 5000
 
 # Environment
 ENV NODE_ENV=production
 ENV PORT=5000
 
-# Start the API server
-CMD ["node", "src/server.js"]
+# Use dumb-init to handle signals properly (important for Docker)
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the API server (uses "start" script from package.json)
+CMD ["npm", "start"]
