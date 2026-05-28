@@ -179,9 +179,10 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      # Use soft dependency for frontend (healthchecks on Next.js standalone can be flaky).
+      # Use service_started for frontend (healthchecks on Next.js standalone can be flaky).
       # Caddy will start even if the frontend healthcheck takes a long time.
-      - frontend
+      frontend:
+        condition: service_started
       api:
         condition: service_healthy
     networks:

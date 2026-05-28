@@ -37,23 +37,37 @@ export function middleware(request) {
 
   // 1. Canonical Domain & HTTPS Enforcement (in production)
   if (process.env.NODE_ENV === "production") {
-    let urlChanged = false;
-    const newUrl = request.nextUrl.clone();
+    const host = request.nextUrl.hostname;
 
-    // Force HTTPS (Next.js usually handles this behind proxies, but good to be explicit if direct)
-    if (newUrl.protocol === "http:" && !newUrl.hostname.includes("localhost")) {
-      newUrl.protocol = "https:";
-      urlChanged = true;
-    }
+    // Skip enforcement for internal/loopback requests (Docker healthchecks, etc.)
+    const isInternal =
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host === "::1" ||
+      host === "0.0.0.0" ||
+      host.startsWith("10.") ||
+      host.startsWith("172.") ||
+      host.startsWith("192.168.");
 
-    // Force canonical host
-    if (newUrl.hostname !== "localhost" && newUrl.hostname !== CANONICAL_HOST) {
-      newUrl.hostname = CANONICAL_HOST;
-      urlChanged = true;
-    }
+    if (!isInternal) {
+      let urlChanged = false;
+      const newUrl = request.nextUrl.clone();
 
-    if (urlChanged) {
-      return NextResponse.redirect(newUrl, 301);
+      // Force HTTPS
+      if (newUrl.protocol === "http:") {
+        newUrl.protocol = "https:";
+        urlChanged = true;
+      }
+
+      // Force canonical host
+      if (host !== CANONICAL_HOST) {
+        newUrl.hostname = CANONICAL_HOST;
+        urlChanged = true;
+      }
+
+      if (urlChanged) {
+        return NextResponse.redirect(newUrl, 301);
+      }
     }
   }
 
