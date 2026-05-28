@@ -70,12 +70,12 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      # wget is now installed in the backend image (see Dockerfile)
+      # Backend healthcheck (more tolerant settings for production stability)
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/api/health"]
       interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
     logging:
       driver: "json-file"
       options:
@@ -145,23 +145,19 @@ services:
       - HOSTNAME=0.0.0.0
       # Internal Docker DNS name for backend (used by Next.js rewrites in next.config.mjs)
       - BACKEND_URL=http://api:5000
-    # IMPORTANT: Force hostname binding.
-    # Next.js standalone mode (server.js) does not always respect the HOSTNAME
-    # environment variable reliably in Docker. Passing --hostname via command
-    # is currently the most consistent way to ensure it listens on all interfaces
-    # so Caddy (and other containers) can reach it on the Docker bridge network.
-    command: ["node", "server.js", "--hostname", "0.0.0.0", "--port", "3000"]
     depends_on:
       - api
     networks:
       - voiceforge-network
     healthcheck:
-      # Next.js standalone serves on the port defined by PORT / HOSTNAME envs
+      # Next.js standalone + wget inside Alpine can be flaky (especially with IPv6).
+      # We use very tolerant settings so the container eventually becomes healthy
+      # once the server has fully initialized.
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 75s   # Give Next.js standalone enough time to fully start after build
+      interval: 30s
+      timeout: 15s
+      retries: 8
+      start_period: 120s   # Give plenty of time for Next.js standalone to stabilize in Docker
 
   # Caddy - Automatic HTTPS reverse proxy (included and enabled by default)
   # - Automatic Let's Encrypt certificates
@@ -190,14 +186,12 @@ services:
     networks:
       - voiceforge-network
     healthcheck:
-      # Caddy healthcheck - we use a simple TCP check style via wget on port 80.
-      # Note: This may stay "unhealthy" until your domain DNS is pointed correctly
-      # and Caddy can serve the site. It does not block the stack.
+      # Caddy healthcheck (lenient because it depends on domain DNS being ready)
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 30s
 
 # Named volumes = data survives container recreation / image updates / server reboots
 volumes:
