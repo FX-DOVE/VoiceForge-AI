@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install only production dependencies (smaller + more secure image)
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Stage 2: Production image
 FROM node:20-alpine AS runner
