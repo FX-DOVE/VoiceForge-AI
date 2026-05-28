@@ -10,7 +10,6 @@
 
 {
     admin off
-    auto_https on
 }
 
 voiceforgeai.site, www.voiceforgeai.site {
