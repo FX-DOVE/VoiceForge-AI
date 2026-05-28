@@ -215,6 +215,52 @@ The persistent `uploads_data` volume means all previous generations survive.
 - **Frontend still shows old domain**: Rebuild was needed (`--no-cache` or delete `.next` in build context).
 - **Worker not processing jobs**: Check redis health and `docker compose logs worker`.
 
+### Critical: Docker Networking & "Connection refused" from Caddy
+
+This is the most common issue when first setting up the stack.
+
+**Symptoms:**
+- `docker exec -it voiceforge-caddy wget -qO- http://frontend:3000` → Connection refused
+- Site does not load even though all containers are "healthy"
+
+**Root causes & fixes (already applied in current compose):**
+
+1. **localhost-only port publishing** (biggest cause)
+   - Never use `127.0.0.1:3000:3000` when you want other containers to reach the service.
+   - We now use `expose: ["3000"]` instead of `ports`. This is the correct pattern.
+
+2. **Wrong Caddyfile proxy directive**
+   - Using `handle_path /api/*` strips the `/api` prefix → all API calls 404.
+   - We now use `handle /api/*` (prefix is preserved).
+
+3. **Caddyfile not updated with your real domain**
+   - Edit `Caddyfile` and replace `voiceforgeai.site` before deploying.
+
+4. **Old containers / cached network**
+   - After changing compose or Caddyfile, always do:
+     ```bash
+     docker compose down
+     docker compose up -d --build
+     ```
+
+**Diagnostic commands (run these on the VPS):**
+
+```bash
+# 1. Are all containers on the same network?
+docker network inspect voiceforge-voiceforge-network
+
+# 2. Can Caddy reach the frontend internally?
+docker exec -it voiceforge-caddy wget -qO- http://frontend:3000
+
+# 3. Can Caddy reach the API?
+docker exec -it voiceforge-caddy wget -qO- http://api:5000/api/health
+
+# 4. What is the frontend actually listening on?
+docker logs voiceforge-frontend | grep -i "listening\|0.0.0.0\|Network"
+```
+
+If step 2 and 3 still fail after `docker compose down && up -d --build`, something is wrong with the Docker bridge on the VPS (rare, but restart Docker daemon as last resort).
+
 For more, run `docker compose ps` and inspect the unhealthy services.
 
 ---

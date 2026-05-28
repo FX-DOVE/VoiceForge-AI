@@ -12,16 +12,18 @@
 #   2. Edit backend/.env (set strong secrets, MONGODB_URI, XAI key, etc.)
 #   3. (Optional but recommended) Create a .env file in this directory with:
 #        DOMAIN=yourdomain.com
-#   4. docker compose up -d --build
-#   5. Point your domain DNS to the VPS IP. Caddy will auto-provision SSL.
+#   4. Edit Caddyfile and replace voiceforgeai.site with your real domain
+#   5. docker compose down
+#   6. docker compose up -d --build
+#   7. Point your domain DNS to the VPS IP. Caddy will auto-provision SSL.
 #
 # Key production features:
 #   - Persistent uploads volume (generated audio never lost on rebuilds/restarts)
 #   - Non-root containers + volume permission fixes (common VPS gotcha solved)
-#   - Working healthchecks (wget installed)
-#   - Build-time + runtime env support for custom domains (no more hardcoded voiceforgeai.site)
-#   - Caddy for free auto HTTPS (or use your own nginx on host)
-#   - Proper networking (internal DNS, no unnecessary host port exposure)
+#   - Working healthchecks for all services
+#   - Build-time + runtime env support for custom domains
+#   - Caddy for automatic HTTPS + reverse proxy using internal Docker DNS names
+#   - Correct networking: 'expose' instead of localhost-only ports (fixes "Connection refused" from Caddy)
 #
 # For updates: docker compose pull && docker compose up -d --build
 
@@ -49,10 +51,11 @@ services:
       dockerfile: Dockerfile
     container_name: voiceforge-api
     restart: unless-stopped
-    # For pure Docker + Caddy (recommended): do NOT publish ports here.
-    # Only publish on localhost for debugging or if using host nginx.
-    ports:
-      - "127.0.0.1:5000:5000"   # Safe localhost-only binding
+    # Internal-only access via Docker network (Caddy reaches it via http://api:5000).
+    # We use 'expose' instead of 'ports' so nothing is published on the host.
+    # Only Caddy will reach these services.
+    expose:
+      - "5000"
     env_file:
       - ./backend/.env
     environment:
@@ -132,9 +135,10 @@ services:
         # NEXT_PUBLIC_API_URL: "/api"
     container_name: voiceforge-frontend
     restart: unless-stopped
-    # Internal only when using Caddy below. Keep localhost bind for direct debugging if desired.
-    ports:
-      - "127.0.0.1:3000:3000"
+    # Internal-only access. Caddy reaches the frontend via the Docker network (http://frontend:3000).
+    # We deliberately avoid publishing ports on the host so only Caddy can talk to it.
+    expose:
+      - "3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -146,17 +150,21 @@ services:
       - api
     networks:
       - voiceforge-network
+    healthcheck:
+      # Next.js standalone serves on the port defined by PORT / HOSTNAME envs
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
-  # Caddy - Automatic HTTPS reverse proxy (strongly recommended for VPS Docker deploys)
-  # - Zero config SSL via Let's Encrypt
-  # - Handles www/non-www redirects if you extend the Caddyfile
-  # - Proxies /api and /uploads to backend, everything else to Next.js frontend
-  # - No need for certbot, nginx on host, or opening extra ports
+  # Caddy - Automatic HTTPS reverse proxy (included and enabled by default)
+  # - Automatic Let's Encrypt certificates
+  # - Proxies /api/* and /uploads/* to the backend
+  # - Everything else goes to the Next.js frontend
+  # - Uses internal Docker service names (frontend, api) — this is critical
   #
-  # To enable: uncomment the whole service below, ensure you have a Caddyfile in this dir,
-  # and point your domain A record to the VPS IP. Then: docker compose up -d caddy
-  #
-  # See nginx/Caddyfile.example (or create ./Caddyfile) for the config.
+  # Edit the Caddyfile and put your real domain before deploying.
   caddy:
     image: caddy:2-alpine
     container_name: voiceforge-caddy
@@ -174,12 +182,13 @@ services:
       - api
     networks:
       - voiceforge-network
-    # Optional resource sanity on small VPS
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '0.5'
-    #       memory: 256M
+    healthcheck:
+      # Lightweight healthcheck for Caddy (admin is disabled in Caddyfile)
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 # Named volumes = data survives container recreation / image updates / server reboots
 volumes:

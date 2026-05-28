@@ -59,5 +59,6 @@ EXPOSE 3000
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 
-# server.js is created by next build from the standalone output
+# Explicitly bind to all interfaces. This is critical for Docker networking
+# so Caddy (and other containers) can reach the frontend on the bridge network.
 CMD ["node", "server.js"]
