@@ -71,7 +71,7 @@ services:
         condition: service_healthy
     healthcheck:
       # wget is now installed in the backend image (see Dockerfile)
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -152,7 +152,7 @@ services:
       - voiceforge-network
     healthcheck:
       # Next.js standalone serves on the port defined by PORT / HOSTNAME envs
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -184,7 +184,7 @@ services:
       - voiceforge-network
     healthcheck:
       # Lightweight healthcheck for Caddy (admin is disabled in Caddyfile)
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1"]
       interval: 30s
       timeout: 5s
       retries: 3
