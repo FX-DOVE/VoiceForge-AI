@@ -20,10 +20,10 @@
 # Key production features:
 #   - Persistent uploads volume (generated audio never lost on rebuilds/restarts)
 #   - Non-root containers + volume permission fixes (common VPS gotcha solved)
-#   - Working healthchecks for all services
-#   - Build-time + runtime env support for custom domains
-#   - Caddy for automatic HTTPS + reverse proxy using internal Docker DNS names
-#   - Correct networking: 'expose' instead of localhost-only ports (fixes "Connection refused" from Caddy)
+#   - Working healthchecks for all services (with generous start_period for Next.js)
+#   - Build-time + runtime env support for custom domains + correct internal API rewrites
+#   - Caddy for automatic HTTPS + reverse proxy using internal Docker DNS names (frontend, api)
+#   - Correct networking: 'expose' (not 127.0.0.1 ports) + explicit --hostname for Next.js standalone
 #
 # For updates: docker compose pull && docker compose up -d --build
 
@@ -145,8 +145,11 @@ services:
       - HOSTNAME=0.0.0.0
       # Internal Docker DNS name for backend (used by Next.js rewrites in next.config.mjs)
       - BACKEND_URL=http://api:5000
-    # Force hostname binding. Next.js standalone sometimes ignores HOSTNAME env var.
-    # This is currently the most reliable way in Docker.
+    # IMPORTANT: Force hostname binding.
+    # Next.js standalone mode (server.js) does not always respect the HOSTNAME
+    # environment variable reliably in Docker. Passing --hostname via command
+    # is currently the most consistent way to ensure it listens on all interfaces
+    # so Caddy (and other containers) can reach it on the Docker bridge network.
     command: ["node", "server.js", "--hostname", "0.0.0.0", "--port", "3000"]
     depends_on:
       - api

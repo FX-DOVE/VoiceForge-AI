@@ -243,6 +243,14 @@ This is the most common issue when first setting up the stack.
      docker compose up -d --build
      ```
 
+5. **Next.js standalone not listening on 0.0.0.0 (very common)**
+   - Even with `HOSTNAME=0.0.0.0` in environment, the generated `server.js` sometimes ignores it.
+   - **Current working solution** (in this compose file):
+     ```yaml
+     command: ["node", "server.js", "--hostname", "0.0.0.0", "--port", "3000"]
+     ```
+   - Also pass `BACKEND_URL` as a build arg so API rewrites are correct for the Docker network.
+
 **Diagnostic commands (run these on the VPS):**
 
 ```bash
