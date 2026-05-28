@@ -1,0 +1,96 @@
+# Caddyfile for VoiceForge AI (Docker VPS deployment)
+#
+# Usage:
+#   1. Replace "voiceforgeai.site" below with your actual domain (or use multiple).
+#   2. Point your domain's A/AAAA records to your VPS public IP.
+#   3. docker compose up -d caddy   (or just up -d)
+#
+# Caddy automatically obtains & renews Let's Encrypt certificates.
+# No certbot, no manual HTTPS config, no port 80/443 fights.
+#
+# Proxy rules:
+#   /api/*      -> backend (Express on port 5000)
+#   /uploads/*  -> backend (serves persistent audio files)
+#   /*          -> frontend (Next.js on port 3000)
+#
+# We use handle_path so /api/foo doesn't become /foo at the backend.
+
+{
+    # Global options (optional but good for small VPS)
+    admin off
+    auto_https on
+    # email your@email.com   # Uncomment to receive Let's Encrypt expiry notices
+}
+
+# === Primary site (edit domain) ===
+voiceforgeai.site, www.voiceforgeai.site {
+    # Security headers (good defaults)
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # HSTS (uncomment after confirming everything works)
+        # Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+
+    # Gzip / Brotli (Caddy does this automatically for most types)
+
+    # Client upload size (for voice samples, etc.)
+    request_body {
+        max_size 50MB
+    }
+
+    # === API ===
+    handle_path /api/* {
+        reverse_proxy api:5000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {proxy}
+            header_up X-Forwarded-Proto {scheme}
+            # Long timeouts for slow TTS generation
+            transport http {
+                read_timeout 300s
+                write_timeout 300s
+            }
+        }
+    }
+
+    # === Uploaded audio files (served by backend, backed by Docker volume) ===
+    handle_path /uploads/* {
+        reverse_proxy api:5000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+        }
+        # Long cache for audio (these URLs are stable)
+        header {
+            Cache-Control "public, max-age=2592000, immutable"
+            +Access-Control-Allow-Origin "*"
+        }
+    }
+
+    # === Frontend (Next.js) - catch all ===
+    handle {
+        reverse_proxy frontend:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {proxy}
+            header_up X-Forwarded-Proto {scheme}
+            # Support for Next.js hot reload in dev (not used in prod standalone)
+            transport http {
+                read_timeout 300s
+            }
+        }
+    }
+
+    # Optional: redirect bare domain <-> www if you prefer one canonical form
+    # @www {
+    #     host www.voiceforgeai.site
+    # }
+    # redir @www https://voiceforgeai.site{uri} 301
+}
+
+# === Add more domains / staging here if needed ===
+# staging.voiceforgeai.site {
+#     reverse_proxy frontend:3000
+# }

@@ -28,10 +28,13 @@ function getCloudinary() {
 }
 
 function getLocalBaseUrl() {
-  // Construct base URL from config or default to localhost
+  // In Docker/VPS production, SERVER_URL must be set to the public https://yourdomain.com
+  // This ensures generated audio URLs (returned to browser) are publicly reachable.
+  if (config.serverUrl) {
+    return config.serverUrl.replace(/\/+$/, "");
+  }
   const port = config.port || 5000;
-  const host = config.serverUrl?.replace(/\/+$/, "") || `http://localhost:${port}`;
-  return host;
+  return `http://localhost:${port}`;
 }
 
 async function uploadBuffer(buffer, { folder, filename, mimeType }) {

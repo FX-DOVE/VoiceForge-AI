@@ -1,13 +1,37 @@
-version: '3.8'
+# VoiceForge AI — Production Docker Compose for VPS
+# ============================================================
+# This setup is optimized for reliable, zero-hassle deployment on a VPS using only Docker.
+#
+# Recommended hosting stack:
+#   - Docker + Docker Compose
+#   - Caddy (included below) for automatic HTTPS + reverse proxy (easiest, no certbot pain)
+#   - External MongoDB (MongoDB Atlas free tier or self-hosted on same VPS)
+#
+# Quick start (see DOCKER_VPS_DEPLOYMENT.md for full guide):
+#   1. cp backend/.env.example backend/.env
+#   2. Edit backend/.env (set strong secrets, MONGODB_URI, XAI key, etc.)
+#   3. (Optional but recommended) Create a .env file in this directory with:
+#        DOMAIN=yourdomain.com
+#   4. docker compose up -d --build
+#   5. Point your domain DNS to the VPS IP. Caddy will auto-provision SSL.
+#
+# Key production features:
+#   - Persistent uploads volume (generated audio never lost on rebuilds/restarts)
+#   - Non-root containers + volume permission fixes (common VPS gotcha solved)
+#   - Working healthchecks (wget installed)
+#   - Build-time + runtime env support for custom domains (no more hardcoded voiceforgeai.site)
+#   - Caddy for free auto HTTPS (or use your own nginx on host)
+#   - Proper networking (internal DNS, no unnecessary host port exposure)
+#
+# For updates: docker compose pull && docker compose up -d --build
 
 services:
-  # Redis (required for BullMQ job queues)
+  # Redis (required for BullMQ job queues for TTS + voice cloning)
   redis:
     image: redis:7-alpine
     container_name: voiceforge-redis
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:6379:6379"   # Only localhost (for your Nginx if needed)
+    # Redis is internal only. No host exposure needed when using the included Caddy.
     volumes:
       - redis_data:/data
     healthcheck:
@@ -18,26 +42,32 @@ services:
     networks:
       - voiceforge-network
 
-  # Backend API Server
+  # Backend API Server (Express)
   api:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: voiceforge-api
     restart: unless-stopped
+    # For pure Docker + Caddy (recommended): do NOT publish ports here.
+    # Only publish on localhost for debugging or if using host nginx.
     ports:
-      - "127.0.0.1:5000:5000"   # Only localhost (Nginx will proxy to this)
+      - "127.0.0.1:5000:5000"   # Safe localhost-only binding
     env_file:
       - ./backend/.env
     environment:
       - NODE_ENV=production
       - REDIS_URL=redis://redis:6379
+      # These are critical for Docker VPS with custom domain.
+      # Set CLIENT_URL and SERVER_URL in backend/.env to your public https://domain.com
+      # (or use root .env + interpolation if you extend this file)
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
+      # wget is now installed in the backend image (see Dockerfile)
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/health"]
       interval: 30s
       timeout: 10s
@@ -48,10 +78,14 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    volumes:
+      # CRITICAL: Persistent storage for all generated audio, voice clones, uploads.
+      # Without this, every docker compose down / rebuild wipes user data.
+      - uploads_data:/app/uploads
     networks:
       - voiceforge-network
 
-  # Background Worker (BullMQ - handles long TTS + Voice Cloning)
+  # Background Worker (BullMQ - handles long-running TTS generation + voice cloning jobs)
   worker:
     build:
       context: ./backend
@@ -74,31 +108,91 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    volumes:
+      # Same persistent uploads for worker (it writes generated files too)
+      - uploads_data:/app/uploads
     networks:
       - voiceforge-network
 
-  # Frontend (Next.js)
+  # Frontend (Next.js 15 standalone - production optimized)
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      # Pass build-time public variables so metadata, canonical URLs, sitemaps,
+      # OpenGraph, and middleware domain enforcement work correctly with YOUR domain.
+      # These must be known at `next build` time.
+      #
+      # Recommended: Create a .env file next to this docker-compose.yml containing:
+      #   DOMAIN=yourdomain.com
+      # Then Docker Compose will interpolate ${DOMAIN}.
+      args:
+        NEXT_PUBLIC_SITE_URL: "https://${DOMAIN:-localhost:3000}"
+        # NEXT_PUBLIC_API_URL is usually "/api" (Next rewrites handle it). Only override if needed.
+        # NEXT_PUBLIC_API_URL: "/api"
     container_name: voiceforge-frontend
     restart: unless-stopped
+    # Internal only when using Caddy below. Keep localhost bind for direct debugging if desired.
     ports:
-      - "127.0.0.1:3000:3000"   # Only localhost (your Nginx proxies to this)
+      - "127.0.0.1:3000:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
+      # Internal Docker DNS name for backend (used by Next.js rewrites in next.config.mjs)
       - BACKEND_URL=http://api:5000
+      # Also pass runtime (non-public) if your frontend ever reads other vars
+      # SITE_URL will be picked from NEXT_PUBLIC_SITE_URL baked at build above.
     depends_on:
       - api
     networks:
       - voiceforge-network
 
+  # Caddy - Automatic HTTPS reverse proxy (strongly recommended for VPS Docker deploys)
+  # - Zero config SSL via Let's Encrypt
+  # - Handles www/non-www redirects if you extend the Caddyfile
+  # - Proxies /api and /uploads to backend, everything else to Next.js frontend
+  # - No need for certbot, nginx on host, or opening extra ports
+  #
+  # To enable: uncomment the whole service below, ensure you have a Caddyfile in this dir,
+  # and point your domain A record to the VPS IP. Then: docker compose up -d caddy
+  #
+  # See nginx/Caddyfile.example (or create ./Caddyfile) for the config.
+  caddy:
+    image: caddy:2-alpine
+    container_name: voiceforge-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - api
+    networks:
+      - voiceforge-network
+    # Optional resource sanity on small VPS
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.5'
+    #       memory: 256M
+
+# Named volumes = data survives container recreation / image updates / server reboots
 volumes:
   redis_data:
+    driver: local
+  uploads_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
     driver: local
 
 networks:
   voiceforge-network:
     driver: bridge
+

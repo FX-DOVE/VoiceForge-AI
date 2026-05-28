@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
 
-// Read from env or default to non-www
-const CANONICAL_HOST = process.env.NEXT_PUBLIC_SITE_URL 
-  ? new URL(process.env.NEXT_PUBLIC_SITE_URL).hostname 
-  : "voiceforgeai.site";
+// Fully configurable canonical host for Docker/VPS/custom domain deploys.
+// Set NEXT_PUBLIC_SITE_URL in your build (docker-compose build args or .env).
+// Falls back to a sensible default only for local development.
+const getCanonicalHost = () => {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (siteUrl) {
+    try {
+      return new URL(siteUrl).hostname;
+    } catch {
+      // malformed env, ignore
+    }
+  }
+  // Local dev fallback only
+  return "localhost";
+};
+
+const CANONICAL_HOST = getCanonicalHost();
 
 const AUTH_ROUTES = ["/login", "/signup", "/forgot-password", "/reset-password"];
 const PROTECTED_PREFIXES = [

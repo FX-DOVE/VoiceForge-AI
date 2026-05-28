@@ -14,22 +14,32 @@ const app = express();
 
 app.set("trust proxy", 1);
 
+// Build allowed origins from config + common dev + any extra from env (comma separated)
+const extraOrigins = (process.env.ADDITIONAL_CORS_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 const allowedOrigins = new Set([
   config.clientUrl,
+  process.env.SERVER_URL,
   "https://voiceforgeai.site",
   "https://www.voiceforgeai.site",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
+  ...extraOrigins,
 ]);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, etc.)
+      // Allow requests with no origin (mobile apps, curl, Postman, etc.)
       if (!origin) return callback(null, true);
       if (allowedOrigins.has(origin)) return callback(null, true);
-      // Also allow if it ends with voiceforgeai.site (subdomains)
+      // Allow any subdomain of known production domains (helps with www / staging)
       if (origin.endsWith("voiceforgeai.site")) return callback(null, true);
+      // Allow the configured client / server origin even if not exact match above
+      if (config.clientUrl && origin === config.clientUrl) return callback(null, true);
       callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
