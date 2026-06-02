@@ -137,4 +137,84 @@ The persistent volume means all your previous voice generations and uploads are 
 
 After this, your VPS will be running the exact same code as what we just pushed, including the fully working contact system that emails support@voiceforgeai.site.
 
-Let me know the output of the logs or any errors you hit and I can help debug live.
+---
+
+## 8. Voices missing in /voices (library) or /studio after build/deploy
+
+This is common after a fresh pull + rebuild if the MongoDB `voices` collection was never seeded or the sync for ElevenLabs (Premium voices) was not re-run on the VPS.
+
+The stock voices (VoiceForge Free + Pro + Premium) live in Mongo and are **not** baked into the Docker image. You must run the population scripts against your DB.
+
+### One-command fix (recommended)
+
+From your project directory on the VPS (where docker-compose.yml lives):
+
+```bash
+# Run the all-in-one refresher (seeds Free/Pro defaults + syncs your ElevenLabs Premium voices + backfills + billing profiles)
+docker compose exec api node scripts/refresh-all-voices.js
+```
+
+This script:
+- Seeds the base Free + xAI Pro voices
+- Syncs **all public ElevenLabs voices** your ELEVENLABS_API_KEY can use (this populates the VoiceForge Premium tab and most of the library)
+- Backfills provider / model / costTier fields (important for the rebrand to show correct "VoiceForge Premium / Studio" labels and correct credit costs)
+- Ensures BillingProfiles exist (so Pro/Premium generations charge the right "eleven lab api budget" instead of free/xai rates)
+
+It is safe and idempotent.
+
+### After the script finishes
+
+```bash
+# (Strongly recommended) Generate local cached previews for EL voices
+# This avoids repeated calls to ElevenLabs for sample audio (saves money + prevents 402 errors on free-tier keys)
+docker compose exec api node scripts/generateElevenLabsPreviews.js
+```
+
+Then restart to be sure:
+
+```bash
+docker compose up -d
+```
+
+### Alternative: run individual scripts (if the one script has issues)
+
+```bash
+docker compose exec api node scripts/seed-voices.js
+docker compose exec api node scripts/syncElevenLabsVoices.js     # The important one for Premium voices
+docker compose exec api node scripts/backfill-voice-models.js
+docker compose exec api node scripts/seed-billing-profiles.js
+docker compose exec api node scripts/generateElevenLabsPreviews.js
+```
+
+### Requirements
+
+- Your `backend/.env` (the one the api container sees) **must** contain a valid `ELEVENLABS_API_KEY` that has access to voices (the same one you used locally).
+- If you see "No voices returned" or 401/403, double-check the key in the VPS .env and do `docker compose up -d --build api` after editing.
+
+### Verify
+
+After the scripts:
+
+- Go to https://yourdomain.com/voices → you should see Free / Pro / Premium tabs with many voices.
+- In Studio → All / Free / Pro / Premium / My Clones should have voices.
+- Cloned voices (if any) should show as VoiceForge Premium in the cost preview, not Free.
+
+If still empty after the script, check logs:
+
+```bash
+docker compose logs api | grep -i "sync\|seed\|voice\|eleven"
+```
+
+And confirm the key is loaded:
+
+```bash
+docker compose exec api node -e "console.log('EL key present?', !!process.env.ELEVENLABS_API_KEY)"
+```
+
+Run the script again after fixing the key.
+
+This should get your library and studio fully populated with the correct VoiceForge Free / Pro / Premium voices (with proper labels and charging).
+
+---
+
+Let me know the output of the refresh script or any errors (especially around the EL key), and I'll give the exact next command.
