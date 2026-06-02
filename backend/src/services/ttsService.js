@@ -84,9 +84,18 @@ async function generateTts(userId, options) {
   // Resolve voice first so we can check tier before enforcing limits
   const voice = await resolveVoiceWithClone(options);
   const voiceTier = voice?.tier || "pro";
-  const voiceProvider = voice?.provider || (voice?.tier === "free" ? "free" : "xai");
-  const voiceModel = voice?.model || (voiceProvider === "elevenlabs" ? "flash" : "voice_api");
+  let voiceProvider = voice?.provider || (voice?.tier === "free" ? "free" : "xai");
+  let voiceModel = voice?.model || (voiceProvider === "elevenlabs" ? "flash" : "voice_api");
   const isClonedCheck = voice?.type === "cloned";
+
+  // Cloned voices are always from / charged as ElevenLabs (VoiceForge Premium).
+  // Force the correct provider/model even for legacy Voice records that may have
+  // incorrect tier/provider fields (so they don't fall back to free/xai credits).
+  if (isClonedCheck) {
+    voiceProvider = "elevenlabs";
+    voiceModel = voice?.model || "flash";
+  }
+
   // Cloned voices use xAI TTS ... (unless elevenlabs clone for professional)
   const isFree = voiceTier === "free" && !isClonedCheck && voiceProvider !== "elevenlabs";
 

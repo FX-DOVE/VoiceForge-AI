@@ -60,10 +60,11 @@ function StudioPageInner() {
     const costTier = (v.costTier || "").toLowerCase();
     const model = (v.model || "").toLowerCase();
     const hasElId = !!v.elevenlabsVoiceId;
+    const isCloned = v.type === "cloned";
 
-    const isFree = tier === "free" || prov === "free";
-    const isXai = prov === "xai" || (!hasElId && tier === "pro");
-    const isEl = hasElId || prov === "elevenlabs" || prov === "professional";
+    const isFree = (tier === "free" || prov === "free") && !isCloned;
+    const isXai = prov === "xai" || (!hasElId && tier === "pro" && !isCloned);
+    const isEl = hasElId || prov === "elevenlabs" || prov === "professional" || isCloned;
 
     if (isFree) {
       return {
@@ -178,7 +179,17 @@ function StudioPageInner() {
           id: c.voiceSlug,
           name: c.name || "My Clone",
           type: "cloned",
-          tier: "free",
+          // Cloned voices come from VoiceForge Premium (ElevenLabs)
+          // Set fields so getVoiceDisplay and cost preview treat them correctly as Premium/Studio
+          tier: "pro",
+          provider: "elevenlabs",
+          source: "elevenlabs",
+          elevenlabsVoiceId: "el-clone", // truthy → detected as EL premium
+          costTier: "medium",
+          model: "eleven_flash_v2_5",
+          displayTier: "premium",
+          displayName: "VoiceForge Premium",
+          quality: "Studio",
           tags: ["Cloned"],
           description: c.description || "",
           cloneId: c.id,

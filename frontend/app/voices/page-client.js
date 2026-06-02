@@ -34,10 +34,11 @@ function getVoiceDisplay(v) {
   const costTier = (v.costTier || "").toLowerCase();
   const model = (v.model || "").toLowerCase();
   const hasElId = !!v.elevenlabsVoiceId;
+  const isCloned = v.type === "cloned";
 
-  const isFree = tier === "free" || prov === "free";
-  const isXai = prov === "xai" || (!hasElId && tier === "pro");
-  const isEl = hasElId || prov === "elevenlabs" || prov === "professional";
+  const isFree = (tier === "free" || prov === "free") && !isCloned;
+  const isXai = prov === "xai" || (!hasElId && tier === "pro" && !isCloned);
+  const isEl = hasElId || prov === "elevenlabs" || prov === "professional" || isCloned;
 
   if (isFree) {
     return {

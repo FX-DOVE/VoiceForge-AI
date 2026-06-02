@@ -23,6 +23,12 @@ function ensureAbsoluteUrl(url) {
 // Frontend receives displayTier/displayName/quality for all labels.
 
 function getDisplayTier(v) {
+  // Cloned voices are always VoiceForge Premium (they are created via ElevenLabs
+  // under the professional tier). Force premium even for legacy records that may
+  // have had tier/provider not set correctly at creation time.
+  if (v && v.type === "cloned") {
+    return "premium";
+  }
   const tier = (v.tier || "free").toLowerCase();
   const prov = (v.provider || v.source || "").toLowerCase();
   const hasEl = !!v.elevenlabsVoiceId;
