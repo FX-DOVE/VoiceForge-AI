@@ -1,6 +1,6 @@
 const express = require("express");
 const cloneController = require("../controllers/cloneController");
-const { authenticate, requirePlan } = require("../middleware/auth");
+const { authenticate, requireProfessional } = require("../middleware/auth");
 const { uploadAudio } = require("../middleware/upload");
 const validate = require("../middleware/validate");
 const { configureCloneRules, startCloneRules } = require("../validators/cloneValidators");
@@ -20,12 +20,13 @@ function handleUploadMiddleware(req, res, next) {
 router.get("/shared/:token", cloneController.getShared);
 
 router.use(authenticate);
-router.use(requirePlan("enterprise"));
+router.get("/", cloneController.list);
+router.get("/:id/status", cloneController.status);
+
+router.use(requireProfessional());
 router.post("/upload", handleUploadMiddleware, cloneController.upload);
 router.post("/configure", configureCloneRules, validate, cloneController.configure);
 router.post("/start", startCloneRules, validate, cloneController.start);
-router.get("/", cloneController.list);
-router.get("/:id/status", cloneController.status);
 router.patch("/:id", cloneController.update);
 router.delete("/:id", cloneController.deleteClone);
 

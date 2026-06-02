@@ -23,6 +23,7 @@ export default function CloningTrainPage() {
   const [progress, setProgress] = useState(0);
   const [done, setDone] = useState(false);
   const [steps, setSteps] = useState([]);
+  const [cloneProvider, setCloneProvider] = useState("xai");
   useEffect(() => {
     if (!cloneId) return;
 
@@ -44,7 +45,12 @@ export default function CloningTrainPage() {
           if (cancelled) return;
 
           setProgress(status.progress ?? 0);
-          if (status.job?.steps?.length) {
+          if (status.provider) setCloneProvider(status.provider);
+
+          if (status.provider === "elevenlabs") {
+            // Instant for VoiceForge Premium — show simplified UI (provider hidden from user)
+            setSteps([{ label: "VoiceForge Premium — Instant Voice Cloning", done: status.status === "ready" }]);
+          } else if (status.job?.steps?.length) {
             setSteps(
               status.job.steps.map((s) => ({
                 label: s.label,
@@ -108,9 +114,11 @@ export default function CloningTrainPage() {
     <div className="flex flex-1 flex-col px-4 py-8 sm:px-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
         <div className="glass-panel rounded-2xl p-6 sm:p-8">
-          <h2 className="text-xl font-bold text-white">Training</h2>
+          <h2 className="text-xl font-bold text-white">{cloneProvider === "elevenlabs" ? "VoiceForge Premium Cloning" : "Training"}</h2>
           <p className="mt-2 text-sm text-on-surface-variant">
-            We&apos;re optimizing weights for your samples. This may take a few minutes.
+            {cloneProvider === "elevenlabs"
+              ? "Sending your samples for instant voice cloning (VoiceForge Premium). This is usually very fast."
+              : "We're optimizing weights for your samples. This may take a few minutes."}
           </p>
           <div className="mt-8 space-y-4">
             <div className="flex items-center justify-between text-sm text-on-surface-variant">

@@ -9,6 +9,7 @@ const { generateAllPreviews } = require("./utils/generateVoicePreviews");
 const { User } = require("./models");
 const { cleanupExpired } = require("./services/ttsService");
 const { verifyConnection } = require("./integrations/email");
+const professionalService = require("./services/professionalService");
 
 async function ensureAdminUser() {
   if (!config.adminEmail) return;
@@ -58,6 +59,12 @@ async function start() {
   // Cleanup expired generations every hour (files auto-deleted after 28 hrs)
   cleanupExpired().catch(() => {});
   setInterval(() => cleanupExpired().catch(() => {}), 60 * 60 * 1000);
+
+  // Daily Professional membership expiration check (marks expired, disables EL/cloning access)
+  // Run on start + every 12 hours (cheap + timely)
+  const runMembershipExpiry = () => professionalService.expirePastDue().catch((e) => console.error("[MembershipExpiry]", e.message));
+  runMembershipExpiry();
+  setInterval(runMembershipExpiry, 12 * 60 * 60 * 1000);
 
   server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {

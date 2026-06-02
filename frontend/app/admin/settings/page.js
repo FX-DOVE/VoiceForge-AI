@@ -139,7 +139,7 @@ export default function AdminSettingsPage() {
           <Loader2 className="size-8 text-primary animate-spin" />
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-8 flex flex-col gap-5 pb-24">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-8 flex flex-col gap-5 pb-24 max-h-[calc(100vh-180px)]">
 
           {/* ── GENERAL ── */}
           {activeTab === "general" && (
@@ -313,6 +313,7 @@ export default function AdminSettingsPage() {
                   { key: "free", label: "Free", color: "text-neutral-400", bg: "bg-neutral-500/10 border-neutral-500/20" },
                   { key: "pro", label: "Pro", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
                   { key: "enterprise", label: "Enterprise", color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20" },
+                  { key: "professional", label: "Professional", color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
                 ].map(({ key, label, color, bg }, i) => {
                   const p = plans?.[key];
                   return (
@@ -353,6 +354,7 @@ export default function AdminSettingsPage() {
                     {"  "}<span className="text-neutral-300">free</span>: {"{ "}charactersLimit: <span className="text-emerald-400">{(plans?.free?.charactersLimit ?? 10000).toLocaleString()}</span>{" }"},<br />
                     {"  "}<span className="text-neutral-300">pro</span>: {"{ "}charactersLimit: <span className="text-blue-400">{(plans?.pro?.charactersLimit ?? 100000).toLocaleString()}</span>{" }"},<br />
                     {"  "}<span className="text-neutral-300">enterprise</span>: {"{ "}charactersLimit: <span className="text-violet-400">{(plans?.enterprise?.charactersLimit ?? 1000000).toLocaleString()}</span>{" }"}<br />
+                    {"  "}<span className="text-neutral-300">professional</span>: {"{ "}charactersLimit: <span className="text-amber-400">{(plans?.professional?.charactersLimit ?? 500000).toLocaleString()}</span>{" }"}<br />
                     {"}"}
                   </div>
                 </div>

@@ -292,11 +292,17 @@ function convertTicksToUsd(ticks) {
 }
 
 /**
- * Estimate cost based on character count for TTS
+ * Estimate cost based on character count for TTS.
+ * Now delegates to the central dynamic billing engine.
  */
-function estimateTtsCost(characters) {
-  const COST_PER_CHAR = 0.0000042;
-  return characters * COST_PER_CHAR;
+async function estimateTtsCost(characters) {
+  const { calculateEstimatedApiCost } = require("./creditCalc"); // note: may need path adjustment
+  try {
+    return await calculateEstimatedApiCost(characters);
+  } catch {
+    // Safe fallback
+    return (characters / 1_000_000) * 15;
+  }
 }
 
 /**

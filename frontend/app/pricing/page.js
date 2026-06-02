@@ -35,10 +35,10 @@ export default function Page() {
       },
       {
         "@type": "Question",
-        name: "What is the difference between free and premium voices?",
+        name: "What is the difference between VoiceForge Free, Pro, and Premium?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Free voices use VoiceForge standard TTS and do not consume credits. Premium voices use VoiceForge TTS and produce significantly more natural, expressive speech — these deduct credits at 2 credits per character.",
+          text: "VoiceForge Free: basic voices and free generation. VoiceForge Pro: enhanced quality voices with pay-as-you-go credits. VoiceForge Premium ($2.99/mo): studio-quality voices, voice cloning, custom uploads + professional badge. All paid generations use credits from your wallet.",
         },
       },
       {

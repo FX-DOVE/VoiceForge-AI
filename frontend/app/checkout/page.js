@@ -10,20 +10,46 @@ import { paymentsApi, adminApi } from "@/lib/api";
 import { toast } from "sonner";
 import { Loader2, Zap, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { calculateCreditsFromPayment } from "@/lib/creditCalc";
 
 function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
   const initialAmount = Number(searchParams.get("amount")) || 10;
+  const initialPlan = searchParams.get("plan");
   const [amount, setAmount] = useState(initialAmount);
+  const [isPremiumUpgrade, setIsPremiumUpgrade] = useState(initialPlan === "professional");
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(false);
   const [refundPolicyAccepted, setRefundPolicyAccepted] = useState(false);
 
   const minPayment = 0.5;
-  const estimatedCredits = calculateCreditsFromPayment(amount);
+  const [estimatedCredits, setEstimatedCredits] = useState(0);
+
+  useEffect(() => {
+    if (isPremiumUpgrade) {
+      setAmount(2.99);
+    }
+  }, [isPremiumUpgrade]);
+
+  // Fetch live estimate from backend when amount changes
+  useEffect(() => {
+    const fetchEstimate = async () => {
+      if (isPremiumUpgrade) {
+        setEstimatedCredits(0); // subscription, not credits
+        return;
+      }
+      try {
+        // Use new provider-aware estimate method (for VoiceForge Pro deposits)
+        const res = await paymentsApi.estimate(amount, "xai");
+        if (res?.credits) setEstimatedCredits(res.credits);
+      } catch {
+        // fallback rough estimate if backend fails
+        setEstimatedCredits(Math.floor(amount * 66666));
+      }
+    };
+    if (amount > 0 || isPremiumUpgrade) fetchEstimate();
+  }, [amount, isPremiumUpgrade]);
 
   const handleCheckout = async () => {
     if (amount < minPayment) {
@@ -60,8 +86,14 @@ function CheckoutContent() {
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-20">
         <div className="w-full max-w-md">
           <div className="text-center mb-10">
-            <h1 className="text-3xl font-bold text-white tracking-tight">Purchase Credits</h1>
-            <p className="text-neutral-400 mt-2">Pay-as-you-go. No subscriptions.</p>
+            <h1 className="text-3xl font-bold text-white tracking-tight">
+              {isPremiumUpgrade ? "Upgrade to VoiceForge Premium" : "Purchase Credits"}
+            </h1>
+            <p className="text-neutral-400 mt-2">
+              {isPremiumUpgrade 
+                ? "$2.99/month - VoiceForge Premium (Studio voices + full voice cloning)" 
+                : "Pay-as-you-go. No subscriptions."}
+            </p>
           </div>
 
           <div className="glass-panel p-8 rounded-3xl border-white/10 space-y-8 relative overflow-hidden">
@@ -76,13 +108,14 @@ function CheckoutContent() {
                 <input
                   type="number"
                   min={minPayment}
-                  step="1"
+                  step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(Number(e.target.value) || 0)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl h-16 pl-10 pr-6 text-2xl font-bold text-white outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 transition-all"
+                  disabled={isPremiumUpgrade}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl h-16 pl-10 pr-6 text-2xl font-bold text-white outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-70"
                 />
               </div>
-              <p className="text-xs text-neutral-500">Minimum payment: ${minPayment}</p>
+              <p className="text-xs text-neutral-500">{isPremiumUpgrade ? "Premium: $2.99 / month" : `Minimum payment: $${minPayment}`}</p>
             </div>
 
             {/* Non-Refundable Notice */}
@@ -96,8 +129,8 @@ function CheckoutContent() {
 
             <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/5 flex flex-col gap-2">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-neutral-400">Rate</span>
-                <span className="font-semibold text-white">~238,095 credits per $1</span>
+                <span className="text-neutral-400">{isPremiumUpgrade ? "Membership unlocks" : "Credits you will receive"}</span>
+                <span className="font-semibold text-white">{isPremiumUpgrade ? "Premium access" : estimatedCredits.toLocaleString() + " credits"}</span>
               </div>
               <div className="h-px w-full bg-white/5 my-1" />
               <div className="flex justify-between items-center">

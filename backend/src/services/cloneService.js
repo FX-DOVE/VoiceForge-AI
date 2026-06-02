@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const { VoiceClone, VoiceSample, TrainingJob, Voice, Notification } = require("../models");
 const { uploadFromPath } = require("../integrations/storage");
+const elevenlabs = require("../integrations/elevenlabsService");
 const { enqueueTrainingJob } = require("../jobs/trainingQueue");
 const { matchVoiceFromReference, selectVoiceByGender } = require("../utils/voiceMatcher");
 const config = require("../config");
@@ -25,7 +26,14 @@ const TRAINING_STEPS = [
 ];
 
 async function createDraftClone(userId) {
-  return VoiceClone.create({ user: userId, status: "uploading" });
+  const { User } = require("../models");
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+  const isPro = await user.isProfessional();
+  if (!isPro && user.plan !== "professional") {
+    throw Object.assign(new Error("Professional membership required for voice cloning"), { statusCode: 403 });
+  }
+  return VoiceClone.create({ user: userId, status: "uploading", provider: "elevenlabs" });
 }
 
 async function uploadSamples(userId, cloneId, files) {
@@ -111,6 +119,86 @@ async function startTraining(userId, cloneId) {
     throw Object.assign(new Error("This clone is not ready to train."), { statusCode: 400 });
   }
 
+  // For Professional (ElevenLabs), do instant clone via their API (no long training queue)
+  if (clone.provider === "elevenlabs") {
+    const samples = await VoiceSample.find({ voiceClone: clone._id }).sort({ createdAt: 1 });
+    if (!samples.length) {
+      throw Object.assign(new Error("No samples found for cloning."), { statusCode: 400 });
+    }
+    // Basic ElevenLabs recommendation: at least 2-3 good samples for decent quality
+    if (samples.length < 2) {
+      // allow but warn in practice; for now soft
+      console.warn("[Clone EL] Only 1 sample provided — ElevenLabs recommends multiple clean samples (30s+ each).");
+    }
+
+    // Fetch sample audio as buffers (works for remote or local storage urls)
+    // IMPORTANT: use absolute URL for server-side fetch (Node fetch does not resolve relative like browser)
+    const filesForEl = [];
+    for (const s of samples) {
+      if (!s.url) continue;
+      const absoluteUrl = ensureAbsoluteUrl(s.url);
+      try {
+        const resp = await fetch(absoluteUrl);
+        if (!resp.ok) continue;
+        const buf = Buffer.from(await resp.arrayBuffer());
+        // Simulate file object for the service
+        filesForEl.push({
+          buffer: buf,
+          name: s.originalName || `sample-${filesForEl.length}.mp3`,
+          mimetype: s.mimeType || "audio/mpeg",
+        });
+      } catch (e) {
+        console.warn("[Clone] Could not fetch sample for ElevenLabs:", e.message, "url was", absoluteUrl);
+      }
+    }
+
+    if (!filesForEl.length) {
+      throw Object.assign(new Error("Could not prepare audio samples for voice cloning."), { statusCode: 500 });
+    }
+
+    // Build labels for ElevenLabs (helps with their model)
+    const labels = {};
+    if (clone.gender) labels.gender = clone.gender;
+    // could add more from description or future fields
+
+    const cloned = await elevenlabs.cloneVoice({
+      name: clone.name || "My VoiceForge Professional Voice",
+      description: clone.description || "",
+      files: filesForEl,
+      labels,
+    });
+
+    // Create the Voice entry immediately
+    const voiceSlug = `vf-clone-${cloned.voiceId.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+    const newVoice = await Voice.create({
+      slug: voiceSlug,
+      name: clone.name || "My Voice",
+      provider: "elevenlabs",
+      source: "elevenlabs",
+      model: clone.model || "flash",
+      costTier: (clone.model || "flash") === "multilingual_v3" ? "high" : "medium",
+      elevenlabsVoiceId: cloned.voiceId,
+      tier: "pro",
+      owner: userId,
+      type: "cloned",
+      isPublic: clone.visibility !== "private",
+      isActive: true,
+      voiceCloneRef: clone._id,
+      description: clone.description,
+    });
+
+    clone.voice = newVoice._id;
+    clone.status = "ready";
+    clone.progress = 100;
+    await clone.save();
+
+    // Link voice back
+    await Voice.findByIdAndUpdate(newVoice._id, { voiceCloneRef: clone._id });
+
+    return { clone, voice: newVoice, instant: true };
+  }
+
+  // Original xAI training queue path for other providers (xai etc)
   const job = await TrainingJob.create({
     user: userId,
     voiceClone: clone._id,
@@ -166,6 +254,7 @@ async function getCloneStatus(userId, cloneId) {
     status: clone.status,
     progress: clone.progress,
     errorMessage: clone.errorMessage,
+    provider: clone.provider || "xai",
     voiceId: clone.voice?.toString() || null,
     samples,
     job: job

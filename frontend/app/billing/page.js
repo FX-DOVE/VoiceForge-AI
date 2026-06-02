@@ -7,13 +7,25 @@ import { CreditCard, Coins, Zap, BarChart2, Crown } from "lucide-react";
 import { useUsage } from "@/hooks/use-usage";
 import { cn } from "@/lib/utils";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function BillingPage() {
   const { usage, loading, reload } = useUsage();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [billingProfile, setBillingProfile] = useState({ creditsPerCharacter: 2 }); // live from new method
+
+  useEffect(() => {
+    // Fetch live profile using new billing settings (per-provider credit calc)
+    (async () => {
+      try {
+        const data = await (await import("@/lib/api")).adminApi.billingSettings();
+        const prof = data?.providerProfiles?.elevenlabs || data?.elevenlabs || { creditsPerCharacter: 2 };
+        setBillingProfile(prof);
+      } catch {}
+    })();
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("payment") === "success") {
@@ -54,10 +66,25 @@ export default function BillingPage() {
         </Button>
       </header>
       <main className="max-w-container-max mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 pb-16 space-y-8">
+        {/* Premium membership quick status + renew (spec) */}
+        {(usage?.plan === "professional" || usage?.professional?.isProfessional) && (
+          <div className="glass-panel p-4 rounded-2xl border border-violet-500/20 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm">
+              Premium: <span className="font-semibold text-violet-400">{usage?.professional?.membershipStatus || "active"}</span>
+              {usage?.professional?.daysRemaining ? ` · ${usage.professional.daysRemaining} days remaining` : ""}
+            </div>
+            <Button asChild size="sm" className="rounded-full border border-violet-400/50 text-violet-400 hover:bg-violet-500/10">
+              <Link href="/checkout?plan=professional">Renew / Manage</Link>
+            </Button>
+          </div>
+        )}
 
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Billing &amp; Credits</h1>
           <p className="text-sm text-neutral-400">Manage your credit balance and purchase more credits.</p>
+          <div className="mt-2">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400">Current Plan: VoiceForge Pro or VoiceForge Premium</span>
+          </div>
         </div>
 
         {/* Credit Balance Cards */}
@@ -117,10 +144,24 @@ export default function BillingPage() {
                  <p className="mt-6 text-neutral-400">
                    Total spent: <span className="text-white font-medium">${totalPayments.toLocaleString()}</span>
                  </p>
+
+                 <div className="mt-4 text-sm text-neutral-400">
+                   Approx. characters remaining: <span className="text-white font-medium">{Math.floor(creditsRemaining / (billingProfile.creditsPerCharacter || 2)).toLocaleString()}</span> 
+                   <span className="text-xs ml-1">(using live billing profile)</span>
+                 </div>
+
+                 {usage?.plan === "professional" && (
+                   <div className="mt-2 text-sm text-violet-400">
+                     VoiceForge Premium active — access to Studio voices and cloning
+                   </div>
+                 )}
                  
                  <div className="mt-8 flex flex-wrap gap-4">
                     <Button className="rounded-full bg-primary hover:bg-primary/90 text-on-primary shadow-lg shadow-primary/20" asChild>
-                      <Link href="/checkout">Buy More Credits</Link>
+                      <Link href="/checkout">Buy More Credits (Pro)</Link>
+                    </Button>
+                    <Button variant="outline" className="rounded-full" asChild>
+                      <Link href="/checkout?plan=professional">Upgrade to VoiceForge Premium — $2.99/mo (Studio + Cloning)</Link>
                     </Button>
                  </div>
               </div>
@@ -155,7 +196,10 @@ export default function BillingPage() {
                  <p className="text-xs text-neutral-500 mt-2 leading-relaxed">
                    If you have questions about your billing, please contact our support team.
                  </p>
-                 <Button variant="link" className="text-xs p-0 h-auto mt-3 text-primary hover:text-primary/80">Contact Support</Button>
+                 <Button asChild variant="link" className="text-xs p-0 h-auto mt-3 text-primary hover:text-primary/80">
+                   <a href="mailto:support@voiceforgeai.site?subject=VoiceForge%20AI%20Billing%20Support">Contact Support</a>
+                 </Button>
+                 <div className="text-[10px] text-neutral-500 mt-0.5">support@voiceforgeai.site</div>
               </div>
            </div>
         </div>

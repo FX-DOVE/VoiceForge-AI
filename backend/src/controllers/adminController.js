@@ -48,6 +48,17 @@ const updateBillingSettings = asyncHandler(async (req, res) => {
   sendSuccess(res, data, "Billing settings updated successfully.");
 });
 
+const listBillingProfiles = asyncHandler(async (req, res) => {
+  const data = await adminService.listBillingProfiles();
+  sendSuccess(res, { profiles: data });
+});
+
+const updateBillingProfile = asyncHandler(async (req, res) => {
+  const { provider, model, ...updates } = req.body;
+  const data = await adminService.updateBillingProfile(req.user._id, { provider, model, updates });
+  sendSuccess(res, data, "Billing profile updated.");
+});
+
 const banUser = asyncHandler(async (req, res) => {
   const data = await adminService.banUser(req.params.id, req.user._id, req.body);
   sendSuccess(res, data, "User banned successfully.");
@@ -241,4 +252,33 @@ const resetAllCredits = asyncHandler(async (req, res) => {
   sendSuccess(res, data, data.message);
 });
 
-module.exports = { dashboard, users, systemHealth, billing, updateUser, banUser, restrictUser, unbanUser, unrestrictUser, deleteUser, settings, getBillingSettings, updateBillingSettings, addCredits, ttsAnalytics, testEmail, previewEmailTemplates, previewEmailTemplate, resetAllCredits };
+const sendGiftEmail = asyncHandler(async (req, res) => {
+  const { subject, heading, body, imageUrl, gifUrl, buttonText, usdAmount, recipients, specificUserIds, expiryDays, campaignName } = req.body;
+
+  if (!body || !usdAmount) {
+    return sendSuccess(res, null, "Email body and USD amount are required", 400);
+  }
+
+  const data = await adminService.sendGiftEmail(req.user._id, {
+    subject, heading, body, imageUrl, gifUrl, buttonText,
+    usdAmount: parseFloat(usdAmount),
+    recipients, specificUserIds, expiryDays: parseInt(expiryDays) || 7, campaignName,
+  });
+  sendSuccess(res, data, `Gift email sent to ${data.totalSent} users`);
+});
+
+const getGiftCampaigns = asyncHandler(async (req, res) => {
+  const data = await adminService.getGiftCampaigns();
+  sendSuccess(res, { campaigns: data });
+});
+
+const claimGiftCredits = asyncHandler(async (req, res) => {
+  const { token } = req.body;
+  if (!token) {
+    return sendSuccess(res, null, "Claim token is required", 400);
+  }
+  const data = await adminService.claimGiftCredits(req.user._id, token);
+  sendSuccess(res, data, data.message);
+});
+
+module.exports = { dashboard, users, systemHealth, billing, updateUser, banUser, restrictUser, unbanUser, unrestrictUser, deleteUser, settings, getBillingSettings, updateBillingSettings, listBillingProfiles, updateBillingProfile, addCredits, ttsAnalytics, testEmail, previewEmailTemplates, previewEmailTemplate, resetAllCredits, sendGiftEmail, getGiftCampaigns, claimGiftCredits };

@@ -11,5 +11,7 @@ router.use(authenticate);
 router.post("/paystack/initialize", paymentController.initialize);
 router.post("/paystack/verify", paymentController.verify);
 router.get("/balance", paymentController.getBalance);
+router.post("/claim-gift", paymentController.claimGift);
+router.get("/estimate", paymentController.estimate);
 
 module.exports = router;

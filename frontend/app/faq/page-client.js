@@ -155,10 +155,16 @@ export default function FaqPage() {
               <p className="text-sm text-on-surface-variant leading-relaxed">
                 Can&apos;t find the answer you&apos;re looking for? Our support team is ready to help.
               </p>
-              <Button className="w-full rounded-full bg-primary hover:bg-primary/90 text-on-primary h-11 font-semibold shadow-lg shadow-primary/15">
-                <Headphones className="mr-2 size-4" />
-                Contact Support
+              <Button asChild className="w-full rounded-full bg-primary hover:bg-primary/90 text-on-primary h-11 font-semibold shadow-lg shadow-primary/15">
+                <a
+                  href="mailto:support@voiceforgeai.site?subject=VoiceForge%20AI%20Support%20Request"
+                  className="flex w-full items-center justify-center"
+                >
+                  <Headphones className="mr-2 size-4" />
+                  Contact Support
+                </a>
               </Button>
+              <p className="text-center text-[10px] text-on-surface-variant/70 -mt-1">support@voiceforgeai.site</p>
             </div>
 
             <div className="glass-panel rounded-2xl p-6 flex flex-col gap-4 border-white/5">

@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { adminApi } from "@/lib/api";
-import { calculateCreditsFromPayment } from "@/lib/creditCalc";
+import { adminApi, paymentsApi } from "@/lib/api";
 import {
   Search, Download, MoreVertical, ChevronLeft, ChevronRight,
   Users, User, Loader2, RefreshCw, X, Check, Ban, ShieldAlert, Trash2, AlertTriangle, PlusCircle
@@ -28,6 +27,7 @@ function initials(name, email) {
 
 const PLAN_COLORS = {
   Enterprise: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  professional: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   Pro: "bg-blue-500/10 text-blue-400 border-blue-500/20",
   Free: "bg-white/5 text-neutral-400 border-white/10",
 };
@@ -57,6 +57,22 @@ export default function AdminUsersPage() {
   const [creditsAmount, setCreditsAmount] = useState("");
   const [creditsNote, setCreditsNote] = useState("");
   const [usdAmount, setUsdAmount] = useState("");
+
+  useEffect(() => {
+    const parsed = parseFloat(usdAmount);
+    if (parsed > 0) {
+      (async () => {
+        try {
+          const res = await paymentsApi.estimate(parsed, "professional"); // new method
+          setCreditsAmount(String(res.credits || 0));
+        } catch {
+          setCreditsAmount(String(Math.floor(parsed * 66666)));
+        }
+      })();
+    } else {
+      setCreditsAmount("");
+    }
+  }, [usdAmount]);
 
   function showNotice(msg, type = "success") {
     setNotice({ msg, type });
@@ -209,17 +225,17 @@ export default function AdminUsersPage() {
 
   return (
     <div className="h-full flex flex-col min-h-0" onClick={() => setMenuOpen(null)}>
-      <header className="hidden lg:flex h-16 border-b border-white/[0.06] bg-background/80 backdrop-blur-md sticky top-0 z-30 items-center justify-between px-8 shrink-0">
-        <div className="flex items-center gap-3">
-          <Users className="size-5 text-primary" />
-          <h2 className="text-lg font-bold text-white">User Management</h2>
-          {!loading && <span className="text-xs text-neutral-500 font-medium">{total} total</span>}
+      <header className="flex h-14 lg:h-16 border-b border-white/[0.06] bg-background/80 backdrop-blur-md sticky top-0 z-30 items-center justify-between px-4 sm:px-6 lg:px-8 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Users className="size-4 sm:size-5 text-primary" />
+          <h2 className="text-sm sm:text-lg font-bold text-white">User Management</h2>
+          {!loading && <span className="text-[10px] sm:text-xs text-neutral-500 font-medium">{total} total</span>}
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={load} className="size-9 rounded-full hover:bg-white/5 flex items-center justify-center text-neutral-400 hover:text-white transition-colors">
-            <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button onClick={load} className="size-8 sm:size-9 rounded-full hover:bg-white/5 flex items-center justify-center text-neutral-400 hover:text-white transition-colors">
+            <RefreshCw className={cn("size-3.5 sm:size-4", loading && "animate-spin")} />
           </button>
-          <button className="flex items-center gap-2 h-9 px-4 rounded-full border border-white/[0.08] text-xs text-neutral-400 hover:text-white hover:bg-white/5 transition-all">
+          <button className="hidden sm:flex items-center gap-2 h-9 px-4 rounded-full border border-white/[0.08] text-xs text-neutral-400 hover:text-white hover:bg-white/5 transition-all">
             <Download className="size-3.5" />Export CSV
           </button>
         </div>
@@ -235,10 +251,10 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-8 flex flex-col gap-6 pb-24">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 lg:p-8 flex flex-col gap-4 sm:gap-6 pb-24">
         {/* Filters */}
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
+          <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-neutral-500" />
             <input
               className="w-full h-10 pl-10 pr-4 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-primary transition-all"
@@ -247,13 +263,13 @@ export default function AdminUsersPage() {
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
           </div>
-          <div className="flex gap-2">
-            {["", "free", "pro", "enterprise"].map((p) => (
+          <div className="flex gap-1.5 sm:gap-2 overflow-x-auto">
+            {["", "free", "pro", "professional", "enterprise"].map((p) => (
               <button
                 key={p}
                 onClick={() => { setPlanFilter(p); setPage(1); }}
                 className={cn(
-                  "h-10 px-4 rounded-xl text-xs font-semibold border transition-all",
+                  "h-9 sm:h-10 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs font-semibold border transition-all whitespace-nowrap",
                   planFilter === p
                     ? "bg-primary text-white border-primary"
                     : "bg-white/[0.03] text-neutral-400 border-white/[0.08] hover:bg-white/[0.06] hover:text-white"
@@ -277,16 +293,16 @@ export default function AdminUsersPage() {
               <p className="text-neutral-400 font-medium">No users found</p>
             </div>
           ) : (
-            <div className="overflow-visible">
-              <table className="w-full min-w-[700px] text-left">
-                <thead>
-                  <tr className="border-b border-white/[0.06] bg-white/[0.02]">
-                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">User</th>
-                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Plan</th>
-                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-widest text-neutral-500 min-w-[160px]">Usage</th>
-                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Status</th>
-                    <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Joined</th>
-                    <th className="px-6 py-4 w-10" />
+            <div className="overflow-x-auto max-h-[calc(100vh-280px)] sm:max-h-[calc(100vh-320px)] overflow-y-auto">
+              <table className="w-full min-w-[600px] text-left">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-white/[0.06] bg-[#0f1118]">
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-neutral-500">User</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Plan</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-neutral-500 min-w-[120px] sm:min-w-[160px]">Usage</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Status</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Joined</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 w-10" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
@@ -299,23 +315,23 @@ export default function AdminUsersPage() {
                       onClick={() => openModal("viewUser", user)}
                       className="hover:bg-white/[0.03] cursor-pointer transition-all group"
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="size-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="size-8 sm:size-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-[10px] sm:text-xs font-bold shrink-0">
                             {user.initials}
                           </div>
-                          <div>
-                            <p className="text-sm font-semibold text-white">{user.name}</p>
-                            <p className="text-xs text-neutral-500">{user.email}</p>
+                          <div className="min-w-0">
+                            <p className="text-xs sm:text-sm font-semibold text-white truncate max-w-[120px] sm:max-w-none">{user.name}</p>
+                            <p className="text-[10px] sm:text-xs text-neutral-500 truncate max-w-[120px] sm:max-w-none">{user.email}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4">
                         <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border", PLAN_COLORS[user.plan] || PLAN_COLORS.Free)}>
                           {user.plan}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4">
                         <div className="flex flex-col gap-1.5">
                           <div className="flex justify-between text-[10px] font-semibold text-neutral-500">
                             <span>Chars used</span>
@@ -326,9 +342,9 @@ export default function AdminUsersPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4">
                         <span className={cn(
-                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                          "inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border",
                           STATUS_COLORS[user.status] || STATUS_COLORS.Active
                         )}>
                           <span className={cn("size-1.5 rounded-full", 
@@ -345,18 +361,18 @@ export default function AdminUsersPage() {
                           <p className="text-[10px] text-amber-400 mt-1 max-w-[120px] truncate">{user.restrictionReason}</p>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-xs text-neutral-500">{user.joined}</td>
-                      <td className="px-6 py-4 text-right relative">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-xs text-neutral-500 whitespace-nowrap">{user.joined}</td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-right relative">
                         <button
-                          onClick={(e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); setMenuPos({ top: r.bottom + 6, right: window.innerWidth - r.right }); setMenuOpen(menuOpen === user._id ? null : user._id); }}
-                          className="size-8 rounded-full hover:bg-white/10 flex items-center justify-center text-neutral-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
+                          onClick={(e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); const spaceBelow = window.innerHeight - r.bottom; const openUp = spaceBelow < 380; setMenuPos({ top: openUp ? Math.max(8, r.top - 380) : r.bottom + 6, right: window.innerWidth - r.right }); setMenuOpen(menuOpen === user._id ? null : user._id); }}
+                          className="size-8 rounded-full hover:bg-white/10 flex items-center justify-center text-neutral-400 hover:text-white transition-all"
                         >
                           <MoreVertical className="size-4" />
                         </button>
                         {menuOpen === user._id && (
-                          <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }} className="bg-[#1a1d2e] border border-white/[0.08] rounded-xl shadow-2xl py-2 min-w-[220px]">
+                          <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999, maxHeight: 'calc(100vh - 32px)' }} className="bg-[#1a1d2e] border border-white/[0.08] rounded-xl shadow-2xl py-2 min-w-[220px] overflow-y-auto">
                             <p className="px-4 py-2 text-[10px] font-semibold text-neutral-500 uppercase tracking-widest border-b border-white/[0.06] mb-1">Change Plan</p>
-                            {["free", "pro", "enterprise"].map((p) => (
+                            {["free", "pro", "professional", "enterprise"].map((p) => (
                               <button
                                 key={p}
                                 onClick={() => changePlan(user._id, p)}
@@ -435,8 +451,8 @@ export default function AdminUsersPage() {
           )}
 
           {/* Pagination */}
-          <div className="px-6 py-4 border-t border-white/[0.06] flex items-center justify-between">
-            <span className="text-xs text-neutral-500">
+          <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-white/[0.06] flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs text-neutral-500">
               {total === 0 ? "No results" : `${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total}`}
             </span>
             <div className="flex gap-1.5">
@@ -498,12 +514,6 @@ export default function AdminUsersPage() {
                   onChange={(e) => {
                     const usd = e.target.value;
                     setUsdAmount(usd);
-                    const parsed = parseFloat(usd);
-                    if (parsed > 0) {
-                      setCreditsAmount(String(calculateCreditsFromPayment(parsed)));
-                    } else {
-                      setCreditsAmount("");
-                    }
                   }}
                   placeholder="e.g. 5.00"
                   className="w-full h-11 pl-7 pr-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-emerald-500/50"
@@ -704,15 +714,15 @@ export default function AdminUsersPage() {
             </DialogDescription>
           </DialogHeader>
           {selectedUser && (
-            <div className="space-y-6 py-4">
+            <div className="space-y-4 sm:space-y-6 py-3 sm:py-4">
               {/* User Header Info */}
-              <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
-                <div className="size-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-base font-bold shrink-0">
+              <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
+                <div className="size-10 sm:size-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-sm sm:text-base font-bold shrink-0">
                   {selectedUser.initials}
                 </div>
-                <div>
-                  <h4 className="text-base font-bold text-white">{selectedUser.name}</h4>
-                  <p className="text-sm text-neutral-400">{selectedUser.email}</p>
+                <div className="min-w-0">
+                  <h4 className="text-sm sm:text-base font-bold text-white truncate">{selectedUser.name}</h4>
+                  <p className="text-xs sm:text-sm text-neutral-400 truncate">{selectedUser.email}</p>
                   <div className="flex items-center gap-2 mt-1.5">
                     <span className={cn("px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border", PLAN_COLORS[selectedUser.plan] || PLAN_COLORS.Free)}>
                       {selectedUser.plan}
@@ -725,52 +735,52 @@ export default function AdminUsersPage() {
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 {/* Generation Card */}
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex flex-col justify-between">
+                <div className="p-3 sm:p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex flex-col justify-between">
                   <div>
-                    <span className="text-xs text-neutral-500 font-medium">Total Generations</span>
-                    <h3 className="text-2xl font-bold text-white mt-1">
+                    <span className="text-[10px] sm:text-xs text-neutral-500 font-medium">Total Generations</span>
+                    <h3 className="text-xl sm:text-2xl font-bold text-white mt-1">
                       {selectedUser.generationsCount?.toLocaleString() || 0}
                     </h3>
                   </div>
-                  <p className="text-[10px] text-neutral-500 mt-2">Audio files generated using TTS</p>
+                  <p className="text-[9px] sm:text-[10px] text-neutral-500 mt-2">Audio files generated using TTS</p>
                 </div>
 
                 {/* Payments Card */}
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex flex-col justify-between">
+                <div className="p-3 sm:p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex flex-col justify-between">
                   <div>
-                    <span className="text-xs text-neutral-500 font-medium">Total Spent</span>
-                    <h3 className="text-2xl font-bold text-emerald-400 mt-1">
+                    <span className="text-[10px] sm:text-xs text-neutral-500 font-medium">Total Spent</span>
+                    <h3 className="text-xl sm:text-2xl font-bold text-emerald-400 mt-1">
                       ${(selectedUser.totalPayments || 0).toFixed(2)}
                     </h3>
                   </div>
-                  <p className="text-[10px] text-neutral-500 mt-2">Lifetime payments processed</p>
+                  <p className="text-[9px] sm:text-[10px] text-neutral-500 mt-2">Lifetime payments processed</p>
                 </div>
               </div>
 
               {/* Credits Breakdown */}
-              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.04] space-y-4">
-                <h5 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Credit Ledger</h5>
+              <div className="p-3 sm:p-5 rounded-2xl bg-white/[0.02] border border-white/[0.04] space-y-3 sm:space-y-4">
+                <h5 className="text-[10px] sm:text-xs font-semibold text-neutral-400 uppercase tracking-wider">Credit Ledger</h5>
                 
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   <div className="flex items-center justify-between border-b border-white/[0.04] pb-2">
-                    <span className="text-sm text-neutral-400">Total Purchased</span>
-                    <span className="text-sm font-semibold text-white">
+                    <span className="text-xs sm:text-sm text-neutral-400">Total Purchased</span>
+                    <span className="text-xs sm:text-sm font-semibold text-white">
                       {(selectedUser.totalCredits || 0).toLocaleString()}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between border-b border-white/[0.04] pb-2">
-                    <span className="text-sm text-neutral-400">Used Credits</span>
-                    <span className="text-sm font-semibold text-neutral-400">
+                    <span className="text-xs sm:text-sm text-neutral-400">Used Credits</span>
+                    <span className="text-xs sm:text-sm font-semibold text-neutral-400">
                       {(selectedUser.creditsUsed || 0).toLocaleString()}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-sm font-medium text-emerald-400">Remaining Balance</span>
-                    <span className="text-base font-bold text-emerald-400">
+                    <span className="text-xs sm:text-sm font-medium text-emerald-400">Remaining Balance</span>
+                    <span className="text-sm sm:text-base font-bold text-emerald-400">
                       {(selectedUser.creditsRemaining || 0).toLocaleString()}
                     </span>
                   </div>

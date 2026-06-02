@@ -57,7 +57,7 @@ export default function AdminBillingPage() {
           <Loader2 className="size-8 text-primary animate-spin" />
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-8 flex flex-col gap-6 pb-24">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-8 flex flex-col gap-6 pb-24 max-h-[calc(100vh-140px)]">
 
           {/* Top metrics */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -193,10 +193,10 @@ export default function AdminBillingPage() {
                 <p className="text-neutral-600 text-xs mt-1">Paystack payment records will appear here when customers purchase credits.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[calc(100vh-500px)] overflow-y-auto">
                 <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-white/[0.06] bg-white/[0.02]">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-white/[0.06] bg-[#0f1118]">
                       <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Reference</th>
                       <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Customer</th>
                       <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-neutral-500">Date</th>

@@ -19,12 +19,20 @@ export const usersApi = {
 };
 
 export const voicesApi = {
-  list: (params = {}) => {
+  list: (params = {}, { skipAuth = true } = {}) => {
     const qs = new URLSearchParams(params).toString();
-    return apiRequest(`/voices${qs ? `?${qs}` : ""}`, { skipAuth: true });
+    return apiRequest(`/voices${qs ? `?${qs}` : ""}`, { skipAuth });
   },
   getBySlug: (slug) => apiRequest(`/voices/${slug}`, { skipAuth: true }),
   preview: (slug) => apiRequest(`/voices/${slug}/preview`, { skipAuth: true }),
+  listByProvider: (provider, params = {}, { skipAuth = true } = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest(`/voices/provider/${provider}${qs ? `?${qs}` : ""}`, { skipAuth });
+  },
+  listByModel: (model, params = {}, { skipAuth = true } = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return apiRequest(`/voices/model/${model}${qs ? `?${qs}` : ""}`, { skipAuth });
+  },
 };
 
 export const ttsApi = {
@@ -60,8 +68,9 @@ export const usageApi = {
 export const paymentsApi = {
   initialize: (amount, refundPolicyAccepted) => apiRequest("/payments/paystack/initialize", { method: "POST", body: { amount, refundPolicyAccepted } }),
   verify: (reference) => apiRequest("/payments/paystack/verify", { method: "POST", body: { reference } }),
-  estimate: (amount) => apiRequest(`/payments/estimate?amount=${amount}`),
+  estimate: (amount, provider) => apiRequest(`/payments/estimate?amount=${amount}${provider ? `&provider=${provider}` : ''}`),
   balance: () => apiRequest("/payments/balance"),
+  claimGift: (token) => apiRequest("/payments/claim-gift", { method: "POST", body: { token } }),
 };
 
 export const adminApi = {
@@ -82,15 +91,29 @@ export const adminApi = {
   settings: () => apiRequest("/admin/settings"),
   billingSettings: () => apiRequest("/admin/billing-settings"),
   updateBillingSettings: (body) => apiRequest("/admin/billing-settings", { method: "PUT", body }),
+  billingProfiles: () => apiRequest("/admin/billing-profiles"),
+  updateBillingProfile: (body) => apiRequest("/admin/billing-profiles", { method: "PUT", body }),
   ttsAnalytics: (period = "24h") => apiRequest(`/admin/tts-analytics?period=${period}`),
   getEmailTemplates: () => apiRequest("/admin/email-templates"),
   previewEmailTemplate: (id) => `/api/admin/email-templates/${id}/preview`,
   resetAllCredits: () => apiRequest("/admin/reset-all-credits", { method: "POST" }),
+  sendGiftEmail: (body) => apiRequest("/admin/gift-email/send", { method: "POST", body }),
+  getGiftCampaigns: () => apiRequest("/admin/gift-email/campaigns"),
 };
 
 export const notificationsApi = {
   list: () => apiRequest("/notifications"),
   markRead: (id) => apiRequest(`/notifications/${id}/read`, { method: "PATCH" }),
+};
+
+export const professionalApi = {
+  subscribe: (body = {}) => apiRequest("/professional/subscribe", { method: "POST", body }),
+  status: () => apiRequest("/professional/status"),
+  renew: () => apiRequest("/professional/renew", { method: "POST" }),
+};
+
+export const elevenlabsApi = {
+  generate: (body) => apiRequest("/elevenlabs/generate", { method: "POST", body }),
 };
 
 export const filesApi = {
@@ -103,4 +126,8 @@ export const filesApi = {
 
 export const healthApi = {
   check: () => apiRequest("/health", { skipAuth: true }),
+};
+
+export const contactApi = {
+  submit: (body) => apiRequest("/contact", { method: "POST", body, skipAuth: true }),
 };

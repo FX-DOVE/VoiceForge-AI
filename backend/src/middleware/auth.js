@@ -67,4 +67,59 @@ function requirePlan(...plans) {
   };
 }
 
-module.exports = { authenticate, requireRole, requireFeature, requirePlan };
+/**
+ * requireProfessional()
+ * Protects VoiceForge Premium (studio) voices, voice cloning, uploads for Professional plan ($2.99/mo membership).
+ * Checks:
+ *  - user.plan === "professional", OR
+ *  - active ProfessionalMembership with endDate in future.
+ * Backward compatible: existing plan=professional users continue working.
+ */
+function requireProfessional() {
+  return async (req, res, next) => {
+    if (!req.user) {
+      return sendError(res, "Authentication required.", 401);
+    }
+    const plan = req.user.plan || "free";
+    if (plan === "professional" || plan === "enterprise") {
+      return next();
+    }
+    try {
+      const { ProfessionalMembership } = require("../models");
+      const mem = await ProfessionalMembership.findOne({
+        user: req.user._id,
+        status: "active",
+      });
+      if (mem && mem.endDate && mem.endDate > new Date()) {
+        return next();
+      }
+    } catch (e) {
+      // If membership lookup fails, deny to be safe
+      console.error("[requireProfessional] lookup error:", e.message);
+    }
+    return sendError(res, "VoiceForge Premium membership required. Upgrade to access studio voices and voice cloning.", 403);
+  };
+}
+
+/**
+ * Optional authenticate - populates req.user if valid token present, otherwise continues.
+ * Allows public endpoints to also return user-specific data (e.g. access-filtered voices, my clones).
+ */
+async function optionalAuthenticate(req, res, next) {
+  try {
+    const header = req.headers.authorization || "";
+    const token =
+      header.startsWith("Bearer ") ? header.slice(7) : (req.cookies?.token || req.cookies?.accessToken);
+    if (!token) return next();
+    const decoded = verifyAccessToken(token);
+    const user = await User.findById(decoded.sub);
+    if (user && user.status === "active") {
+      req.user = user;
+    }
+  } catch {
+    // ignore, public context
+  }
+  next();
+}
+
+module.exports = { authenticate, requireRole, requireFeature, requirePlan, requireProfessional, optionalAuthenticate };

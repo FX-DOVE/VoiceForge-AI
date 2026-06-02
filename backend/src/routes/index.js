@@ -10,6 +10,9 @@ const fileRoutes = require("./fileRoutes");
 const notificationRoutes = require("./notificationRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const grokRoutes = require("./grokRoutes");
+const professionalRoutes = require("./professionalRoutes");
+const elevenlabsRoutes = require("./elevenlabsRoutes");
+const contactRoutes = require("./contactRoutes");
 const { health } = require("../controllers/healthController");
 
 const router = express.Router();
@@ -26,5 +29,8 @@ router.use("/admin/grok", grokRoutes);
 router.use("/files", fileRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/professional", professionalRoutes);
+router.use("/elevenlabs", elevenlabsRoutes);
+router.use("/contact", contactRoutes);
 
 module.exports = router;

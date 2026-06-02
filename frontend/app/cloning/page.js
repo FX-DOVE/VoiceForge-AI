@@ -15,7 +15,7 @@ import Link from "next/link";
 
 export default function CloningPage() {
   const { user } = useAuth();
-  const isEnterprise = user?.plan === "enterprise";
+  const isProfessional = user?.plan === "professional";
   const [step, setStep] = useState(1);
   const [inputMode, setInputMode] = useState("upload"); // upload | record
   const [clonedVoices, setClonedVoices] = useState([]);
@@ -187,7 +187,7 @@ export default function CloningPage() {
           </p>
         </div>
         
-        {!isEnterprise ? null : (
+        {!isProfessional ? null : (
         <>
           {/* Wizard Progress */}
           <div className="flex gap-2 sm:gap-3">
@@ -224,18 +224,18 @@ export default function CloningPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
           {/* Main Wizard Area */}
-          <div className="lg:col-span-2 flex flex-col gap-8">
-            {!isEnterprise ? (
+          <div className={cn(isProfessional ? "lg:col-span-2" : "lg:col-span-3", "flex flex-col gap-8")}>
+            {!isProfessional ? (
               <div className="glass-panel p-8 sm:p-12 rounded-[2rem] border-white/5 bg-white/[0.02] flex flex-col items-center justify-center text-center gap-6 min-h-[400px]">
                 <div className="size-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-2 shadow-[0_0_30px_rgba(59,130,246,0.15)]">
                   <Crown className="size-10" />
                 </div>
-                <h2 className="text-3xl font-bold text-white tracking-tight">Enterprise Feature</h2>
+                <h2 className="text-3xl font-bold text-white tracking-tight">Professional Feature</h2>
                 <p className="text-on-surface-variant max-w-md">
-                  Custom voice cloning is exclusive to our Enterprise plan. Upgrade your plan to create custom AI voices with incredible accuracy.
+                  Custom voice cloning is exclusive to our Professional plan. Upgrade your plan to create custom AI voices with incredible accuracy.
                 </p>
-                <Link href="/billing" className="mt-4 h-12 px-8 flex items-center justify-center bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold shadow-lg transition-all">
-                  Upgrade to Enterprise
+                <Link href="/checkout?plan=professional" className="mt-4 h-12 px-8 flex items-center justify-center bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold shadow-lg transition-all">
+                  Upgrade to Professional
                 </Link>
               </div>
             ) : (
@@ -568,7 +568,8 @@ export default function CloningPage() {
             )}
           </div>
 
-          {/* Right Column: Library */}
+          {/* Right Column: Library - only for Professional users */}
+          {isProfessional && (
           <div className="flex flex-col gap-6">
              <div className="flex items-center justify-between px-1">
                 <h3 className="text-base font-bold text-white">My Cloned Voices</h3>
@@ -664,6 +665,7 @@ export default function CloningPage() {
                 ))}
              </div>
           </div>
+          )}
         </div>
       </div>
     </>

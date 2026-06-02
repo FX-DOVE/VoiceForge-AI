@@ -1,8 +1,9 @@
 const { AudioGeneration, User, UsageRecord, GrokUsage } = require("../models");
 const { synthesizeSpeech } = require("../integrations/xaiTts");
 const { synthesizeSpeechEdge } = require("../integrations/edgeTts");
+const elevenlabs = require("../integrations/elevenlabsService");
 const { uploadBuffer } = require("../integrations/storage");
-const { calculateCreditsForUsage } = require("../utils/creditCalc");
+const { calculateCreditsForUsage, calculateEstimatedApiCost } = require("../utils/creditCalc");
 
 /**
  * Local copy to avoid circular dependency with ttsService
@@ -12,7 +13,7 @@ async function recordXaiUsageLocal({ userId, result, voiceId, text, status = "su
     const usage = result?.usage || {};
     const charCount = text?.length || 0;
     const costUsd = usage.costUsd || (usage.costInUsdTicks ? usage.costInUsdTicks / 10000000000 : 0);
-    const estimatedCost = costUsd || (charCount * 0.0000042);
+    const estimatedCost = costUsd || (await calculateEstimatedApiCost(charCount));
 
     await GrokUsage.create({
       userId,
@@ -48,6 +49,8 @@ async function runTtsGeneration(generationId) {
 
   const charCount = generation.text?.length || 0;
   const isCloned = !!generation.voice && (await isClonedVoice(generation.voice));
+  const voiceProvider = generation.provider || "xai";
+  const voiceModel = generation.model || (voiceProvider === "elevenlabs" ? "flash" : "voice_api");
 
   let result;
   const xaiVoiceId = generation.xaiVoiceId;
@@ -56,25 +59,37 @@ async function runTtsGeneration(generationId) {
   const t0 = Date.now();
 
   try {
-    console.log(`[TTS Job] Synthesizing ${charCount} chars via xAI for generation ${generationId}`);
-    const synthStart = Date.now();
+    if (voiceProvider === "elevenlabs") {
+      console.log(`[TTS Job] Synthesizing ${charCount} chars via ElevenLabs model=${voiceModel} for generation ${generationId}`);
+      const elVoiceId = generation.xaiVoiceId || generation.elevenlabsVoiceId || "21m00Tcm4TlvDq8ikWAM";
+      const elModel = voiceModel === "multilingual_v3" ? "eleven_multilingual_v2" : "eleven_flash_v2_5";
+      result = await elevenlabs.generateSpeech({
+        text: generation.text,
+        voiceId: elVoiceId,
+        modelId: elModel,
+      });
+      console.log(`[TTS Job] ElevenLabs synthesis done`);
+    } else {
+      console.log(`[TTS Job] Synthesizing ${charCount} chars via xAI for generation ${generationId}`);
+      const synthStart = Date.now();
 
-    result = await synthesizeSpeech({
-      text: generation.text,
-      voiceId: xaiVoiceId,
-      language: generation.language || "auto",
-    });
+      result = await synthesizeSpeech({
+        text: generation.text,
+        voiceId: xaiVoiceId,
+        language: generation.language || "auto",
+      });
 
-    const synthDuration = Date.now() - synthStart;
-    console.log(`[TTS Job] xAI synthesis done in ${(synthDuration / 1000).toFixed(1)}s`);
+      const synthDuration = Date.now() - synthStart;
+      console.log(`[TTS Job] xAI synthesis done in ${(synthDuration / 1000).toFixed(1)}s`);
 
-    await recordXaiUsageLocal({
-      userId: generation.user,
-      result,
-      voiceId: xaiVoiceId,
-      text: generation.text,
-      status: "success",
-    });
+      await recordXaiUsageLocal({
+        userId: generation.user,
+        result,
+        voiceId: xaiVoiceId,
+        text: generation.text,
+        status: "success",
+      });
+    }
   } catch (err) {
     if (err.usage) {
       await recordXaiUsageLocal({
@@ -139,7 +154,9 @@ async function runTtsGeneration(generationId) {
 
   // Charge credits (only if not already charged)
   if (charCount > 0 && user.creditsRemaining > 0) {
-    const creditsToCharge = calculateCreditsForUsage(charCount);
+    const creditsToCharge = await calculateCreditsForUsage(charCount, voiceProvider, voiceModel);
+    const estimatedApiCost = await calculateEstimatedApiCost(charCount, voiceProvider, voiceModel);
+
     user.charactersUsed = (user.charactersUsed || 0) + charCount;
     user.creditsUsed = (user.creditsUsed || 0) + creditsToCharge;
     user.creditsRemaining = Math.max(0, (user.creditsRemaining || 0) - creditsToCharge);
@@ -150,10 +167,21 @@ async function runTtsGeneration(generationId) {
       type: "tts",
       amount: charCount,
       unit: "characters",
-      meta: { creditsCharged: creditsToCharge, job: "queued" },
+      meta: {
+        creditsCharged: creditsToCharge,
+        estimatedApiCostUsd: estimatedApiCost,
+        provider: voiceProvider,
+        job: "queued",
+      },
       referenceId: generation._id,
       referenceModel: "AudioGeneration",
     });
+
+    generation.creditsCharged = creditsToCharge;
+    generation.estimatedApiCostUsd = estimatedApiCost;
+    if (!generation.provider) generation.provider = voiceProvider;
+    if (!generation.model) generation.model = voiceModel;
+    await generation.save();
   }
 
   return generation;

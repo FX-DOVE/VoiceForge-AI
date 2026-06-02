@@ -62,10 +62,13 @@ export default function HelpPage() {
                  <p className="text-sm text-on-surface-variant leading-relaxed">
                     Can't find the answer you're looking for? Our dedicated support team is available to assist you.
                  </p>
-                 <Button className="w-full h-12 rounded-full bg-primary hover:bg-primary/90 text-on-primary font-bold">
-                    <MessageSquare className="mr-2 size-4" />
-                    Contact Support
+                 <Button asChild className="w-full h-12 rounded-full bg-primary hover:bg-primary/90 text-on-primary font-bold">
+                    <a href="mailto:support@voiceforgeai.site?subject=VoiceForge%20AI%20Support%20Request" className="flex w-full items-center justify-center">
+                       <MessageSquare className="mr-2 size-4" />
+                       Contact Support
+                    </a>
                  </Button>
+                 <p className="text-center text-[10px] text-on-surface-variant/70 -mt-1">support@voiceforgeai.site</p>
               </div>
 
               <div className="glass-panel p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border-white/5 flex flex-col gap-6">

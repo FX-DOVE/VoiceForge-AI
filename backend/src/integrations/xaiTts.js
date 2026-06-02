@@ -45,12 +45,13 @@ function parseXaiUsageHeaders(headers) {
 }
 
 /**
- * Estimate cost based on character count
- * xAI TTS pricing: ~$4.20 per 1M characters
+ * Estimate cost based on character count.
+ * Now uses live billing settings (ttsCostPerMillionCharacters).
+ * This function is kept for backward compatibility in some flows.
  */
-function estimateTtsCost(characters) {
-  const COST_PER_CHAR = 0.0000042; // $4.20 / 1,000,000
-  return characters * COST_PER_CHAR;
+async function estimateTtsCost(characters) {
+  const { calculateEstimatedApiCost } = require("../utils/creditCalc");
+  return await calculateEstimatedApiCost(characters);
 }
 
 async function synthesizeSpeech({ text, voiceId, language }) {
@@ -127,9 +128,9 @@ async function synthesizeSpeech({ text, voiceId, language }) {
 
   const buffer = Buffer.from(await response.arrayBuffer());
 
-  // If no usage data from headers, estimate based on character count
+  // If no usage data from headers, estimate based on character count (using live billing settings)
   if (!usageFromHeaders.costUsd && !usageFromHeaders.costInUsdTicks) {
-    usageFromHeaders.costUsd = estimateTtsCost(charCount);
+    usageFromHeaders.costUsd = await estimateTtsCost(charCount);
     usageFromHeaders.charactersProcessed = charCount;
     usageFromHeaders.modelUsed = "tts-1";
   }

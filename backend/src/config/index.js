@@ -23,6 +23,9 @@ const config = {
     defaultVoiceId: process.env.XAI_DEFAULT_VOICE_ID || "ara",
     defaultLanguage: process.env.XAI_DEFAULT_LANGUAGE || "auto",
   },
+  elevenlabs: {
+    apiKey: process.env.ELEVENLABS_API_KEY || "",
+  },
   voicePreviewText:
     process.env.VOICE_PREVIEW_TEXT ||
     "Welcome to our AI voice platform. Create natural sounding speech in seconds.",
@@ -78,6 +81,7 @@ const config = {
   planLimits: {
     free: { charactersLimit: 10000, concurrentJobs: 1 },
     pro: { charactersLimit: 100000, concurrentJobs: 5 },
+    professional: { charactersLimit: 500000, concurrentJobs: 10 },
     enterprise: { charactersLimit: 1000000, concurrentJobs: 20 },
   },
 };

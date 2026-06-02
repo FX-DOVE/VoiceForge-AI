@@ -366,7 +366,7 @@ export default function TtsAnalyticsPage() {
                             <span className={cn(
                               "text-[10px] px-1.5 py-0.5 rounded-full",
                               user.user?.plan === "pro" ? "bg-amber-500/20 text-amber-400" :
-                              user.user?.plan === "enterprise" ? "bg-purple-500/20 text-purple-400" :
+                              user.user?.plan === "enterprise" || user.user?.plan === "professional" ? "bg-purple-500/20 text-purple-400" :
                               "bg-emerald-500/20 text-emerald-400"
                             )}>
                               {user.user?.plan || "free"}

@@ -227,7 +227,22 @@ async function getMe(userId) {
   if (!user) {
     throw Object.assign(new Error("User not found."), { statusCode: 404 });
   }
-  return user.toPublicJSON();
+  const base = user.toPublicJSON();
+  // Attach lightweight professional status (non-breaking, extra field)
+  try {
+    const { ProfessionalMembership } = require("../models");
+    const mem = await ProfessionalMembership.findOne({ user: userId }).sort({ createdAt: -1 });
+    const now = new Date();
+    const isMemActive = !!(mem && mem.status === "active" && mem.endDate > now);
+    const isPlanPro = user.plan === "professional";
+    base.professional = {
+      isProfessional: isPlanPro || isMemActive,
+      membershipStatus: mem?.status || (isPlanPro ? "active" : "none"),
+      endDate: mem?.endDate || null,
+      daysRemaining: isMemActive && mem?.endDate ? Math.max(0, Math.ceil((mem.endDate - now) / (1000*60*60*24))) : 0,
+    };
+  } catch {}
+  return base;
 }
 
 async function verifyEmail(token, ipAddress = "") {

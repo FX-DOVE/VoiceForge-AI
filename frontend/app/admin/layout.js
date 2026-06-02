@@ -16,6 +16,7 @@ import {
   SlidersHorizontal,
   BarChart3,
   Mail,
+  Gift,
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,9 +29,10 @@ const navItems = [
   { name: "Users", href: "/admin/users", icon: Users },
   { name: "Billing", href: "/admin/billing", icon: CreditCard },
   { name: "Billing Settings", href: "/admin/billing-settings", icon: SlidersHorizontal },
-  { name: "Grok Mgmt", href: "/admin/grok", icon: Wallet },
+  { name: "AI Integrations", href: "/admin/grok", icon: Wallet },
   { name: "TTS Analytics", href: "/admin/tts-analytics", icon: BarChart3 },
   { name: "Email Templates", href: "/admin/emails", icon: Mail },
+  { name: "Gift Email", href: "/admin/gift-email", icon: Gift },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 

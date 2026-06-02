@@ -403,7 +403,7 @@ async function sendWelcomeEmail({ to, name = "" }) {
       </div>
       
       <p class="text-sm text-muted mt-3 text-center">
-        Need help? Reply to this email or <a href="${config.clientUrl}/support" style="color: #adc6ff;">contact support</a> anytime.
+        Need help? Reply to this email or <a href="${config.clientUrl}/contact" style="color: #adc6ff;">contact support</a> anytime.
       </p>
     </div>
   `, subject);
@@ -481,6 +481,11 @@ async function sendVoiceCloneReadyEmail({ to, voiceName, voiceSlug, name = "" })
   return sendEmail({ to, subject: `Your cloned voice "${voiceName}" is ready!`, html });
 }
 
+async function sendCreditGiftEmail({ to, name, subject, heading, body, imageUrl, gifUrl, credits, usdAmount, claimUrl, buttonText, expiresIn }) {
+  const html = templates.creditGiftTemplate({ name, heading, body, imageUrl, gifUrl, credits, usdAmount, claimUrl, buttonText, expiresIn });
+  return sendEmail({ to, subject: subject || "You've Got Free Credits!", html });
+}
+
 module.exports = {
   verifyConnection,
   sendEmail,
@@ -497,4 +502,5 @@ module.exports = {
   sendOrderSuccessful,
   sendPurchaseError,
   sendSignupVerification,
+  sendCreditGiftEmail,
 };

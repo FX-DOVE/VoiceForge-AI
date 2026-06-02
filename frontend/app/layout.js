@@ -18,7 +18,7 @@ export const metadata = {
     "AI voice generator",
     "realistic text to speech",
     "voice cloning software",
-    "xAI text to speech",
+    "VoiceForge AI",
   ],
   openGraph: {
     title: "VoiceForge AI — Natural AI Voices & Voice Cloning",

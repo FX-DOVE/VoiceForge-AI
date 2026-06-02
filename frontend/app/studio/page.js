@@ -3,15 +3,17 @@
 import { Suspense } from "react";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
-import { Bolt, Play, Pause, Loader2, Settings2, Trash2, History, Mic, Crown, Zap, Shield } from "lucide-react";
+import { Bolt, Play, Pause, Loader2, Settings2, Trash2, History, Mic, Crown, Zap, Shield, Download, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { voicesApi, ttsApi, cloningApi } from "@/lib/api";
+import { voicesApi, ttsApi, cloningApi, adminApi } from "@/lib/api";
 import { getMediaUrl } from "@/lib/api/config";
 import { ApiError } from "@/lib/api/client";
 import { EmailVerificationBanner } from "@/components/email-verification-banner";
+import { useUsage } from "@/hooks/use-usage";
 
 function StudioPageInner() {
   const searchParams = useSearchParams();
@@ -29,6 +31,74 @@ function StudioPageInner() {
   const [loadingPreviewSlug, setLoadingPreviewSlug] = useState(null);
   const previewAudioRef = useRef(null);
   const generatedAudioRef = useRef(null);
+  const [billingProfiles, setBillingProfiles] = useState({ xai: {creditsPerCharacter: 2}, elevenlabs: {creditsPerCharacter: 7} });
+
+  const { usage } = useUsage();
+  const isPremiumUser = usage?.plan === "professional" || !!usage?.professional?.isPremiumUser;
+
+  function getVoiceDisplay(v) {
+    // Prefer authoritative rebrand-safe fields from backend (displayTier / displayName / quality)
+    if (v && v.displayTier && v.displayName) {
+      const dt = v.displayTier;
+      const q = v.quality || (dt === "free" ? "Basic" : dt === "pro" ? "Enhanced" : "Studio");
+      const isStudio = q === "Studio";
+      return {
+        planLabel: v.displayName,
+        quality: q,
+        badgeClass: dt === "free"
+          ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+          : dt === "pro"
+            ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+            : (isStudio ? "bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/30" : "bg-violet-500/15 text-violet-400 border-violet-500/30"),
+        icon: <Crown className="size-2.5 fill-current" />,
+        costLabel: dt === "premium" ? (isStudio ? "HIGH" : "MED") : (dt === "pro" ? "LOW" : ""),
+      };
+    }
+    // Legacy fallback
+    const tier = (v.tier || "free").toLowerCase();
+    const prov = (v.provider || v.source || "").toLowerCase();
+    const costTier = (v.costTier || "").toLowerCase();
+    const model = (v.model || "").toLowerCase();
+    const hasElId = !!v.elevenlabsVoiceId;
+
+    const isFree = tier === "free" || prov === "free";
+    const isXai = prov === "xai" || (!hasElId && tier === "pro");
+    const isEl = hasElId || prov === "elevenlabs" || prov === "professional";
+
+    if (isFree) {
+      return {
+        planLabel: "VoiceForge Free",
+        quality: "Basic",
+        badgeClass: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+        icon: <Zap className="size-2.5 fill-current" />,
+        costLabel: "",
+      };
+    }
+    if (isXai) {
+      return {
+        planLabel: "VoiceForge Pro",
+        quality: "Enhanced",
+        badgeClass: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+        icon: <Crown className="size-2.5 fill-current" />,
+        costLabel: costTier === "low" ? "LOW" : "",
+      };
+    }
+    const isHigh = costTier === "high" || model.includes("v3") || model.includes("premium");
+    return {
+      planLabel: "VoiceForge Premium",
+      quality: isHigh ? "Studio" : "Enhanced",
+      badgeClass: isHigh 
+        ? "bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/30"
+        : "bg-violet-500/15 text-violet-400 border-violet-500/30",
+      icon: <Crown className="size-2.5 fill-current" />,
+      costLabel: isHigh ? "HIGH" : "MED",
+    };
+  }
+
+  // Custom generated audio player state (replaces native controls)
+  const [isGeneratedPlaying, setIsGeneratedPlaying] = useState(false);
+  const [generatedCurrentTime, setGeneratedCurrentTime] = useState(0);
+  const [generatedDuration, setGeneratedDuration] = useState(0);
   const maxChars = 10000;
   const count = text.length;
 
@@ -80,8 +150,22 @@ function StudioPageInner() {
     }
   }
 
+  // Load billing profiles using new method for dynamic cost preview per provider
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await adminApi.billingSettings();
+        if (data) {
+          const prof = data.elevenlabs || data.professional || {creditsPerCharacter: 7};
+          setBillingProfiles({ xai: {creditsPerCharacter: 2}, elevenlabs: prof });
+        }
+      } catch (e) {}
+    })();
+  }, []);
+
   useEffect(() => {
     const urlVoice = searchParams?.get("voice");
+    // Fetch all (backend gates based on user plan using new professional logic), client filters by provider
     Promise.all([
       voicesApi.list().catch(() => ({ voices: [] })),
       cloningApi.list().catch(() => ({ clones: [] })),
@@ -106,6 +190,16 @@ function StudioPageInner() {
       if (urlVoice) {
         setSelectedSlug(urlVoice);
         if (readyClones.some((c) => c.slug === urlVoice)) setVoiceFilter("cloned");
+        else {
+          const sv = stockList.find(s => (s.slug || s.id) === urlVoice);
+          if (sv) {
+            const dt = sv.displayTier || null;
+            const p = (sv.provider || sv.source || '').toLowerCase();
+            if (dt === 'pro' || (!dt && (p === 'xai' || (sv.tier === 'pro' && !sv.elevenlabsVoiceId)))) setVoiceFilter('pro');
+            else if (dt === 'premium' || (!dt && (p === 'elevenlabs' || sv.elevenlabsVoiceId))) setVoiceFilter('premium');
+            else setVoiceFilter('free');
+          }
+        }
       } else if (stockList.length) {
         setSelectedSlug(stockList[0].slug || stockList[0].id);
       }
@@ -162,6 +256,16 @@ function StudioPageInner() {
 
   async function handleGenerate() {
     if (!text.trim() || !selectedSlug) return;
+
+    const sel = allVoices.find(v => (v.slug || v.id) === selectedSlug);
+    const dt = sel?.displayTier || null;
+    const p = (sel?.provider || sel?.source || "").toLowerCase();
+    const isPremiumSel = dt === "premium" || (!dt && (p === "elevenlabs" || p === "professional") && !!sel?.elevenlabsVoiceId);
+    if (isPremiumSel && !isPremiumUser) {
+      toast.error("VoiceForge Premium voices are a Professional feature. Upgrade to unlock.");
+      return;
+    }
+
     setGenerating(true);
 
     try {
@@ -194,6 +298,121 @@ function StudioPageInner() {
       setGenerationProgress(null);
     }
   }
+
+  // --- Custom Generated Audio Player Controls ---
+  const formatTime = (seconds) => {
+    if (!seconds || isNaN(seconds)) return "0:00";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  function toggleGeneratedPlayback() {
+    const audio = generatedAudioRef.current;
+    if (!audio) return;
+    if (isGeneratedPlaying) {
+      audio.pause();
+    } else {
+      audio.play().catch(() => {});
+    }
+  }
+
+  function seekGeneratedAudio(time) {
+    const audio = generatedAudioRef.current;
+    if (!audio) return;
+    // Prefer live duration from the element to avoid stale state during initial load
+    const dur = audio.duration && isFinite(audio.duration) ? audio.duration : generatedDuration;
+    if (!dur) return;
+    const newTime = Math.max(0, Math.min(time, dur));
+    audio.currentTime = newTime;
+    setGeneratedCurrentTime(newTime);
+  }
+
+  async function downloadGeneratedAudio() {
+    if (!lastAudioUrl) return;
+
+    try {
+      // Robust cross-origin download using blob (prevents navigation to the MP3 URL)
+      const res = await fetch(lastAudioUrl, { mode: "cors" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = objectUrl;
+
+      const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      a.download = `voiceforge-${ts}.mp3`;
+
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      // Cleanup
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+    } catch (err) {
+      console.error("[Download] failed", err);
+      toast.error("Download failed. Trying fallback...");
+
+      // Fallback to direct link (may still navigate on some cross-origin setups)
+      const a = document.createElement("a");
+      a.href = lastAudioUrl;
+      const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      a.download = `voiceforge-${ts}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  }
+
+  // Wire up the audio element events for the custom player
+  useEffect(() => {
+    const audio = generatedAudioRef.current;
+    if (!audio || !lastAudioUrl) return;
+
+    // Reset state for new audio
+    setIsGeneratedPlaying(false);
+    setGeneratedCurrentTime(0);
+    setGeneratedDuration(0);
+
+    const handleTimeUpdate = () => {
+      setGeneratedCurrentTime(audio.currentTime);
+    };
+
+    const handleLoadedMetadata = () => {
+      if (audio.duration && isFinite(audio.duration)) {
+        setGeneratedDuration(audio.duration);
+      }
+    };
+
+    const handleEnded = () => {
+      setIsGeneratedPlaying(false);
+      // optionally reset to start: setGeneratedCurrentTime(0);
+    };
+
+    const handlePlay = () => setIsGeneratedPlaying(true);
+    const handlePause = () => setIsGeneratedPlaying(false);
+
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+
+    // If metadata already available (e.g. cached)
+    if (audio.duration && isFinite(audio.duration)) {
+      setGeneratedDuration(audio.duration);
+    }
+
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+    };
+  }, [lastAudioUrl]);
 
   return (
     <>
@@ -304,12 +523,13 @@ function StudioPageInner() {
                 <History className="size-4 text-neutral-500 cursor-pointer hover:text-white transition-colors" />
               </div>
 
-              {/* Filter tabs */}
+              {/* Filter tabs - user facing only, no provider names */}
               <div className="px-3 pt-3 pb-1 flex gap-1 shrink-0 flex-wrap">
                 {[
                   { id: "all", label: "All" },
-                  { id: "free", label: "Free" },
-                  { id: "pro", label: "Pro" },
+                  { id: "free", label: "VoiceForge Free" },
+                  { id: "pro", label: "VoiceForge Pro" },
+                  { id: "premium", label: isPremiumUser ? "VoiceForge Premium" : "VoiceForge Premium (Upgrade)" },
                   { id: "cloned", label: `My Clones${clonedVoices.length ? ` (${clonedVoices.length})` : ""}` },
                 ].map((f) => (
                   <button
@@ -317,32 +537,82 @@ function StudioPageInner() {
                     type="button"
                     onClick={() => setVoiceFilter(f.id)}
                     className={cn(
-                      "px-3 h-7 rounded-full text-[11px] font-bold transition-all",
+                      "px-3 h-7 rounded-full text-[11px] font-bold transition-all flex items-center gap-1",
                       voiceFilter === f.id
                         ? "bg-primary text-on-primary"
                         : "bg-white/5 text-on-surface-variant hover:bg-white/10 hover:text-white"
                     )}
+
                   >
+                    {f.id === "premium" && !isPremiumUser && <Lock className="size-3" />}
                     {f.label}
                   </button>
                 ))}
               </div>
 
               <div className="flex-1 overflow-y-auto p-3 custom-scrollbar min-h-0">
-                {/* Stock voices — Free + Pro tiers */}
-                {["free", "pro"].map((tier) => {
+                {/* Stock voices — VoiceForge Free + Pro + Premium (user-facing only) */}
+                {["free", "pro", "premium"].map((tierOrProv) => {
                   if (voiceFilter === "cloned") return null;
-                  if (voiceFilter !== "all" && voiceFilter !== tier) return null;
-                  const tierVoices = voices.filter(v => (v.tier || "free") === tier);
+                  if (voiceFilter !== "all" && voiceFilter !== tierOrProv) return null;
+
+                  let tierVoices;
+                  if (tierOrProv === "premium") {
+                    if (!isPremiumUser) {
+                      if (voiceFilter === "premium") {
+                        // Show premium upgrade prompt when the Premium tab is selected for non-pro
+                        return (
+                          <div key={tierOrProv} className="mb-4 p-4 rounded-2xl border border-violet-500/30 bg-violet-500/10 text-center">
+                            <div className="flex justify-center mb-2">
+                              <Crown className="size-6 text-violet-400" />
+                            </div>
+                            <div className="font-bold text-violet-300 text-sm">VoiceForge Premium</div>
+                            <p className="text-[11px] text-violet-400/80 mt-1 leading-snug">
+                              Access dozens of studio-quality voices across languages, ages, accents and countries.
+                              Voice cloning also requires Premium.
+                            </p>
+                            <Button asChild size="sm" className="mt-3 h-8 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold">
+                              <Link href="/checkout?plan=professional">
+                                <Crown className="size-3 mr-1.5" /> Upgrade to VoiceForge Premium — $2.99/mo
+                              </Link>
+                            </Button>
+                            <div className="mt-2 text-[10px] text-violet-500/60">Unlocks Studio voices + cloning. Credits still required for generation.</div>
+                          </div>
+                        );
+                      }
+                      return null; // hide in "All" for non-pro
+                    }
+                    // For premium users: show all real premium voices (VoiceForge Premium tier, based on internal EL)
+                    tierVoices = voices.filter(v => {
+                      const dt = v.displayTier || null;
+                      const p = (v.provider || v.source || "").toLowerCase();
+                      const hasRealElId = !!v.elevenlabsVoiceId;
+                      if (dt) return dt === "premium";
+                      return (p === "elevenlabs" || p === "professional") && hasRealElId;
+                    });
+                  } else if (tierOrProv === "pro") {
+                    // pro stock = VoiceForge Pro tier
+                    tierVoices = voices.filter(v => {
+                      const dt = v.displayTier || null;
+                      if (dt) return dt === "pro";
+                      return (v.tier || "free") === "pro" && (v.provider || "xai") !== "elevenlabs" && (v.provider || "xai") !== "professional";
+                    });
+                  } else {
+                    tierVoices = voices.filter(v => {
+                      const dt = v.displayTier || null;
+                      if (dt) return dt === "free";
+                      return (v.tier || "free") === tierOrProv && (v.provider || "xai") !== "elevenlabs" && (v.provider || "xai") !== "professional";
+                    });
+                  }
                   if (!tierVoices.length) return null;
                   return (
-                    <div key={tier} className="mb-4">
-                      <div className={`flex items-center gap-2 px-1 mb-2 ${tier === "free" ? "text-emerald-400" : "text-amber-400"}`}>
-                        {tier === "free" ? <Zap className="size-3.5 fill-current" /> : <Crown className="size-3.5 fill-current" />}
+                    <div key={tierOrProv} className="mb-4">
+                      <div className={`flex items-center gap-2 px-1 mb-2 ${tierOrProv === "free" ? "text-emerald-400" : tierOrProv === "premium" ? "text-fuchsia-400" : "text-amber-400"}`}>
+                        {tierOrProv === "free" ? <Zap className="size-3.5 fill-current" /> : <Crown className="size-3.5 fill-current" />}
                         <span className="text-[10px] font-bold uppercase tracking-widest">
-                          {tier === "free" ? "Free — VoiceForge TTS" : "Pro — VoiceForge TTS"}
+                          {tierOrProv === "free" ? "VoiceForge Free" : tierOrProv === "premium" ? "VoiceForge Premium" : tierOrProv === "pro" ? "VoiceForge Pro" : "VoiceForge Pro"}
                         </span>
-                        <span className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full ${tier === "free" ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"}`}>
+                        <span className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full ${tierOrProv === "free" ? "bg-emerald-500/15 text-emerald-400" : tierOrProv === "premium" ? "bg-fuchsia-500/15 text-fuchsia-400" : "bg-amber-500/15 text-amber-400"}`}>
                           {tierVoices.length} voices
                         </span>
                       </div>
@@ -356,7 +626,7 @@ function StudioPageInner() {
                               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedSlug(slug); } }}
                               className={cn("group w-full flex items-center justify-between p-3 rounded-xl transition-all border cursor-pointer",
                                 isSelected
-                                  ? tier === "free" ? "bg-emerald-600/10 border-emerald-500/40" : "bg-amber-600/10 border-amber-500/40"
+                                  ? tierOrProv === "free" ? "bg-emerald-600/10 border-emerald-500/40" : tierOrProv === "premium" ? "bg-fuchsia-600/10 border-fuchsia-500/40" : "bg-amber-600/10 border-amber-500/40"
                                   : "bg-white/[0.02] border-white/5 hover:border-white/10 hover:bg-white/[0.04]"
                               )}
                             >
@@ -371,9 +641,19 @@ function StudioPageInner() {
                                 <div className="text-left">
                                   <div className="flex items-center gap-1.5">
                                     <h4 className="text-sm font-bold">{v.name}</h4>
-                                    <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${tier === "free" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}>
-                                      {tier === "free" ? "FREE" : "PRO"}
-                                    </span>
+                                    {(() => {
+                                      const d = getVoiceDisplay(v);
+                                      return (
+                                        <>
+                                          <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${d.badgeClass}`}>
+                                            {d.planLabel.replace("VoiceForge ", "")}
+                                          </span>
+                                          <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${d.quality === "Studio" ? "bg-fuchsia-500/20 text-fuchsia-400" : d.quality === "Enhanced" ? "bg-violet-500/20 text-violet-400" : "bg-emerald-500/20 text-emerald-400"}`}>
+                                            {d.quality}
+                                          </span>
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                   <div className="flex gap-1 mt-0.5">
                                     {(v.tags || []).slice(0, 2).map(tag => (
@@ -383,7 +663,7 @@ function StudioPageInner() {
                                 </div>
                               </div>
                               {isSelected ? (
-                                <div className={`size-2 rounded-full ${tier === "free" ? "bg-emerald-400 shadow-[0_0_8px_#34d399]" : "bg-amber-400 shadow-[0_0_8px_#fbbf24]"}`} />
+                                <div className={`size-2 rounded-full ${tierOrProv === "free" ? "bg-emerald-400 shadow-[0_0_8px_#34d399]" : tierOrProv === "premium" ? "bg-fuchsia-400 shadow-[0_0_8px_#e879f9]" : "bg-amber-400 shadow-[0_0_8px_#fbbf24]"}`} />
                               ) : (
                                 <button type="button" onClick={(e) => handlePreview(slug, e)} disabled={loadingPreviewSlug === slug}
                                   className="size-7 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors disabled:opacity-60"
@@ -405,7 +685,7 @@ function StudioPageInner() {
                   <div className="mb-4">
                     <div className="flex items-center gap-2 px-1 mb-2 text-primary">
                       <Mic className="size-3.5" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">My Cloned Voices</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest">MY CLONED (VoiceForge Premium)</span>
                       <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">
                         {clonedVoices.length} voices
                       </span>
@@ -465,6 +745,25 @@ function StudioPageInner() {
               </div>
 
               <div className="p-4 border-t border-white/5 bg-white/[0.02] space-y-3 shrink-0">
+                {selectedSlug && (
+                  <div className="text-[10px] text-center space-y-0.5 border border-white/10 rounded-xl p-2 bg-white/[0.015]">
+                    {(() => {
+                      const v = allVoices.find(vv => (vv.slug || vv.id) === selectedSlug) || selectedVoice;
+                      const display = getVoiceDisplay(v);
+                      const planLabel = display.planLabel;
+                      const quality = display.quality;
+                      const chars = count;
+                      const cpc = quality === "Studio" ? 14 : planLabel.includes("Premium") ? 7 : planLabel.includes("Pro") ? 2 : 0 ;
+                      const creditsReq = Math.ceil(chars * cpc);
+                      return (
+                        <>
+                          <div className="text-[9px] text-neutral-500">{planLabel} · <span className={quality === 'Studio' ? 'text-fuchsia-400' : quality === 'Enhanced' ? 'text-violet-400' : 'text-emerald-400'}>{quality} Quality</span> · {chars.toLocaleString()} chars</div>
+                          <div className="font-mono text-sm text-primary">{planLabel} Estimated Cost: {creditsReq.toLocaleString()} Credits</div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
                 <Button
                   className="w-full h-12 text-sm font-bold bg-primary hover:bg-primary/90 text-on-primary rounded-xl shadow-lg shadow-primary/20 group transition-all"
                   onClick={handleGenerate}
@@ -491,7 +790,81 @@ function StudioPageInner() {
                 )}
 
                 {lastAudioUrl && (
-                  <audio ref={generatedAudioRef} controls src={lastAudioUrl} autoPlay playsInline preload="none" className="w-full rounded-xl h-10" />
+                  <>
+                    {/* Hidden audio element — we control it with custom UI below */}
+                    <audio
+                      ref={generatedAudioRef}
+                      src={lastAudioUrl}
+                      playsInline
+                      preload="none"
+                      className="hidden"
+                    />
+
+                    {/* Custom audio player with timeline (no native 3-dot menu) */}
+                    <div className="flex items-center gap-3 bg-white/[0.02] border border-white/10 rounded-2xl p-3">
+                      {/* Play / Pause */}
+                      <button
+                        type="button"
+                        onClick={toggleGeneratedPlayback}
+                        className="size-9 rounded-full bg-primary text-on-primary flex items-center justify-center hover:bg-primary/90 active:scale-[0.985] transition-all shadow-sm shrink-0"
+                        aria-label={isGeneratedPlaying ? "Pause" : "Play"}
+                      >
+                        {isGeneratedPlaying ? (
+                          <Pause className="size-4 fill-current" />
+                        ) : (
+                          <Play className="size-4 fill-current ml-0.5" />
+                        )}
+                      </button>
+
+                      {/* Timecode */}
+                      <div className="font-mono text-[10px] text-neutral-400 tabular-nums w-[90px] shrink-0 select-none">
+                        {formatTime(generatedCurrentTime)} / {formatTime(generatedDuration)}
+                      </div>
+
+                      {/* Clickable Timeline / Progress bar */}
+                      <div
+                        className="relative flex-1 h-1.5 bg-white/20 rounded-full cursor-pointer group"
+                        onClick={(e) => {
+                          const audioEl = generatedAudioRef.current;
+                          const dur = (audioEl?.duration && isFinite(audioEl.duration)) ? audioEl.duration : generatedDuration;
+                          if (!dur) return;
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const percent = (e.clientX - rect.left) / rect.width;
+                          seekGeneratedAudio(percent * dur);
+                        }}
+                      >
+                        <div
+                          className="absolute left-0 top-0 h-full bg-primary rounded-full transition-all duration-75"
+                          style={{
+                            width: generatedDuration
+                              ? `${Math.max(0, Math.min(100, (generatedCurrentTime / generatedDuration) * 100))}%`
+                              : "0%",
+                          }}
+                        />
+                        {/* Thumb (appears on hover) */}
+                        <div
+                          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 size-3 rounded-full bg-white shadow ring-1 ring-black/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                          style={{
+                            left: generatedDuration
+                              ? `${Math.max(0, Math.min(100, (generatedCurrentTime / generatedDuration) * 100))}%`
+                              : "0%",
+                          }}
+                        />
+                      </div>
+
+                      {/* Download button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={downloadGeneratedAudio}
+                        className="rounded-full text-on-surface-variant hover:text-primary hover:bg-white/10 shrink-0"
+                        aria-label="Download audio"
+                        title="Download MP3"
+                      >
+                        <Download className="size-4" />
+                      </Button>
+                    </div>
+                  </>
                 )}
               </div>
             </div>

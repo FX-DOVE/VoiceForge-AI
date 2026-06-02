@@ -29,6 +29,7 @@ const PROTECTED_PREFIXES = [
   "/checkout",
   "/success",
   "/admin",
+  "/claim-credits",
 ];
 
 export function middleware(request) {

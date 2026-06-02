@@ -20,14 +20,18 @@ const voiceSchema = new mongoose.Schema(
     previewUrl: { type: String, default: "" },
     xaiVoiceId: { type: String, default: "Aria" },
     edgeVoiceId: { type: String, default: "" },
+    elevenlabsVoiceId: { type: String, default: "" }, // For VoiceForge Premium voices (studio provider powered)
     previewSample: { type: String, default: "" },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     voiceCloneRef: { type: mongoose.Schema.Types.ObjectId, ref: "VoiceClone", default: null },
     tier: { type: String, enum: ["free", "pro"], default: "free" },
+    provider: { type: String, enum: ["free", "xai", "elevenlabs"], default: "xai" }, // elevenlabs = VoiceForge Professional plan voices
+    model: { type: String, default: "voice_api" }, // e.g. "voice_api", "flash", "multilingual_v3"
+    costTier: { type: String, enum: ["low", "medium", "high"], default: "low" },
     isPublic: { type: Boolean, default: true },
     isActive: { type: Boolean, default: true },
     isCoreVoice: { type: Boolean, default: false },
-    source: { type: String, enum: ["xai", "edge", "manual", "cloned"], default: "manual" },
+    source: { type: String, enum: ["xai", "edge", "manual", "cloned", "elevenlabs"], default: "manual" },
     metadata: { type: mongoose.Schema.Types.Mixed, default: null }, // For fallback messages and extra data
   },
   { timestamps: true }

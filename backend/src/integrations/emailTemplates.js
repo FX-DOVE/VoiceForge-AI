@@ -701,6 +701,136 @@ function voiceCloneReadyTemplate({ name = "", voiceName = "My Custom Clone", voi
   return baseEmailTemplate(content, 'Voice Clone Ready - VoiceForge AI');
 }
 
+// 8. Credit Gift Email (Admin sends free credits to users)
+function creditGiftTemplate({ name = "", heading = "", body = "", imageUrl = "", gifUrl = "", credits = 0, usdAmount = 0, claimUrl = "", buttonText = "Claim Your Free Credits", expiresIn = "7 days" }) {
+  const mediaHtml = (gifUrl || imageUrl)
+    ? `<div style="margin: 24px 0; text-align: center;">
+        <img src="${gifUrl || imageUrl}" alt="" style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);" />
+      </div>`
+    : "";
+
+  const content = `
+    <div class="text-center mb-3">
+      <div class="icon-circle icon-circle-success" style="margin-bottom: 24px;">
+        <span style="font-size: 40px;">🎁</span>
+      </div>
+      <h1 class="h1 text-success" style="margin-bottom: 8px;">${heading || "You've Got Free Credits!"}</h1>
+    </div>
+
+    <div class="glass-card">
+      <p class="text-md text-muted mb-3">
+        ${name ? `Hi ${name},` : "Hi there,"}
+      </p>
+
+      <div style="color: #dae2fd; font-size: 15px; line-height: 1.7; margin-bottom: 24px;">
+        ${body}
+      </div>
+
+      ${mediaHtml}
+
+      <div class="info-box info-box-success" style="margin: 24px 0; text-align: center;">
+        <span class="text-xs text-muted" style="text-transform: uppercase; letter-spacing: 0.15em; display: block; margin-bottom: 8px;">Your Gift</span>
+        <span class="h1 text-success" style="display: block;">${credits.toLocaleString()} Credits</span>
+      </div>
+
+      <div class="text-center mb-3">
+        <a href="${claimUrl}" class="btn btn-success" style="font-size: 16px; padding: 16px 40px;">
+          ${buttonText} →
+        </a>
+      </div>
+
+      <div class="info-box" style="margin-top: 24px;">
+        <p class="text-sm text-muted" style="text-align: center;">
+          ⏰ This gift expires in <strong style="color: #ffb786;">${expiresIn}</strong>. Claim it before it's gone!
+        </p>
+      </div>
+    </div>
+  `;
+
+  return baseEmailTemplate(content, heading || "Free Credits Gift - VoiceForge AI");
+}
+
+// 9. Contact Form Submission (sent to support team)
+function contactSubmissionTemplate({ name = "", email = "", topic = "General question", message = "" }) {
+  const safeMessage = (message || "").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+  const submittedAt = new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+
+  const content = `
+    <div class="text-center mb-3">
+      <div class="icon-circle" style="margin-bottom: 24px;">
+        <span style="font-size: 36px;">📬</span>
+      </div>
+      <h1 class="h1 text-primary" style="margin-bottom: 8px;">New Contact Form Submission</h1>
+      <p class="text-md text-muted">A user has submitted a message via the website contact form.</p>
+    </div>
+    
+    <div class="glass-card">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; font-size: 14px;">
+        <div>
+          <div style="color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Name</div>
+          <div style="color: #fff; font-weight: 600;">${name || "Not provided"}</div>
+        </div>
+        <div>
+          <div style="color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Email</div>
+          <div><a href="mailto:${email}" style="color: #adc6ff; text-decoration: underline;">${email}</a></div>
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <div style="color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Topic</div>
+          <div style="color: #fff; font-weight: 600;">${topic}</div>
+        </div>
+      </div>
+
+      <div style="margin: 16px 0 8px;">
+        <div style="color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Message</div>
+        <div style="background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; line-height: 1.65; color: #dae2fd;">
+          ${safeMessage || "<em>(no message body)</em>"}
+        </div>
+      </div>
+
+      <div style="margin-top: 16px; font-size: 12px; color: #6b7280;">
+        Submitted: ${submittedAt}
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 8px;">
+      <p class="text-sm text-muted">
+        Reply directly to the sender to continue the conversation.
+      </p>
+    </div>
+  `;
+
+  return baseEmailTemplate(content, "New Contact Form Submission - VoiceForge AI");
+}
+
+// 10. Contact Form Auto-Reply (sent to the user who submitted)
+function contactConfirmationTemplate({ name = "", topic = "General question" }) {
+  const content = `
+    <div class="text-center mb-3">
+      <div class="icon-circle icon-circle-success" style="margin-bottom: 24px;">
+        <span style="font-size: 36px;">✅</span>
+      </div>
+      <h1 class="h1 text-success" style="margin-bottom: 8px;">We've received your message</h1>
+    </div>
+
+    <div class="glass-card">
+      <p class="text-md text-muted mb-3">
+        Hi ${name || "there"},<br><br>
+        Thank you for contacting VoiceForge AI. We have received your inquiry about <strong>"${topic}"</strong>.
+      </p>
+
+      <p class="text-md text-muted">
+        A member of our team will review it and get back to you within <strong>one business day</strong>.
+      </p>
+
+      <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 13px; color: #6b7280;">
+        If you need immediate assistance, reply to this email or reach us at <a href="mailto:support@voiceforgeai.site" style="color: #adc6ff;">support@voiceforgeai.site</a>.
+      </div>
+    </div>
+  `;
+
+  return baseEmailTemplate(content, "Thank you — VoiceForge AI");
+}
+
 module.exports = {
   creditLimitReminderTemplate,
   marketingPromotionalTemplate,
@@ -709,5 +839,8 @@ module.exports = {
   purchaseErrorTemplate,
   signupVerificationTemplate,
   voiceCloneReadyTemplate,
+  creditGiftTemplate,
+  contactSubmissionTemplate,
+  contactConfirmationTemplate,
   baseEmailTemplate,
 };

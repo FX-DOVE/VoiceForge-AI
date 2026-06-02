@@ -1,4 +1,4 @@
-const { UsageRecord, User, AudioGeneration, TrainingJob, WelcomeGrant, BillingSetting } = require("../models");
+const { UsageRecord, User, AudioGeneration, TrainingJob, WelcomeGrant, BillingSetting, ProfessionalMembership } = require("../models");
 const { getCharactersLimit } = require("../utils/planLimits");
 
 async function getUsageSummary(userId) {
@@ -61,8 +61,31 @@ async function getUsageSummary(userId) {
       type: r.type,
       amount: r.amount,
       unit: r.unit,
+      creditsCharged: r.meta?.creditsCharged || 0,
+      estimatedApiCostUsd: r.meta?.estimatedApiCostUsd || 0,
       createdAt: r.createdAt,
     })),
+    // Professional membership status (for dashboard / renew UI)
+    professional: await (async () => {
+      const mem = await ProfessionalMembership.findOne({ user: userId }).sort({ createdAt: -1 });
+      const now = new Date();
+      const isMemActive = !!(mem && mem.status === "active" && mem.endDate > now);
+      const isPlanPro = user.plan === "professional";
+      const isActive = isPlanPro || isMemActive;
+      let days = 0;
+      if (isActive && mem?.endDate) {
+        days = Math.max(0, Math.ceil((mem.endDate - now) / (1000 * 60 * 60 * 24)));
+      }
+      return {
+        isProfessional: isActive,
+        plan: user.plan,
+        membershipStatus: mem?.status || (isPlanPro ? "active" : "none"),
+        endDate: mem?.endDate || null,
+        daysRemaining: days,
+        canAccessElevenLabs: isActive,
+        canClone: isActive,
+      };
+    })(),
   };
 }
 

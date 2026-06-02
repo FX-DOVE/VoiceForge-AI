@@ -9,6 +9,66 @@ import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 24;
 
+function getVoiceDisplay(v) {
+  // Prefer backend-provided rebrand-safe fields (displayTier/displayName/quality)
+  if (v.displayTier && v.displayName) {
+    const dt = v.displayTier;
+    const q = v.quality || (dt === "free" ? "Basic" : dt === "pro" ? "Enhanced" : "Studio");
+    const isStudio = q === "Studio";
+    const isEnhanced = q === "Enhanced";
+    return {
+      planLabel: v.displayName,
+      quality: q,
+      badgeClass: dt === "free"
+        ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+        : dt === "pro"
+          ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+          : (isStudio ? "bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/30" : "bg-violet-500/15 text-violet-400 border-violet-500/30"),
+      icon: <Crown className="size-2.5 fill-current" />,
+      costLabel: dt === "premium" ? (isStudio ? "HIGH" : "MED") : (dt === "pro" ? "LOW" : ""),
+    };
+  }
+  // Fallback (legacy data without display fields yet)
+  const tier = (v.tier || "free").toLowerCase();
+  const prov = (v.provider || v.source || "").toLowerCase();
+  const costTier = (v.costTier || "").toLowerCase();
+  const model = (v.model || "").toLowerCase();
+  const hasElId = !!v.elevenlabsVoiceId;
+
+  const isFree = tier === "free" || prov === "free";
+  const isXai = prov === "xai" || (!hasElId && tier === "pro");
+  const isEl = hasElId || prov === "elevenlabs" || prov === "professional";
+
+  if (isFree) {
+    return {
+      planLabel: "VoiceForge Free",
+      quality: "Basic",
+      badgeClass: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+      icon: <Zap className="size-2.5 fill-current" />,
+      costLabel: "",
+    };
+  }
+  if (isXai) {
+    return {
+      planLabel: "VoiceForge Pro",
+      quality: "Enhanced",
+      badgeClass: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+      icon: <Crown className="size-2.5 fill-current" />,
+      costLabel: costTier === "low" ? "LOW" : "",
+    };
+  }
+  const isHigh = costTier === "high" || model.includes("v3") || model.includes("premium");
+  return {
+    planLabel: "VoiceForge Premium",
+    quality: isHigh ? "Studio" : "Enhanced",
+    badgeClass: isHigh 
+      ? "bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/30"
+      : "bg-violet-500/15 text-violet-400 border-violet-500/30",
+    icon: <Crown className="size-2.5 fill-current" />,
+    costLabel: isHigh ? "HIGH" : "MED",
+  };
+}
+
 const LANGUAGES = [
   "All Languages","Multilingual","English","Chinese","Japanese","Korean",
   "Spanish","Portuguese","French","German","Italian","Russian","Arabic",
@@ -22,7 +82,7 @@ function VoiceCard({ v, playingSlug, loadingSlug, onPlay, onSelect }) {
   const slug = v.slug || v.id;
   const isPlaying = playingSlug === slug;
   const isLoading = loadingSlug === slug;
-  const isFree = (v.tier || "free") === "free";
+  const display = getVoiceDisplay(v);
   const isCore = v.isCoreVoice;
 
   return (
@@ -38,12 +98,18 @@ function VoiceCard({ v, playingSlug, loadingSlug, onPlay, onSelect }) {
             <h3 className="text-sm font-bold truncate">{v.name}</h3>
             <span className={cn(
               "flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border",
-              isFree ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                     : "bg-amber-500/15 text-amber-400 border-amber-500/30"
+              display.badgeClass
             )}>
-              {isFree ? <Zap className="size-2.5 fill-current" /> : <Crown className="size-2.5 fill-current" />}
-              {isFree ? "Free" : "Pro"}
+              {display.icon}
+              {display.planLabel}
             </span>
+            {display.quality && (
+              <span className={cn("text-[9px] px-1 py-0.5 rounded font-bold ml-0.5", 
+                display.quality === "Studio" ? "bg-fuchsia-500/20 text-fuchsia-400" : 
+                display.quality === "Enhanced" ? "bg-violet-500/20 text-violet-400" : "bg-emerald-500/20 text-emerald-400")}>
+                {display.quality}
+              </span>
+            )}
             {isCore && (
               <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border bg-amber-500/15 text-amber-400 border-amber-500/30">
                 <Star className="size-2.5 fill-current" /> Core
@@ -76,6 +142,7 @@ function VoiceCard({ v, playingSlug, loadingSlug, onPlay, onSelect }) {
       {/* Details */}
       <div className="flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-neutral-400">
         {v.languages?.[0] && <span>{v.languages[0]}</span>}
+        {v.accent && <span>{v.accent}</span>}
         {v.country && <span>{v.country}</span>}
         {v.age && <span>{v.age}</span>}
         {v.style && <span>{v.style}</span>}
@@ -123,6 +190,8 @@ export default function VoicesPage() {
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState("");
   const [tier, setTier]           = useState("all");
+  const [voiceTab, setVoiceTab] = useState("all"); // All / free / pro / premium / my-clones (user-facing VoiceForge tiers only)
+  const [providerFilter, setProviderFilter] = useState("all"); // legacy compat
   const [gender, setGender]       = useState("all");
   const [language, setLanguage]   = useState("All Languages");
   const [country, setCountry]     = useState("");
@@ -135,22 +204,73 @@ export default function VoicesPage() {
   const [loadingSlug, setLoadingSlug]   = useState(null);
   const audioRef = useRef(null);
 
-  // Load ALL voices once
+  // Load voices (re-fetch when tab changes). voiceTab uses user-facing names (free/pro/premium),
+  // mapped here to internal provider filters only (never shown in UI).
   useEffect(() => {
     setLoading(true);
-    voicesApi.list({})
+    const params = {};
+    let useSkipAuth = true;
+    if (voiceTab === "my-clones") {
+      params.provider = "my-clones";
+      useSkipAuth = false; // send token so backend can filter owner
+    } else if (voiceTab === "pro") {
+      params.provider = "xai"; // internal: maps to VoiceForge Pro tier
+    } else if (voiceTab === "premium") {
+      params.provider = "elevenlabs"; // internal: maps to VoiceForge Premium tier
+    } else if (voiceTab !== "all") {
+      params.provider = voiceTab; // free
+    }
+    voicesApi.list(params, { skipAuth: useSkipAuth })
       .then((data) => setAllVoices(data.voices || []))
-      .catch(() => toast.error("Could not load voices."))
+      .catch((e) => {
+        if (voiceTab === "my-clones") {
+          // likely not logged in
+          setAllVoices([]);
+          toast.info("Sign in to view your cloned voices.");
+        } else {
+          toast.error("Could not load voices.");
+        }
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [voiceTab]);
+
+  // When switching to Pro/Premium/My Clones tabs, auto-clear filters that would hide those voices.
+  // This ensures the tab always shows its voices. (internal mapping only)
+  useEffect(() => {
+    if (voiceTab === "pro" || voiceTab === "premium" || voiceTab === "my-clones") {
+      setTier("all");
+      if (voiceTab === "premium" || voiceTab === "pro") {
+        setCoreOnly(false);
+        setEnglishOnly(false);
+        setMultilingualOnly(false);
+        setLanguage("All Languages");
+      }
+    }
+  }, [voiceTab]);
 
   // Reset page when filters change
-  useEffect(() => { setPage(1); }, [search, tier, gender, language, country, age, coreOnly, englishOnly, multilingualOnly]);
+  useEffect(() => { setPage(1); }, [search, tier, voiceTab, providerFilter, gender, language, country, age, coreOnly, englishOnly, multilingualOnly]);
 
-  // Client-side filtering
+  // Client-side filtering (primary driven by voiceTab which already server-filtered for providers)
+  // Use displayTier when available for user-facing logic; fall back to legacy for old data.
   const filtered = useMemo(() => {
     return allVoices.filter((v) => {
-      if (tier !== "all" && v.tier !== tier) return false;
+      if (tier !== "all" && voiceTab !== "pro" && voiceTab !== "premium" && voiceTab !== "my-clones" && v.tier !== tier) return false;
+      // voiceTab already applied via server query; keep light client filter for legacy providerFilter
+      // also map new user-facing to internal for compat (these strings are never rendered)
+      if (providerFilter !== "all") {
+        const dt = v.displayTier || null;
+        if (providerFilter === "pro" && dt && dt !== "pro") return false;
+        if (providerFilter === "premium" && dt && dt !== "premium") return false;
+        if (providerFilter === "free" && dt && dt !== "free") return false;
+        if (!dt) {
+          // legacy fallback only
+          const vProv = (v.provider || v.source || "").toLowerCase();
+          if (providerFilter === "pro" && !["xai", "pro"].includes(vProv)) return false;
+          if (providerFilter === "premium" && !["elevenlabs", "professional", "voiceforge-premium"].includes(vProv)) return false;
+          if (providerFilter === "free" && !["free", "edge"].includes(vProv)) return false;
+        }
+      }
       if (gender !== "all" && (v.gender || "").toLowerCase() !== gender) return false;
       if (language !== "All Languages") {
         const langs = v.languages || [];
@@ -184,13 +304,13 @@ export default function VoicesPage() {
       }
       return true;
     });
-  }, [allVoices, tier, gender, language, search, country, age, coreOnly, englishOnly, multilingualOnly]);
+  }, [allVoices, tier, voiceTab, providerFilter, gender, language, search, country, age, coreOnly, englishOnly, multilingualOnly]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const hasFilters =
-    tier !== "all" || gender !== "all" || language !== "All Languages" ||
+    voiceTab !== "all" || tier !== "all" || gender !== "all" || language !== "All Languages" ||
     search || country || age || coreOnly || englishOnly || multilingualOnly;
 
   function clearFilters() {
@@ -203,6 +323,8 @@ export default function VoicesPage() {
     setCoreOnly(false);
     setEnglishOnly(false);
     setMultilingualOnly(false);
+    setProviderFilter("all");
+    setVoiceTab("all");
   }
 
   function handleSelect(slug) {
@@ -274,8 +396,8 @@ export default function VoicesPage() {
         <div className="flex flex-wrap items-center gap-2">
           <SlidersHorizontal className="size-4 text-neutral-500 shrink-0" />
 
-          {/* Tier */}
-          {[{k:"all",l:"All"},{k:"free",l:"Free"},{k:"pro",l:"Pro"}].map(({k,l}) => (
+          {/* Tier — user facing VoiceForge plan tiers */}
+          {[{k:"all",l:"All"},{k:"free",l:"VoiceForge Free"},{k:"pro",l:"VoiceForge Pro"}].map(({k,l}) => (
             <button key={k} onClick={() => setTier(k)}
               className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all",
                 tier === k
@@ -286,6 +408,30 @@ export default function VoicesPage() {
               )}>
               {k === "free" && <Zap className="size-3 fill-current" />}
               {k === "pro"  && <Crown className="size-3 fill-current" />}
+              {l}
+            </button>
+          ))}
+
+          <div className="w-px h-5 bg-white/10 mx-1" />
+
+          {/* User-facing filters - VoiceForge plans only, no provider names */}
+          {[
+            {k:"all", l:"All Voices"},
+            {k:"free", l:"VoiceForge Free"},
+            {k:"pro", l:"VoiceForge Pro"},
+            {k:"premium", l:"VoiceForge Premium"},
+            {k:"my-clones", l:"My Cloned Voices"},
+          ].map(({k,l}) => (
+            <button key={k} onClick={() => setVoiceTab(k)}
+              className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all",
+                voiceTab === k
+                  ? k === "free" ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
+                    : k === "pro" ? "bg-amber-500/15 border-amber-500/40 text-amber-400"
+                    : k === "premium" ? "bg-fuchsia-500/15 border-fuchsia-500/40 text-fuchsia-400"
+                    : k === "my-clones" ? "bg-sky-500/15 border-sky-500/40 text-sky-400"
+                    : "bg-white/10 border-white/20 text-white"
+                  : "bg-transparent border-white/10 text-neutral-400 hover:text-white hover:border-white/20"
+              )}>
               {l}
             </button>
           ))}

@@ -6,6 +6,7 @@ const {
   UsageRecord,
   ActivityLog,
   BillingSetting,
+  BillingProfile,
   Payment,
 } = require("../models");
 
@@ -23,7 +24,7 @@ async function getDashboard() {
   ] = await Promise.all([
     User.countDocuments(),
     User.countDocuments({ status: "active" }),
-    User.countDocuments({ plan: { $in: ["pro", "enterprise"] } }),
+    User.countDocuments({ plan: { $in: ["pro", "professional", "enterprise"] } }),
     AudioGeneration.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
     TrainingJob.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
     UsageRecord.aggregate([
@@ -152,17 +153,17 @@ async function getBilling() {
     User.countDocuments({ plan: "free" }),
     User.countDocuments({ plan: "pro" }),
     User.countDocuments({ plan: "enterprise" }),
-    // Total revenue from all successful payments
+    // Total revenue from real payments only (exclude admin grants)
     Payment.aggregate([
-      { $match: { status: "success" } },
+      { $match: { status: "success", reference: { $not: /^admin_grant_/ } } },
       { $group: { _id: null, total: { $sum: "$usdAmount" } } },
     ]),
-    // Revenue from last 30 days
+    // Revenue from last 30 days (exclude admin grants)
     Payment.aggregate([
-      { $match: { status: "success", processedAt: { $gte: thirtyDaysAgo } } },
+      { $match: { status: "success", reference: { $not: /^admin_grant_/ }, processedAt: { $gte: thirtyDaysAgo } } },
       { $group: { _id: null, total: { $sum: "$usdAmount" } } },
     ]),
-    // Recent successful payments
+    // Recent successful payments (show all including admin grants)
     Payment.find({ status: "success" })
       .sort({ processedAt: -1 })
       .limit(50)
@@ -172,7 +173,7 @@ async function getBilling() {
 
   const totalRevenue = totalRevenueAgg[0]?.total || 0;
   const monthlyRevenue = monthlyRevenueAgg[0]?.total || 0;
-  const payingCustomers = await Payment.distinct("user", { status: "success" });
+  const payingCustomers = await Payment.distinct("user", { status: "success", reference: { $not: /^admin_grant_/ } });
   const total = totalUsers || 1;
 
   // Build real transaction list from Paystack payments
@@ -367,11 +368,12 @@ async function deleteUser(userId, adminId, { reason }) {
 async function getSettings() {
   const config = require("../config");
   const { User } = require("../models");
-  const [totalUsers, proUsers, freeUsers, enterpriseUsers] = await Promise.all([
+  const [totalUsers, proUsers, freeUsers, enterpriseUsers, professionalUsers] = await Promise.all([
     User.countDocuments(),
     User.countDocuments({ plan: "pro" }),
     User.countDocuments({ plan: "free" }),
     User.countDocuments({ plan: "enterprise" }),
+    User.countDocuments({ plan: "professional" }),
   ]);
 
   return {
@@ -408,43 +410,110 @@ async function getSettings() {
     planLimits: {
       free: { ...config.planLimits.free, users: freeUsers },
       pro: { ...config.planLimits.pro, users: proUsers },
+      professional: { ...config.planLimits.professional, users: professionalUsers },
       enterprise: { ...config.planLimits.enterprise, users: enterpriseUsers },
     },
-    stats: { totalUsers, proUsers, freeUsers, enterpriseUsers },
+    stats: { totalUsers, proUsers, freeUsers, enterpriseUsers, professionalUsers },
   };
 }
 
 async function getBillingSettings() {
-  const settings = await BillingSetting.getSettings();
+  const settings = await BillingSetting.getNormalized();
+  const { calculateCreditsFromPayment } = require("../utils/creditCalc");
+
+  // Calculate example previews using current settings and new per-provider method (defensive)
+  let examples = { xai: {}, professional: {} };
+  try {
+    examples = {
+      xai: {
+        deposit1: await calculateCreditsFromPayment(1, "xai"),
+        deposit5: await calculateCreditsFromPayment(5, "xai"),
+        deposit10: await calculateCreditsFromPayment(10, "xai"),
+      },
+      professional: {
+        deposit1: await calculateCreditsFromPayment(1, "elevenlabs"),
+        deposit5: await calculateCreditsFromPayment(5, "elevenlabs"),
+        deposit10: await calculateCreditsFromPayment(10, "elevenlabs"),
+      },
+    };
+  } catch (e) {
+    console.warn("[getBillingSettings] failed to compute live examples (non-fatal):", e.message);
+  }
+
   return {
-    creditsPerDollar: settings.creditsPerDollar,
-    minimumPaymentUsd: settings.minimumPaymentUsd,
+    platformShare: settings.platformShare,
+    apiShare: settings.apiShare,
+    ttsCostPerMillionCharacters: settings.ttsCostPerMillionCharacters,
+    creditsPerCharacter: settings.creditsPerCharacter,
+    minimumDepositUsd: settings.minimumDepositUsd,
+    maximumDepositUsd: settings.maximumDepositUsd,
     welcomeCredits: settings.welcomeCredits,
-    welcomeCreditUsd: settings.welcomeCreditUsd,
+    welcomeCreditUsdValue: settings.welcomeCreditUsdValue,
+    // Legacy
+    creditsPerDollar: settings.creditsPerDollar,
+    // Multi-provider
+    providerProfiles: settings.providerProfiles,
+    elevenlabs: settings.elevenlabs || settings.providerProfiles?.elevenlabs || {},
+    professional: settings.providerProfiles?.elevenlabs || settings.elevenlabs || {},
+    // Live previews per provider using new credit calc
+    examples,
   };
 }
 
 async function updateBillingSettings(userId, data) {
   const settings = await BillingSetting.getSettings();
+
+  if (data.platformShare !== undefined) settings.platformShare = Number(data.platformShare);
+  if (data.apiShare !== undefined) settings.apiShare = Number(data.apiShare);
+  if (data.ttsCostPerMillionCharacters !== undefined) settings.ttsCostPerMillionCharacters = Number(data.ttsCostPerMillionCharacters);
+  if (data.creditsPerCharacter !== undefined) settings.creditsPerCharacter = Number(data.creditsPerCharacter);
+
+  // Sync legacy xAI fields into providerProfiles.xai for dynamic engine
+  if (!settings.providerProfiles) settings.providerProfiles = {};
+  settings.providerProfiles.xai = {
+    costPerMillionCharacters: Number(settings.ttsCostPerMillionCharacters || 15),
+    creditsPerCharacter: Number(settings.creditsPerCharacter || 2),
+    platformShare: Number(settings.platformShare || 0.5),
+    apiShare: Number(settings.apiShare || 0.5),
+  };
+  if (data.minimumDepositUsd !== undefined) settings.minimumDepositUsd = Number(data.minimumDepositUsd);
+  if (data.maximumDepositUsd !== undefined) settings.maximumDepositUsd = Number(data.maximumDepositUsd);
+  if (data.welcomeCredits !== undefined) settings.welcomeCredits = Number(data.welcomeCredits);
+  if (data.welcomeCreditUsdValue !== undefined) settings.welcomeCreditUsdValue = Number(data.welcomeCreditUsdValue);
+
+  // Keep legacy field for now
   if (data.creditsPerDollar !== undefined) settings.creditsPerDollar = Number(data.creditsPerDollar);
-  if (data.minimumPaymentUsd !== undefined) settings.minimumPaymentUsd = Number(data.minimumPaymentUsd);
-  if (data.welcomeCredits !== undefined) {
-    const wc = Number(data.welcomeCredits);
-    settings.welcomeCredits = Math.min(Math.max(0, wc), 10000); // Cap at 10,000
+
+  // Multi-provider support
+  if (data.providerProfiles) settings.providerProfiles = data.providerProfiles;
+  if (data.elevenlabs) {
+    settings.elevenlabs = data.elevenlabs;
+    // Also mirror to the profiles for the credit engine
+    if (!settings.providerProfiles) settings.providerProfiles = {};
+    settings.providerProfiles.elevenlabs = {
+      costPerMillionCharacters: Number(data.elevenlabs.costPerMillionCharacters || 50),
+      creditsPerCharacter: Number(data.elevenlabs.creditsPerCharacter || 7),
+      platformShare: Number(data.elevenlabs.platformShare || 0.5),
+      apiShare: Number(data.elevenlabs.apiShare || 0.5),
+    };
   }
-  if (data.welcomeCreditUsd !== undefined) {
-    const wu = Number(data.welcomeCreditUsd);
-    settings.welcomeCreditUsd = Math.min(Math.max(0, wu), 1.00); // Cap at $1.00
+  if (data.professional) {
+    // Support professional key from frontend
+    settings.elevenlabs = data.professional;
+    if (!settings.providerProfiles) settings.providerProfiles = {};
+    settings.providerProfiles.elevenlabs = {
+      costPerMillionCharacters: Number(data.professional.costPerMillionCharacters || 50),
+      creditsPerCharacter: Number(data.professional.creditsPerCharacter || 7),
+      platformShare: Number(data.professional.platformShare || 0.5),
+      apiShare: Number(data.professional.apiShare || 0.5),
+    };
   }
+
   settings.updatedBy = userId;
   await settings.save();
-  
-  return {
-    creditsPerDollar: settings.creditsPerDollar,
-    minimumPaymentUsd: settings.minimumPaymentUsd,
-    welcomeCredits: settings.welcomeCredits,
-    welcomeCreditUsd: settings.welcomeCreditUsd,
-  };
+
+  // Return fresh normalized data + previews
+  return await getBillingSettings();
 }
 
 async function addCredits(userId, adminId, { credits, note, usdAmount }) {
@@ -462,8 +531,8 @@ async function addCredits(userId, adminId, { credits, note, usdAmount }) {
   user.creditsRemaining += amount;
   if (grantUsd > 0) user.totalPayments += grantUsd;
 
-  const upgradedToPro = grantUsd >= 5 && user.plan !== "pro" && user.plan !== "enterprise"
-    || (user.totalPayments >= 5 && user.plan !== "pro" && user.plan !== "enterprise");
+  const upgradedToPro = grantUsd >= 5 && user.plan !== "pro" && user.plan !== "professional" && user.plan !== "enterprise"
+    || (user.totalPayments >= 5 && user.plan !== "pro" && user.plan !== "professional" && user.plan !== "enterprise");
   if (upgradedToPro) user.plan = "pro";
 
   await user.save();
@@ -615,6 +684,25 @@ async function getTtsAnalytics(period = "24h") {
   const freeStats = freeTtsStats[0] || { totalRequests: 0, uniqueUsers: [], totalCharacters: 0 };
   const xaiStats = xaiTtsStats[0] || { totalRequests: 0, uniqueUsers: [], totalCharacters: 0 };
 
+  // New billing-aware metrics (post 2026 refactor)
+  const billingStats = await AudioGeneration.aggregate([
+    { $match: { status: "completed", createdAt: { $gte: startDate } } },
+    {
+      $group: {
+        _id: null,
+        totalCreditsCharged: { $sum: { $ifNull: ["$creditsCharged", 0] } },
+        totalEstimatedApiCost: { $sum: { $ifNull: ["$estimatedApiCostUsd", 0] } },
+        totalCharactersBilled: { $sum: "$charactersUsed" }
+      }
+    }
+  ]);
+
+  const billing = billingStats[0] || { totalCreditsCharged: 0, totalEstimatedApiCost: 0, totalCharactersBilled: 0 };
+
+  // Rough gross margin calculation (API cost vs what we charged in value)
+  // Note: True revenue attribution would come from Payment collection, this is usage-side view
+  const estimatedApiCost = billing.totalEstimatedApiCost || 0;
+
   return {
     period,
     periodStart: startDate,
@@ -637,6 +725,13 @@ async function getTtsAnalytics(period = "24h") {
         uniqueUsers: new Set([...(freeStats.uniqueUsers || []), ...(xaiStats.uniqueUsers || [])]).size,
         characters: (freeStats.totalCharacters || 0) + (xaiStats.totalCharacters || 0)
       }
+    },
+    billing: {
+      totalCreditsCharged: billing.totalCreditsCharged || 0,
+      estimatedApiCostUsd: estimatedApiCost,
+      totalCharactersBilled: billing.totalCharactersBilled || 0,
+      // Note: Real revenue comes from payments. This is usage cost view.
+      note: "estimatedApiCostUsd reflects real xAI cost for billed generations in the period."
     },
     dailyBreakdown: Object.values(dailyStats),
     topUsers: {
@@ -682,4 +777,257 @@ async function resetAllUserCredits(adminId) {
   };
 }
 
-module.exports = { getDashboard, listUsers, getSystemHealth, getBilling, updateUser, banUser, restrictUser, unbanUser, unrestrictUser, deleteUser, getSettings, getBillingSettings, updateBillingSettings, addCredits, getTtsAnalytics, resetAllUserCredits };
+// ─── Gift Email Campaign ────────────────────────────────────────────
+async function sendGiftEmail(adminId, { subject, heading, body, imageUrl, gifUrl, buttonText, usdAmount, recipients, specificUserIds, expiryDays, campaignName }) {
+  const { calculateCreditsFromPayment } = require("../utils/creditCalc");
+  const { sendCreditGiftEmail } = require("../integrations/email");
+  const { CreditGift } = require("../models/CreditGift");
+
+  // Calculate credits from USD amount
+  const credits = calculateCreditsFromPayment(usdAmount);
+  if (!credits || credits <= 0) {
+    throw Object.assign(new Error("USD amount too low to generate credits."), { statusCode: 400 });
+  }
+
+  // Determine expiry
+  const days = expiryDays || 7;
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+  // Create gift campaign record
+  const token = CreditGift.generateToken();
+  const gift = await CreditGift.create({
+    token,
+    createdBy: adminId,
+    recipients: recipients || "all",
+    specificUsers: specificUserIds || [],
+    usdAmount,
+    credits,
+    subject: subject || "You've Got Free Credits!",
+    heading: heading || "",
+    body,
+    imageUrl: imageUrl || "",
+    gifUrl: gifUrl || "",
+    buttonText: buttonText || "Claim Your Free Credits",
+    campaignName: campaignName || "",
+    expiresAt,
+    status: "sent",
+  });
+
+  // Determine who to send to
+  let users;
+  if (recipients === "specific" && specificUserIds && specificUserIds.length > 0) {
+    users = await User.find({ _id: { $in: specificUserIds }, status: { $ne: "banned" } }).select("email name");
+  } else {
+    users = await User.find({ status: { $ne: "banned" } }).select("email name");
+  }
+
+  // Build claim URL
+  const config = require("../config");
+  const claimBaseUrl = `${config.clientUrl}/claim-credits?token=${token}`;
+  const expiresInLabel = days === 1 ? "24 hours" : `${days} days`;
+
+  // Send emails in batches
+  let sent = 0;
+  let failed = 0;
+  const batchSize = 10;
+  for (let i = 0; i < users.length; i += batchSize) {
+    const batch = users.slice(i, i + batchSize);
+    const results = await Promise.allSettled(
+      batch.map((user) =>
+        sendCreditGiftEmail({
+          to: user.email,
+          name: user.name || "",
+          subject: gift.subject,
+          heading: gift.heading,
+          body: gift.body,
+          imageUrl: gift.imageUrl,
+          gifUrl: gift.gifUrl,
+          credits,
+          usdAmount,
+          claimUrl: claimBaseUrl,
+          buttonText: gift.buttonText,
+          expiresIn: expiresInLabel,
+        })
+      )
+    );
+    results.forEach((r) => (r.status === "fulfilled" ? sent++ : failed++));
+  }
+
+  // Update campaign stats
+  gift.totalSent = sent;
+  await gift.save();
+
+  await ActivityLog.create({
+    user: adminId,
+    action: "send_gift_email",
+    message: `Sent gift email campaign "${campaignName || subject}" to ${sent} users (${credits} credits / $${usdAmount} each)`,
+    metadata: { giftId: gift._id, sent, failed, credits, usdAmount },
+    level: "info",
+  });
+
+  return {
+    giftId: gift._id,
+    token: gift.token,
+    credits,
+    usdAmount,
+    totalSent: sent,
+    totalFailed: failed,
+    expiresAt,
+  };
+}
+
+async function getGiftCampaigns() {
+  const { CreditGift } = require("../models/CreditGift");
+  const campaigns = await CreditGift.find()
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .populate("createdBy", "name email")
+    .lean();
+
+  // Mark expired campaigns
+  const now = new Date();
+  return campaigns.map((c) => ({
+    ...c,
+    status: c.expiresAt < now && c.status !== "expired" ? "expired" : c.status,
+  }));
+}
+
+async function claimGiftCredits(userId, token) {
+  const { CreditGift, CreditGiftClaim } = require("../models/CreditGift");
+
+  const gift = await CreditGift.findOne({ token });
+  if (!gift) {
+    throw Object.assign(new Error("Invalid or expired gift link."), { statusCode: 404 });
+  }
+
+  if (gift.expiresAt < new Date()) {
+    throw Object.assign(new Error("This gift has expired."), { statusCode: 410 });
+  }
+
+  // Check if specific users only
+  if (gift.recipients === "specific" && gift.specificUsers.length > 0) {
+    const isAllowed = gift.specificUsers.some((id) => id.toString() === userId.toString());
+    if (!isAllowed) {
+      throw Object.assign(new Error("This gift is not available for your account."), { statusCode: 403 });
+    }
+  }
+
+  // Check if already claimed
+  const existing = await CreditGiftClaim.findOne({ gift: gift._id, user: userId });
+  if (existing) {
+    throw Object.assign(new Error("You have already claimed this gift."), { statusCode: 409 });
+  }
+
+  // Add credits to user
+  const user = await User.findById(userId);
+  if (!user) {
+    throw Object.assign(new Error("User not found."), { statusCode: 404 });
+  }
+
+  user.totalCredits += gift.credits;
+  user.creditsRemaining += gift.credits;
+  await user.save();
+
+  // Record claim
+  await CreditGiftClaim.create({
+    gift: gift._id,
+    user: userId,
+    token: gift.token,
+    credits: gift.credits,
+  });
+
+  // Update campaign claimed count
+  gift.totalClaimed += 1;
+  await gift.save();
+
+  return {
+    credits: gift.credits,
+    usdAmount: gift.usdAmount,
+    newBalance: user.creditsRemaining,
+    message: `Successfully claimed ${gift.credits.toLocaleString()} credits!`,
+  };
+}
+
+/**
+ * Billing Profiles (per provider + model) management
+ */
+async function listBillingProfiles() {
+  // Ensure defaults exist
+  await seedDefaultBillingProfiles();
+  return BillingProfile.listAll();
+}
+
+async function updateBillingProfile(userId, { provider, model, updates }) {
+  if (!provider || !model) {
+    throw Object.assign(new Error("provider and model required"), { statusCode: 400 });
+  }
+  let profile = await BillingProfile.findOne({ provider, model });
+  if (!profile) {
+    profile = new BillingProfile({ provider, model });
+  }
+  if (updates.costPerMillionCharacters !== undefined) profile.costPerMillionCharacters = Number(updates.costPerMillionCharacters);
+  if (updates.creditsPerCharacter !== undefined) profile.creditsPerCharacter = Number(updates.creditsPerCharacter);
+  if (updates.platformShare !== undefined) profile.platformShare = Number(updates.platformShare);
+  if (updates.apiShare !== undefined) profile.apiShare = Number(updates.apiShare);
+  if (updates.costTier !== undefined) profile.costTier = updates.costTier;
+  if (updates.displayName !== undefined) profile.displayName = updates.displayName;
+  if (updates.active !== undefined) profile.active = !!updates.active;
+
+  profile.updatedBy = userId;
+  await profile.save();
+  return profile;
+}
+
+async function seedDefaultBillingProfiles() {
+  const defaults = [
+    {
+      provider: "xai",
+      model: "voice_api",
+      displayName: "voice forge pro",
+      costTier: "low",
+      costPerMillionCharacters: 15,
+      creditsPerCharacter: 2,
+      platformShare: 0.5,
+      apiShare: 0.5,
+    },
+    {
+      provider: "elevenlabs",
+      model: "flash",
+      displayName: "voiceforge Premium v2",
+      costTier: "medium",
+      costPerMillionCharacters: 50,
+      creditsPerCharacter: 7,
+      platformShare: 0.5,
+      apiShare: 0.5,
+    },
+    {
+      provider: "elevenlabs",
+      model: "multilingual_v3",
+      displayName: "voiceforge Premium v3",
+      costTier: "high",
+      costPerMillionCharacters: 100,
+      creditsPerCharacter: 14,
+      platformShare: 0.5,
+      apiShare: 0.5,
+    },
+    {
+      provider: "free",
+      model: "default",
+      displayName: "free",
+      costTier: "low",
+      costPerMillionCharacters: 0,
+      creditsPerCharacter: 0,
+      platformShare: 0,
+      apiShare: 0,
+    }
+  ];
+
+  for (const d of defaults) {
+    const existing = await BillingProfile.findOne({ provider: d.provider, model: d.model });
+    if (!existing) {
+      await BillingProfile.create(d);
+    }
+  }
+}
+
+module.exports = { getDashboard, listUsers, getSystemHealth, getBilling, updateUser, banUser, restrictUser, unbanUser, unrestrictUser, deleteUser, getSettings, getBillingSettings, updateBillingSettings, addCredits, getTtsAnalytics, resetAllUserCredits, sendGiftEmail, getGiftCampaigns, claimGiftCredits, listBillingProfiles, updateBillingProfile, seedDefaultBillingProfiles };

@@ -48,4 +48,40 @@ const getBalance = asyncHandler(async (req, res) => {
   sendSuccess(res, data);
 });
 
-module.exports = { initialize, verify, webhook, getBalance };
+const claimGift = asyncHandler(async (req, res) => {
+  const adminService = require("../services/adminService");
+  const { token } = req.body;
+  if (!token) {
+    throw Object.assign(new Error("Claim token is required"), { statusCode: 400 });
+  }
+  const data = await adminService.claimGiftCredits(req.user._id, token);
+  sendSuccess(res, data, data.message);
+});
+
+const estimate = asyncHandler(async (req, res) => {
+  const { calculateCreditsFromPayment, calculateEstimatedApiCost, getBillingSettings, getProviderProfile } = require("../utils/creditCalc");
+  const amount = parseFloat(req.query.amount);
+  const provider = req.query.provider || "xai"; // support professional for elevenlabs/professional deposits
+  if (!amount || amount <= 0) {
+    throw Object.assign(new Error("Valid amount is required"), { statusCode: 400 });
+  }
+
+  const credits = await calculateCreditsFromPayment(amount, provider);
+  const profile = await getProviderProfile(provider);
+  const apiCost = await calculateEstimatedApiCost(
+    (amount * profile.apiShare / profile.costPerMillionCharacters) * 1_000_000,
+    provider
+  );
+
+  sendSuccess(res, {
+    amount,
+    provider,
+    credits,
+    estimatedApiCost: apiCost,
+    profile,
+    // Also return current settings so frontend can show breakdown
+    settings: await getBillingSettings(),
+  });
+});
+
+module.exports = { initialize, verify, webhook, getBalance, claimGift, estimate };

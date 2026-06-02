@@ -31,6 +31,12 @@ const audioGenerationSchema = new mongoose.Schema(
     // Metrics
     processingTimeMs: { type: Number, default: null },
     queuedAt: { type: Date, default: null },
+
+    // Billing / Cost tracking (added during 2026 billing refactor)
+    creditsCharged: { type: Number, default: 0 },
+    estimatedApiCostUsd: { type: Number, default: 0 },
+    provider: { type: String, default: "xai" }, // xai or elevenlabs etc
+    model: { type: String, default: "voice_api" },
   },
   { timestamps: true }
 );

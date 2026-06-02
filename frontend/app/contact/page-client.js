@@ -16,25 +16,27 @@ import { PublicFooter } from "@/components/layout/public-footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { contactApi } from "@/lib/api";
+import { toast } from "sonner";
 
 const CHANNELS = [
   {
     icon: MessageSquare,
     title: "General Inquiries",
     description: "Feedback, partnership ideas, or anything else.",
-    contact: "hello@voiceforge.ai",
+    contact: "hello@voiceforgeai.site",
   },
   {
     icon: Headphones,
     title: "Customer Support",
     description: "Trouble with your account or a generation? We can help.",
-    contact: "support@voiceforge.ai",
+    contact: "support@voiceforgeai.site",
   },
   {
     icon: Building2,
     title: "Sales & Enterprise",
     description: "Custom pricing, SLAs, on-prem, and volume discounts.",
-    contact: "sales@voiceforge.ai",
+    contact: "sales@voiceforgeai.site",
   },
 ];
 
@@ -49,11 +51,47 @@ const TOPICS = [
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
-  const [topic, setTopic] = useState("General question");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  function handleSubmit(e) {
+  const [topic, setTopic] = useState("General question");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    setSubmitted(true);
+    if (loading) return;
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      await contactApi.submit({
+        name: name.trim(),
+        email: email.trim(),
+        topic,
+        message: message.trim(),
+      });
+
+      setSubmitted(true);
+      toast.success("Message sent! We'll reply soon.");
+    } catch (err) {
+      const msg = err?.message || "Something went wrong. Please try again or email us directly.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function resetForm() {
+    setSubmitted(false);
+    setError(null);
+    setName("");
+    setEmail("");
+    setMessage("");
+    setTopic("General question");
   }
 
   return (
@@ -123,13 +161,19 @@ export default function ContactPage() {
                   </h2>
                   <p className="text-on-surface-variant max-w-md">
                     Thanks for reaching out. A member of our team will reply
-                    within one business day.
+                    within one business day at the email you provided.
                   </p>
+                  <a
+                    href="mailto:support@voiceforgeai.site?subject=VoiceForge%20AI%20Follow-up"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Or email support@voiceforgeai.site directly
+                  </a>
                 </div>
                 <Button
                   variant="outline"
                   className="rounded-full border-white/10 hover:bg-white/5 font-bold"
-                  onClick={() => setSubmitted(false)}
+                  onClick={resetForm}
                 >
                   Send another message
                 </Button>
@@ -152,6 +196,8 @@ export default function ContactPage() {
                     </label>
                     <Input
                       required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                       placeholder="Jane Doe"
                       className="h-12 bg-white/5 border-white/10 rounded-xl focus:ring-primary/20"
                     />
@@ -165,6 +211,8 @@ export default function ContactPage() {
                       <Input
                         required
                         type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@company.com"
                         className="h-12 pl-11 bg-white/5 border-white/10 rounded-xl focus:ring-primary/20"
                       />
@@ -202,17 +250,26 @@ export default function ContactPage() {
                   <textarea
                     required
                     rows={6}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
                     placeholder="How can we help?"
                     className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder:text-on-surface-variant/50 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
                   />
                 </div>
 
+                {error && (
+                  <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2">
+                    {error}
+                  </div>
+                )}
+
                 <Button
                   type="submit"
-                  className="h-12 px-8 bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold shadow-[0_0_30px_rgba(59,130,246,0.2)] self-start group"
+                  disabled={loading}
+                  className="h-12 px-8 bg-primary hover:bg-primary/90 text-on-primary rounded-full font-bold shadow-[0_0_30px_rgba(59,130,246,0.2)] self-start group disabled:opacity-70"
                 >
                   <Send className="mr-2 size-4" />
-                  Send Message
+                  {loading ? "Sending..." : "Send Message"}
                   <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </form>

@@ -10,10 +10,11 @@ const {
 const config = require("../config");
 const { synthesizeSpeech } = require("../integrations/xaiTts");
 const { synthesizeSpeechEdge } = require("../integrations/edgeTts");
+const elevenlabs = require("../integrations/elevenlabsService");
 const { enqueueTtsJob, QUEUE_NAME: TTS_QUEUE_NAME } = require("../jobs/ttsQueue");
 const { uploadBuffer } = require("../integrations/storage");
 const { getCharactersLimit } = require("../utils/planLimits");
-const { calculateCreditsForUsage } = require("../utils/creditCalc");
+const { calculateCreditsForUsage, calculateEstimatedApiCost } = require("../utils/creditCalc");
 
 const LONG_TTS_CHAR_THRESHOLD = 2200; // Above this → use background queue for better UX
 
@@ -26,9 +27,9 @@ async function recordXaiUsage({ userId, result, voiceId, text, status = "success
     const usage = result?.usage || {};
     const charCount = text?.length || 0;
 
-    // Use actual cost from xAI if available, otherwise estimate
+    // Use actual cost from xAI if available, otherwise estimate using live billing settings
     const costUsd = usage.costUsd || (usage.costInUsdTicks ? usage.costInUsdTicks / 10000000000 : 0);
-    const estimatedCost = costUsd || (charCount * 0.0000042); // $4.20 per 1M chars
+    const estimatedCost = costUsd || (await calculateEstimatedApiCost(charCount));
 
     await GrokUsage.create({
       userId,
@@ -83,12 +84,25 @@ async function generateTts(userId, options) {
   // Resolve voice first so we can check tier before enforcing limits
   const voice = await resolveVoiceWithClone(options);
   const voiceTier = voice?.tier || "pro";
+  const voiceProvider = voice?.provider || (voice?.tier === "free" ? "free" : "xai");
+  const voiceModel = voice?.model || (voiceProvider === "elevenlabs" ? "flash" : "voice_api");
   const isClonedCheck = voice?.type === "cloned";
-  // Cloned voices use xAI TTS and should charge credits like pro voices
-  const isFree = voiceTier === "free" && !isClonedCheck;
+  // Cloned voices use xAI TTS ... (unless elevenlabs clone for professional)
+  const isFree = voiceTier === "free" && !isClonedCheck && voiceProvider !== "elevenlabs";
+
+  if (voiceProvider === "elevenlabs") {
+    const isPro = user.plan === "professional" || (await (async () => {
+      const { ProfessionalMembership } = require("../models");
+      const m = await ProfessionalMembership.findOne({ user: userId, status: "active" });
+      return m && m.endDate > new Date();
+    })());
+    if (!isPro) {
+      throw Object.assign(new Error("VoiceForge Premium membership required for studio voices"), { statusCode: 403 });
+    }
+  }
 
   if (!isFree) {
-    const creditsToCharge = calculateCreditsForUsage(charCount);
+    const creditsToCharge = await calculateCreditsForUsage(charCount, voiceProvider, voiceModel);
     if (user.creditsRemaining < creditsToCharge) {
       throw Object.assign(
         new Error("Insufficient credits"),
@@ -122,6 +136,8 @@ async function generateTts(userId, options) {
     status: "queued",
     charactersUsed: isFree ? 0 : charCount,
     expiresAt: new Date(Date.now() + 28 * 60 * 60 * 1000), // 28 hours
+    provider: voiceProvider, // New: track which provider was used
+    model: voiceModel,
   });
 
   // Decide: short text or free voice → fast path (synchronous)
@@ -162,7 +178,17 @@ async function generateTts(userId, options) {
   try {
     let result;
 
-    if (isFree && !isCloned) {
+    if (voiceProvider === "elevenlabs") {
+      // ElevenLabs path (for PROFESSIONAL plan) - choose model based on voice.model
+      const elVoiceId = voice?.xaiVoiceId || voice?.elevenlabsVoiceId || voice?.metadata?.elevenlabsVoiceId || options.voiceId || options.xaiVoiceId;
+      const elModel = voiceModel === "multilingual_v3" ? "eleven_multilingual_v2" : "eleven_flash_v2_5";
+      console.log(`[TTS] ElevenLabs voice "${voice?.name}" model=${voiceModel} → ElevenLabs (${elVoiceId}) using ${elModel}`);
+      result = await elevenlabs.generateSpeech({
+        text: options.text,
+        voiceId: elVoiceId,
+        modelId: elModel,
+      });
+    } else if (isFree && !isCloned) {
       // Free stock voices → Edge TTS only
       console.log(`[TTS] Free voice "${voice?.name}" → Edge TTS (${edgeVoiceId}) speed=${generation.speed}`);
       result = await synthesizeSpeechEdge({
@@ -266,20 +292,33 @@ async function generateTts(userId, options) {
     await generation.save();
 
     if (!isFree) {
-      const creditsToCharge = calculateCreditsForUsage(charCount);
+      const creditsToCharge = await calculateCreditsForUsage(charCount, voiceProvider, voiceModel);
+      const estimatedApiCost = await calculateEstimatedApiCost(charCount, voiceProvider, voiceModel);
+
       user.charactersUsed += charCount;
       user.creditsUsed += creditsToCharge;
       user.creditsRemaining -= creditsToCharge;
       await user.save();
+
       await UsageRecord.create({
         user: userId,
         type: "tts",
         amount: charCount,
         unit: "characters",
-        meta: { creditsCharged: creditsToCharge },
+        meta: {
+          creditsCharged: creditsToCharge,
+          estimatedApiCostUsd: estimatedApiCost,
+          provider: voiceProvider,
+        },
         referenceId: generation._id,
         referenceModel: "AudioGeneration",
       });
+
+      // Also persist on the generation for easy analytics
+      generation.creditsCharged = creditsToCharge;
+      generation.estimatedApiCostUsd = estimatedApiCost;
+      generation.provider = voiceProvider;
+      await generation.save();
     }
 
     return formatGeneration(generation);

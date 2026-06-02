@@ -48,7 +48,7 @@ async function callXaiCreateVoice(clone, sampleFilePath, sampleMime) {
   if (!res.ok) {
     const msg = body?.error?.message || body?.message || `HTTP ${res.status}`;
     console.error("[xai-clone] API error:", res.status, msg);
-    // 403/402 = enterprise gate or credits — not a fatal error for us, just skip
+    // 403/402 = professional gate or credits — not a fatal error for us, just skip
     return null;
   }
 

@@ -45,9 +45,14 @@ export default function DashboardPage() {
     ? Math.min(100, Math.round((creditsUsed / totalCredits) * 100))
     : 0;
 
-  const planLabel = usage?.plan
-    ? usage.plan.charAt(0).toUpperCase() + usage.plan.slice(1)
-    : "Free";
+  const rawPlan = usage?.plan || "free";
+  const planLabel = rawPlan === "professional" ? "VoiceForge Premium" : rawPlan === "pro" ? "VoiceForge Pro" : "VoiceForge Free";
+
+  const prof = usage?.professional || {};
+  const isPremiumUser = planLabel.includes("Premium") || usage?.plan === "professional" || prof.isProfessional;
+  const profStatus = prof.membershipStatus || (isPremiumUser ? "active" : "none");
+  const daysRem = prof.daysRemaining || 0;
+  const profEnd = prof.endDate ? new Date(prof.endDate).toLocaleDateString() : null;
 
   const stats = [
     {
@@ -97,8 +102,8 @@ export default function DashboardPage() {
             <p className="text-sm text-neutral-500 mt-0.5">
               Welcome back, <span className="text-white font-semibold">{usage.name}</span>
               {" · "}
-              <span className={planLabel === "Free" ? "text-neutral-400" : "text-amber-400 font-semibold"}>
-                {planLabel} plan
+              <span className={planLabel.includes("Premium") ? "text-violet-400 font-semibold" : planLabel.includes("Pro") ? "text-amber-400 font-semibold" : "text-neutral-400"}>
+                {planLabel}
               </span>
             </p>
           )}
@@ -114,6 +119,67 @@ export default function DashboardPage() {
       <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-8 pb-16">
 
         <EmailVerificationBanner />
+
+        {/* Current Plan + Professional Status (per spec) */}
+        <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-white/10">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div>
+                <div className="text-xs uppercase tracking-[2px] text-neutral-500 font-medium">Current Plan</div>
+                <div className={cn(
+                  "text-2xl font-bold mt-0.5",
+                  planLabel.includes("Free") ? "text-neutral-300" : planLabel.includes("Premium") ? "text-violet-400" : "text-amber-400"
+                )}>
+                  {planLabel}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {planLabel.includes("Free") && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/30">FREE</span>
+                )}
+                {planLabel.includes("Pro") && !planLabel.includes("Premium") && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-bold border border-amber-500/30">PRO</span>
+                )}
+                {planLabel.includes("Premium") && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-violet-500/10 text-violet-400 text-xs font-bold border border-violet-500/30">PREMIUM</span>
+                )}
+              </div>
+
+              <div className="text-sm text-neutral-400">
+                Credits Remaining: <span className="font-mono text-white font-semibold">{usageLoading ? "—" : creditsRemaining.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Premium Status + Renew */}
+            <div className="flex items-center gap-3 flex-wrap">
+              {isPremiumUser ? (
+                <>
+                  <div className="text-sm">
+                    Premium Status: <span className={cn("font-semibold", profStatus === "active" ? "text-emerald-400" : "text-amber-400")}>
+                      {profStatus === "active" ? "Active" : profStatus === "expired" ? "Expired" : profStatus}
+                    </span>
+                    {daysRem > 0 && <span className="text-neutral-500 ml-1">({daysRem} days left{profEnd ? ` · until ${profEnd}` : ""})</span>}
+                  </div>
+                  {(profStatus !== "active" || daysRem < 10) && (
+                    <Button asChild size="sm" variant="outline" className="rounded-full border-violet-500/40 text-violet-400 hover:bg-violet-500/10">
+                      <Link href="/checkout?plan=professional">Renew Membership</Link>
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Button asChild size="sm" className="rounded-full bg-violet-600 hover:bg-violet-500 text-white">
+                  <Link href="/checkout?plan=professional">Upgrade to VoiceForge Premium — $2.99/mo</Link>
+                </Button>
+              )}
+              {planLabel.includes("Free") && (
+                <Button asChild size="sm" variant="outline" className="rounded-full">
+                  <Link href="/billing">Buy Credits (Pro)</Link>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Stats Grid — premium cards with sparklines matching design ref */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

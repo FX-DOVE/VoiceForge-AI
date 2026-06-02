@@ -36,7 +36,7 @@ const COMMANDS = [
   // Actions
   { id: "new", label: "Create New Generation", group: "Actions", href: "/studio", icon: Plus, keywords: "tts new project" },
   { id: "clone-new", label: "Clone a New Voice", group: "Actions", href: "/cloning", icon: Plus, keywords: "record upload voice" },
-  { id: "upgrade", label: "Upgrade to Pro", group: "Actions", href: "/checkout", icon: Sparkles, keywords: "billing plan pro premium" },
+  { id: "upgrade", label: "Upgrade to VoiceForge Premium", group: "Actions", href: "/checkout?plan=professional", icon: Sparkles, keywords: "billing plan pro premium studio cloning" },
 
   // Help
   { id: "help", label: "Help Center", group: "Help & Legal", href: "/help", icon: HelpCircle, keywords: "support docs" },

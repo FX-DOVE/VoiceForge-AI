@@ -143,8 +143,9 @@ function DashboardSidebar({ className, onClose }) {
 
   const displayName = user?.name || "User";
   const displayEmail = user?.email || "";
-  const planLabel = user?.plan ? `${user.plan.charAt(0).toUpperCase()}${user.plan.slice(1)}` : "Free";
-  const isPro = planLabel !== "Free";
+  const rawPlan = user?.plan || "free";
+  const planLabel = rawPlan === "professional" ? "VoiceForge Premium" : rawPlan === "pro" ? "VoiceForge Pro" : "VoiceForge Free";
+  const isPro = rawPlan !== "free";
   const avatarSrc =
     user?.avatar ||
     user?.avatarUrl ||
@@ -169,8 +170,8 @@ function DashboardSidebar({ className, onClose }) {
                 <Sparkles className="size-2.5 text-primary shrink-0" />
                 <span className={cn(
                   "text-[10px] font-bold uppercase tracking-widest",
-                  isPro ? "text-amber-400" : "text-on-surface-variant"
-                )}>{planLabel} Plan</span>
+                  rawPlan === "professional" ? "text-violet-400" : isPro ? "text-amber-400" : "text-on-surface-variant"
+                )}>{planLabel}</span>
               </div>
             </div>
           </div>

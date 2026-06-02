@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema(
     avatarUrl: { type: String, default: null },
     provider: { type: String, enum: ["local", "google"], default: "local" }, // Track OAuth provider
     role: { type: String, enum: ["user", "admin"], default: "user" },
-    plan: { type: String, enum: ["free", "pro", "enterprise"], default: "free" },
+    plan: { type: String, enum: ["free", "pro", "professional", "enterprise"], default: "free" },
     status: { type: String, enum: ["active", "suspended", "invited", "banned", "restricted"], default: "active" },
     banReason: { type: String, default: null },
     bannedAt: { type: Date, default: null },
@@ -56,6 +56,22 @@ userSchema.methods.comparePassword = function comparePassword(candidate) {
   return bcrypt.compare(candidate, this.password);
 };
 
+userSchema.methods.isProfessional = async function isProfessional() {
+  // "professional" plan = VoiceForge Professional (ElevenLabs + cloning unlock via $2.99/mo membership)
+  if (this.plan === "professional") return true;
+  try {
+    const ProfessionalMembership = require("./ProfessionalMembership");
+    if (!ProfessionalMembership || typeof ProfessionalMembership.findOne !== "function") {
+      return false;
+    }
+    const mem = await ProfessionalMembership.findOne({ user: this._id, status: "active" });
+    return !!(mem && mem.endDate > new Date());
+  } catch (e) {
+    console.error("[User.isProfessional] lookup error:", e.message);
+    return false;
+  }
+};
+
 userSchema.methods.toPublicJSON = function toPublicJSON() {
   return {
     id: this._id.toString(),
@@ -79,6 +95,7 @@ userSchema.methods.toPublicJSON = function toPublicJSON() {
     emailVerifiedAt: this.emailVerifiedAt || null,
     hasReceivedWelcomeCredits: this.hasReceivedWelcomeCredits || false,
     welcomeModalSeen: this.welcomeModalSeen || false,
+    isProfessional: this.plan === "professional",
   };
 };
 

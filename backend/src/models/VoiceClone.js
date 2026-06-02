@@ -12,6 +12,8 @@ const voiceCloneSchema = new mongoose.Schema(
       enum: ["draft", "uploading", "configured", "training", "ready", "failed"],
       default: "draft",
     },
+    provider: { type: String, enum: ["xai", "elevenlabs"], default: "xai" }, // elevenlabs for Professional plan cloning
+    model: { type: String, default: "" }, // e.g. "flash", "multilingual_v3" for EL clones
     voice: { type: mongoose.Schema.Types.ObjectId, ref: "Voice", default: null },
     progress: { type: Number, default: 0, min: 0, max: 100 },
     errorMessage: { type: String, default: null },

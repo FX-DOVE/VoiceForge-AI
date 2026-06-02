@@ -13,10 +13,14 @@ module.exports = {
   WelcomeGrant: require("./WelcomeGrant"),
   Payment: require("./Payment"),
   BillingSetting: require("./BillingSetting"),
+  BillingProfile: require("./BillingProfile"),
+  ProfessionalMembership: require("./ProfessionalMembership"),
   // Grok Management models
   GrokFunding: require("./GrokFunding"),
   GrokUsage: require("./GrokUsage"),
   GrokApiKey: require("./GrokApiKey"),
   GrokAlert: require("./GrokAlert"),
   GrokSettings: require("./GrokSettings"),
+  // Credit Gift models
+  ...require("./CreditGift"),
 };

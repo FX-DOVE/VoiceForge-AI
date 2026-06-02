@@ -6,10 +6,13 @@ const config = require("../config");
  * Initialize a Paystack transaction
  */
 async function initializePaystackTransaction(userId, email, amountUsd) {
-  const settings = await BillingSetting.getSettings();
-  const minPayment = Math.min(settings.minimumPaymentUsd, 0.5);
+  const settings = await BillingSetting.getNormalized();
+  const minPayment = settings.minimumDepositUsd || 1;
   if (amountUsd < minPayment) {
-    throw Object.assign(new Error(`Minimum payment is $${minPayment}.`), { statusCode: 400 });
+    throw Object.assign(new Error(`Minimum deposit is $${minPayment}.`), { statusCode: 400 });
+  }
+  if (settings.maximumDepositUsd && amountUsd > settings.maximumDepositUsd) {
+    throw Object.assign(new Error(`Maximum deposit is $${settings.maximumDepositUsd}.`), { statusCode: 400 });
   }
 
   const USD_TO_NGN_RATE = 1550;
@@ -86,22 +89,36 @@ async function verifyPaystackTransaction(reference) {
     throw Object.assign(new Error("User not found."), { statusCode: 404 });
   }
 
-  // 3. Calculate credits from ACTUAL amount paid
+  // 3. Calculate credits from ACTUAL amount paid (using new dynamic system)
   const USD_TO_NGN_RATE = 1550;
   let actualUsdAmount = 0;
 
   if (tx.currency === "NGN") {
-    // Paystack amount is in kobo, so divide by 100 to get NGN
     const actualNgnAmount = tx.amount / 100;
     actualUsdAmount = actualNgnAmount / USD_TO_NGN_RATE;
   } else if (tx.currency === "USD") {
-    // Just in case USD is ever supported later
     actualUsdAmount = tx.amount / 100;
   } else {
     throw Object.assign(new Error(`Unsupported currency: ${tx.currency}`), { statusCode: 400 });
   }
 
-  const creditsToAdd = require("../utils/creditCalc").calculateCreditsFromPayment(actualUsdAmount);
+  const { calculateCreditsFromPayment, getBillingSettings } = require("../utils/creditCalc");
+
+  // Determine provider profile for this deposit's credits
+  // If user has Professional membership, their deposits buy credits at elevenlabs rates
+  const isVfPro = user.plan === "professional" || (await (async () => {
+    const { ProfessionalMembership } = require("../models");
+    const m = await ProfessionalMembership.findOne({ user: user._id, status: "active" });
+    return m && m.endDate > new Date();
+  })());
+
+  const depositProvider = isVfPro ? "elevenlabs" : "xai";
+  let creditsToAdd = await calculateCreditsFromPayment(actualUsdAmount, depositProvider);
+
+  // The $2.99 is subscription unlock only — do not add credits for the membership fee itself
+  if (Math.abs(actualUsdAmount - 2.99) < 0.1 || actualUsdAmount === 2.99) {
+    creditsToAdd = 0;
+  }
 
   // 4. Update or create Payment record idempotently
   const paymentRecord = existingPayment || new Payment({ reference });
@@ -120,7 +137,29 @@ async function verifyPaystackTransaction(reference) {
   user.totalCredits += creditsToAdd;
   user.creditsRemaining += creditsToAdd;
   user.totalPayments += actualUsdAmount;
-  if (user.totalPayments >= 5 && user.plan !== "pro" && user.plan !== "enterprise") {
+
+  // Professional membership activation for ~$2.99 payments (ElevenLabs + cloning)
+  if (Math.abs(actualUsdAmount - 2.99) < 0.1 || actualUsdAmount === 2.99) {
+    const { ProfessionalMembership } = require("../models");
+    const end = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await ProfessionalMembership.findOneAndUpdate(
+      { user: user._id },
+      {
+        $set: {
+          status: "active",
+          endDate: end,
+          startDate: new Date(),
+          autoRenew: true,
+          provider: "paystack",
+          amountPaid: actualUsdAmount,
+          reference,
+        }
+      },
+      { upsert: true }
+    );
+    user.plan = "professional";
+    console.log(`[Payment] Activated Professional membership for ${user.email}`);
+  } else if (user.totalPayments >= 5 && user.plan !== "pro" && user.plan !== "professional" && user.plan !== "enterprise") {
     user.plan = "pro";
     console.log(`[Payment] Upgraded ${user.email} to Pro (totalPayments: $${user.totalPayments.toFixed(2)})`);
   }

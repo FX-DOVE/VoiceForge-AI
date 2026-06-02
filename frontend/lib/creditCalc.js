@@ -1,20 +1,23 @@
-export const PLATFORM_SHARE = 0.50;
-export const USER_SHARE = 1 - PLATFORM_SHARE; // 0.50
-export const XAI_COST_PER_MILLION = 4.20;
-export const CREDITS_PER_CHARACTER = 2;
+/**
+ * DEPRECATED - DO NOT USE
+ * 
+ * All credit calculations must come from the backend via:
+ *   - paymentsApi.estimate(amount)
+ *   - adminApi.billingSettings()
+ * 
+ * This file previously contained hardcoded $4.20 pricing.
+ * It has been neutralized during the 2026 billing refactor.
+ */
 
-export function calculateCreditsFromPayment(paymentAmount) {
-  const apiValue = paymentAmount * USER_SHARE;
-  const characters = (apiValue / XAI_COST_PER_MILLION) * 1_000_000;
-  return Math.floor(characters * CREDITS_PER_CHARACTER);
+export function calculateCreditsFromPayment() {
+  console.warn("[DEPRECATED] calculateCreditsFromPayment called from frontend/lib/creditCalc.js. Use backend estimate instead.");
+  return 0;
 }
 
-export function calculateCreditsForUsage(characterCount) {
-  return Math.ceil(characterCount * CREDITS_PER_CHARACTER);
+export function calculateCreditsForUsage() {
+  console.warn("[DEPRECATED] calculateCreditsForUsage called from frontend. Use backend.");
+  return 0;
 }
 
-export function calculatePaymentForCredits(credits) {
-  const characters = credits / CREDITS_PER_CHARACTER;
-  const apiValue = (characters / 1_000_000) * XAI_COST_PER_MILLION;
-  return apiValue / USER_SHARE;
-}
+export const PLATFORM_SHARE = 0.5;
+export const CREDITS_PER_CHARACTER = 2; // legacy reference only

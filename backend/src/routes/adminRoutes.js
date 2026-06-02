@@ -19,10 +19,14 @@ router.get("/billing", adminController.billing);
 router.get("/settings", adminController.settings);
 router.get("/billing-settings", adminController.getBillingSettings);
 router.put("/billing-settings", adminController.updateBillingSettings);
+router.get("/billing-profiles", adminController.listBillingProfiles);
+router.put("/billing-profiles", adminController.updateBillingProfile);
 router.get("/tts-analytics", adminController.ttsAnalytics);
 router.post("/test-email", adminController.testEmail);
 router.get("/email-templates", adminController.previewEmailTemplates);
 router.get("/email-templates/:id/preview", adminController.previewEmailTemplate);
 router.post("/reset-all-credits", adminController.resetAllCredits);
+router.post("/gift-email/send", adminController.sendGiftEmail);
+router.get("/gift-email/campaigns", adminController.getGiftCampaigns);
 
 module.exports = router;
