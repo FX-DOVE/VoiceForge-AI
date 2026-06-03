@@ -339,4 +339,79 @@ After the frontend rebuild + hard refresh, the /library and /studio should popul
 
 ---
 
+## 10. Mismatch: only ~21 premium voices in library vs 124 in studio, only 21 have working previews ("could not load preview")
+
+**Issues found (by scanning code with grep for seed/sync/preview/generate/elevenlabs/provider=elevenlabs etc.):**
+
+- `backend/scripts/seed-many-el-premium-voices.js` seeds ~100 "el-premium-*" slugs (diversityData ~100 entries, cycling realIdsPool of ~20 real EL voice_ids). Sets provider=elevenlabs, elevenlabsVoiceId (real), tier=pro, etc. Note in header: "Generation may require paid ElevenLabs plan for some 'library' voices."
+
+- `backend/scripts/syncElevenLabsVoices.js`: fetches from key, validates with tiny generateSpeech, keeps only usable (~21 that don't 402 paid_plan_required). Inserts with "vf-*" slugs + proper fields. These are the good ones.
+
+- `backend/scripts/generateElevenLabsPreviews.js`: for current el voices, prefers local cache file (in uploads/voice-previews/ via getPreviewPath using elevenlabsVoiceId or slug). If no cache, tries elevenlabs.generateSpeech; on paid_plan_required, does Voice.findByIdAndDelete to remove unusable. Logs "Removed (unusable on current EL plan)". Then uploads result as previewUrl.
+
+- In `backend/src/services/voiceService.js` getVoicePreview + _generateAndCachePreview:
+  - If source=elevenlabs or provider=elevenlabs or has elevenlabsVoiceId: check local file first (for the 21 good).
+  - No local: try EL gen (for extras: fails if not usable).
+  - Catch: fallback to synthesizeSpeechEdge with edgeTtsVoiceId = xaiVoiceId (for seeded extras: xaiVoiceId = el id like "21m00Tcm4TlvDq8ikWAM" -- invalid Edge voice name!).
+  - Edge fails -> throw -> frontend toast "Could not load voice preview." (studio/page.js, voices/page-client.js).
+
+- Library (/voices premium tab): server listVoices(provider=elevenlabs) + elevenlabsVoiceId filter -> only the ~21 good/usable (synced ones that have proper ids and passed validation; extras may have been deleted if generate run, or if not, perhaps user counts only playable or library has additional client filter like core or the 21 are the ones with local previews).
+
+- Studio: loads all via voicesApi.list() (no provider), client filter on displayTier==="premium" (set by getDisplayTier if provider=elevenlabs even with id) or has elevenlabsVoiceId -> shows all 124 (good + extras from seed-many).
+
+- Previews only exist (local files + previewUrl) for the ~21 validated good ones. Extras have no cache, on-demand fails -> error.
+
+- The seed-many was for diversity, but with free EL key (only 21 usable), they cause bloat, no previews, errors, and count mismatch.
+
+**The script to clear it up:**
+
+New `backend/scripts/cleanup-el-extras.js` (added in this update):
+- Deletes all with slug matching /^el-premium-/ AND provider=elevenlabs (the extras from seed-many; leaves the vf-* from sync).
+- Then auto-execs generateElevenLabsPreviews.js (ensures the remaining ~21 good have local previews cached, and will remove any other bad EL it finds during attempts).
+
+After run: both library and studio will have matching ~21 premium, all playable.
+
+### Exact VPS commands
+
+```bash
+cd /var/www/VoiceForge-AI
+
+git pull
+
+docker compose build --no-cache api
+docker compose up -d api
+
+# Cleanup extras + auto ensure previews for good ones
+docker compose exec api node scripts/cleanup-el-extras.js
+
+docker compose up -d
+```
+
+Then hard refresh browser.
+
+Verify:
+
+```bash
+docker compose exec api node -e '
+  require("dotenv").config();
+  const { connectDB } = require("./src/config/db");
+  const { Voice } = require("./src/models");
+  (async () => {
+    await connectDB();
+    const el = await Voice.countDocuments({provider:"elevenlabs", isPublic:true, isActive:true});
+    const withPreview = await Voice.countDocuments({provider:"elevenlabs", isPublic:true, isActive:true, previewUrl:{$ne:""}});
+    console.log("EL:", el, "with preview:", withPreview);
+    process.exit(0);
+  })();
+'
+```
+
+Should now be ~21 for both, all with previews.
+
+If you want the diversity voices, upgrade your EL plan to paid, set the key, re-run syncElevenLabsVoices.js + generateElevenLabsPreviews.js (no need for seed-many).
+
+This cleans the issues. The generate script is the "cleaner" (removes on fail), but the dedicated script targets the known extras from seed-many and ensures previews.
+
+---
+
 Let me know the output of the force-backfill (the verification counts) and the inspect count above, and whether it works after. If not, paste the exact error or count, and the content of a sample voice doc (redact sensitive).
