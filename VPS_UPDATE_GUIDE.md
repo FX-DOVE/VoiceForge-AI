@@ -292,13 +292,50 @@ docker compose exec api node -e '
 '
 ```
 
-If pubAct > 0, then voices should appear. Hard refresh browser (Ctrl+Shift+R), or check incognito / different user (free plan user should see Free + xAI Pro if on pro plan? Wait, free plan sees only free now due to filters, pro sees free+xai, professional sees all).
+If pubAct > 0 (as in your case: 246), the DB is good. The API should return voices.
 
-If still 0 pubAct, the DB on VPS is empty or the seeds/backfills are not persisting (check MONGODB_URI in VPS .env is correct and same as local? Or different DB).
+The issue is almost certainly the **frontend container still running old build**.
 
-Compare your local working DB vs VPS by running similar count locally.
+You rebuilt only `api` before, but the Next.js frontend (which does the fetch to /api/voices and renders the lists/tabs in library and studio) needs rebuild too to pick up the latest JS (rebrand filters, displayTier logic, grouping, etc.).
 
-This should resolve it. The difference laptop vs VPS is almost always DB state + the new strict provider/isPublic filters in listVoices not being satisfied by old data.
+### Rebuild frontend (critical when DB is good but UI empty)
+
+```bash
+# From project root
+docker compose build --no-cache frontend
+docker compose up -d frontend
+
+# Make caddy pick up the new frontend
+docker compose up -d caddy
+```
+
+Then, in browser:
+
+- Hard refresh: Ctrl + Shift + R (or Cmd+Shift+R on Mac)
+- Or open incognito/private window
+- Or clear site data for your domain
+
+Test the raw API (should now return data):
+
+In browser console (F12):
+
+fetch('/api/voices').then(r => r.json()).then(console.log)
+
+Or with curl on VPS (or from another machine):
+
+curl -k https://yourdomain.com/api/voices | head -c 500
+
+If it returns voices array with length >0 , then it's a frontend cache/build issue — the rebuild + hard refresh will fix the UI.
+
+If the curl also returns [], then the running api container is still old code (rebuild api again and up -d api).
+
+Since your DB count shows 246 pub+active with correct breakdown (51 free, 71 xai, 124 el), and the sample docs look good (provider, tier, isPublic, isActive set), once the frontend is on latest code it will show.
+
+Free plan users will see the free + (if pro plan) the xai ones via the server filter, but "all" unauth or pro will see all.
+
+The laptop works because local `npm run dev` uses latest source directly, no Docker build layer.
+
+After the frontend rebuild + hard refresh, the /library and /studio should populate immediately with the voices.
 
 ---
 
