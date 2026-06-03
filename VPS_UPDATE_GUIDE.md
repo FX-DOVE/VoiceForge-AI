@@ -240,7 +240,7 @@ After the scripts:
 If still empty after the script, check logs:
 
 ```bash
-docker compose logs api | grep -i "sync\|seed\|voice\|eleven"
+docker compose logs api | grep -i "sync\|seed\|voice\|eleven\|backfill"
 ```
 
 And confirm the key is loaded:
@@ -249,10 +249,57 @@ And confirm the key is loaded:
 docker compose exec api node -e "console.log('EL key present?', !!process.env.ELEVENLABS_API_KEY)"
 ```
 
-Run the script again after fixing the key.
+### If STILL empty: run the aggressive force backfill
 
-This should get your library and studio fully populated with the correct VoiceForge Free / Pro / Premium voices (with proper labels and charging).
+The previous backfills may have missed some edge cases on your specific VPS data (e.g. docs that have tier=free but provider stuck as "xai", or isPublic/isActive not flipped because of update semantics).
+
+Pull latest, rebuild, then run this dedicated force script:
+
+```bash
+git pull
+docker compose build --no-cache api
+docker compose up -d api
+
+# Aggressive fixer - loops every voice and forces correct provider/source/isPublic/isActive/tier/model based on data
+docker compose exec api node scripts/force-backfill-voices.js
+
+# Previews again
+docker compose exec api node scripts/generateElevenLabsPreviews.js
+
+docker compose up -d
+```
+
+This script prints verification counts for free/xai/el pub+active voices.
+
+### Verify after everything
+
+```bash
+# Quick count from inside container
+docker compose exec api node -e '
+  require("dotenv").config();
+  const { connectDB } = require("./src/config/db");
+  const { Voice } = require("./src/models");
+  (async () => {
+    await connectDB();
+    const total = await Voice.countDocuments();
+    const pubAct = await Voice.countDocuments({isPublic:true, isActive:true});
+    const free = await Voice.countDocuments({provider:"free", isPublic:true, isActive:true});
+    const xai = await Voice.countDocuments({provider:"xai", isPublic:true, isActive:true});
+    const el = await Voice.countDocuments({provider:"elevenlabs", isPublic:true, isActive:true});
+    console.log("Total:", total, "Pub+Act:", pubAct, "Free:", free, "xAI:", xai, "EL:", el);
+    process.exit(0);
+  })();
+'
+```
+
+If pubAct > 0, then voices should appear. Hard refresh browser (Ctrl+Shift+R), or check incognito / different user (free plan user should see Free + xAI Pro if on pro plan? Wait, free plan sees only free now due to filters, pro sees free+xai, professional sees all).
+
+If still 0 pubAct, the DB on VPS is empty or the seeds/backfills are not persisting (check MONGODB_URI in VPS .env is correct and same as local? Or different DB).
+
+Compare your local working DB vs VPS by running similar count locally.
+
+This should resolve it. The difference laptop vs VPS is almost always DB state + the new strict provider/isPublic filters in listVoices not being satisfied by old data.
 
 ---
 
-Let me know the output of the refresh script or any errors (especially around the EL key), and I'll give the exact next command.
+Let me know the output of the force-backfill (the verification counts) and the inspect count above, and whether it works after. If not, paste the exact error or count, and the content of a sample voice doc (redact sensitive).
