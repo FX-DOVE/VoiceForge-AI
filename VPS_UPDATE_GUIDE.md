@@ -145,6 +145,20 @@ This is common after a fresh pull + rebuild if the MongoDB `voices` collection w
 
 The stock voices (VoiceForge Free + Pro + Premium) live in Mongo and are **not** baked into the Docker image. You must run the population scripts against your DB.
 
+### Critical: Rebuild the container after git pull (this is why the script was not found)
+
+After `git pull`, the new script is on the **host** filesystem, but the running `api` Docker container is using an **old image** that was built before the file existed.
+
+You **must** rebuild so the new script is copied into /app/scripts/ inside the container:
+
+```bash
+# From the project root (where docker-compose.yml is)
+docker compose build --no-cache api
+docker compose up -d api
+```
+
+Only then run the script.
+
 ### One-command fix (recommended)
 
 From your project directory on the VPS (where docker-compose.yml lives):
@@ -173,6 +187,27 @@ docker compose exec api node scripts/generateElevenLabsPreviews.js
 Then restart to be sure:
 
 ```bash
+docker compose up -d
+```
+
+### Full sequence the user should run (copy-paste this block)
+
+```bash
+cd /var/www/VoiceForge-AI   # or wherever your project root is
+
+git pull
+
+# Rebuild api so new script is inside the container
+docker compose build --no-cache api
+docker compose up -d api
+
+# Now run the refresher
+docker compose exec api node scripts/refresh-all-voices.js
+
+# Then generate previews
+docker compose exec api node scripts/generateElevenLabsPreviews.js
+
+# Final restart
 docker compose up -d
 ```
 

@@ -23,8 +23,6 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const config = require("../src/config");
 const { seedDefaultVoices } = require("../src/utils/seedVoices");
-const { syncXaiVoices } = require("../src/utils/syncXaiVoices"); // may not exist in all deploys, wrapped
-const syncElevenLabs = require("./syncElevenLabsVoices"); // the function is exported? wait, we'll call main logic
 const { connectDB } = require("../src/config/db");
 
 // Import backfill logic from migrate (or duplicate minimal)
@@ -117,7 +115,13 @@ async function main() {
   try {
     if (config.xai && config.xai.apiKey) {
       const xaiSync = require("../src/utils/syncXaiVoices");
-      await xaiSync.syncXaiVoices ? await xaiSync.syncXaiVoices() : console.log("syncXaiVoices util not exporting function, skipping detailed sync.");
+      if (xaiSync && typeof xaiSync.syncXaiVoices === 'function') {
+        await xaiSync.syncXaiVoices();
+      } else if (xaiSync && typeof xaiSync === 'function') {
+        await xaiSync();
+      } else {
+        console.log("syncXaiVoices util not exporting expected function, skipping detailed sync (defaults seeded).");
+      }
     } else {
       console.log("No XAI_API_KEY or util not found - skipping extra xAI sync (defaults already seeded).");
     }
@@ -128,58 +132,46 @@ async function main() {
   // 3. Sync ElevenLabs Premium voices (the big one for /library and studio Premium tab)
   console.log("\n=== 3. Sync ElevenLabs voices (VoiceForge Premium library) ===");
   try {
-    // The script exports the sync function indirectly; require and call the inner
-    const elScript = require("./syncElevenLabsVoices");
-    // If it has a exported function, use it; else we re-implement minimal call
-    if (typeof elScript.syncElevenLabsVoices === "function") {
-      await elScript.syncElevenLabsVoices();
-    } else {
-      // Run the logic by requiring the module which runs on import? No, it has main.
-      // Safer: just exec the main logic by calling the function defined inside.
-      // Since it's a script, we can require and trigger.
-      console.log("Running ElevenLabs sync via direct require of the module...");
-      // The module runs main on load if called as script, but for require we call the exported if any.
-      // To keep simple and robust, we duplicate the core sync call here using the service.
-      const elevenlabs = require("../src/integrations/elevenlabsService");
-      const { Voice } = require("../src/models");
+    // Self-contained sync (avoid requiring the sync script directly because it auto-runs its main())
+    const elevenlabs = require("../src/integrations/elevenlabsService");
+    const { Voice } = require("../src/models");
 
-      console.log("[EL Sync] Fetching from ElevenLabs...");
-      let elVoices = [];
-      try {
-        elVoices = await elevenlabs.listVoices();
-      } catch (e) {
-        console.error("Failed to list EL voices. Check ELEVENLABS_API_KEY in env.", e.message);
-      }
-
-      let upserted = 0;
-      for (const ev of elVoices || []) {
-        const voiceId = ev.voice_id || ev.id;
-        if (!voiceId) continue;
-        const slug = `vf-${voiceId.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-        const doc = {
-          slug,
-          name: ev.name || voiceId,
-          provider: "elevenlabs",
-          source: "elevenlabs",
-          model: "flash",
-          costTier: "medium",
-          elevenlabsVoiceId: voiceId,
-          tier: "pro",
-          type: "stock",
-          isPublic: true,
-          isActive: true,
-          languages: ev.labels?.language ? [ev.labels.language] : ["English"],
-          gender: ev.labels?.gender || "",
-          accent: ev.labels?.accent || "",
-          age: ev.labels?.age || "",
-          description: ev.description || ev.labels?.description || "Premium ElevenLabs voice",
-          tags: ["Premium", "ElevenLabs", ev.labels?.accent || ""].filter(Boolean),
-        };
-        await Voice.findOneAndUpdate({ slug }, { $set: doc }, { upsert: true });
-        upserted++;
-      }
-      console.log(`[EL Sync] Upserted ${upserted} ElevenLabs Premium voices.`);
+    console.log("[EL Sync] Fetching from ElevenLabs...");
+    let elVoices = [];
+    try {
+      elVoices = await elevenlabs.listVoices();
+    } catch (e) {
+      console.error("Failed to list EL voices. Check ELEVENLABS_API_KEY in env.", e.message);
     }
+
+    let upserted = 0;
+    for (const ev of elVoices || []) {
+      const voiceId = ev.voice_id || ev.id;
+      if (!voiceId) continue;
+      const slug = `vf-${voiceId.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+      const doc = {
+        slug,
+        name: ev.name || voiceId,
+        provider: "elevenlabs",
+        source: "elevenlabs",
+        model: "flash",
+        costTier: "medium",
+        elevenlabsVoiceId: voiceId,
+        tier: "pro",
+        type: "stock",
+        isPublic: true,
+        isActive: true,
+        languages: ev.labels?.language ? [ev.labels.language] : ["English"],
+        gender: ev.labels?.gender || "",
+        accent: ev.labels?.accent || "",
+        age: ev.labels?.age || "",
+        description: ev.description || ev.labels?.description || "Premium ElevenLabs voice",
+        tags: ["Premium", "ElevenLabs", ev.labels?.accent || ""].filter(Boolean),
+      };
+      await Voice.findOneAndUpdate({ slug }, { $set: doc }, { upsert: true });
+      upserted++;
+    }
+    console.log(`[EL Sync] Upserted ${upserted} ElevenLabs Premium voices.`);
   } catch (e) {
     console.error("EL voices sync failed (check key + connection):", e.message);
   }
