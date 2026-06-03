@@ -315,8 +315,9 @@ async function _generateAndCachePreview(voice, slug) {
       });
     } catch (err) {
       console.warn(`[Voice Preview] ElevenLabs failed for ${slug}: ${err.message} — falling back`);
-      // fallback to edge if needed
-      result = await synthesizeSpeechEdge({ text, xaiVoiceId: edgeTtsVoiceId });
+      // fallback to edge if needed. Use safe default for EL voices (xaiVoiceId may be EL id, not valid Edge name)
+      const fallbackEdge = (voice.source === "elevenlabs" || voice.provider === "elevenlabs" || voice.elevenlabsVoiceId) ? "en-US-AriaNeural" : edgeTtsVoiceId;
+      result = await synthesizeSpeechEdge({ text, xaiVoiceId: fallbackEdge });
     }
   } else if (config.xai.apiKey && (voiceTier === "pro" || isCloned)) {
     // Pro or cloned voice: try real xAI TTS with the stored voice ID
