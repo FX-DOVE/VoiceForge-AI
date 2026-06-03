@@ -147,9 +147,9 @@ The stock voices (VoiceForge Free + Pro + Premium) live in Mongo and are **not**
 
 ### Critical: Rebuild the container after git pull (this is why the script was not found)
 
-After `git pull`, the new script is on the **host** filesystem, but the running `api` Docker container is using an **old image** that was built before the file existed.
+After `git pull`, the new script is on the **host** filesystem, but the running `api` Docker container is using an **old image** that was built before the file existed in the build context.
 
-You **must** rebuild so the new script is copied into /app/scripts/ inside the container:
+You **must** rebuild so the new script (and any code changes) is copied into /app/scripts/ inside the container:
 
 ```bash
 # From the project root (where docker-compose.yml is)
@@ -157,7 +157,7 @@ docker compose build --no-cache api
 docker compose up -d api
 ```
 
-Only then run the script.
+Only then run the script. (The refresh script now includes comprehensive backfills that will set provider="free" for tier=free voices, isPublic/isActive etc even on pre-existing docs.)
 
 ### One-command fix (recommended)
 
@@ -197,18 +197,21 @@ cd /var/www/VoiceForge-AI   # or wherever your project root is
 
 git pull
 
-# Rebuild api so new script is inside the container
+# 1. Rebuild api so new script + code is inside the container (critical after pull)
 docker compose build --no-cache api
 docker compose up -d api
 
-# Now run the refresher
+# 2. Run the refresher (this will backfill providers for free voices, set isPublic/isActive, sync EL if key, seed billing etc)
 docker compose exec api node scripts/refresh-all-voices.js
 
-# Then generate previews
+# 3. Generate local previews for EL voices (prevents API spam for samples)
 docker compose exec api node scripts/generateElevenLabsPreviews.js
 
-# Final restart
+# 4. Final restart
 docker compose up -d
+```
+
+After this, /voices and studio should show the voices (Free/Edge with provider=free, xAI with xai, Premium if EL key was used).
 ```
 
 ### Alternative: run individual scripts (if the one script has issues)

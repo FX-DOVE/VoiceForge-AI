@@ -28,45 +28,96 @@ const { connectDB } = require("../src/config/db");
 // Import backfill logic from migrate (or duplicate minimal)
 const { Voice, BillingProfile } = require("../src/models");
 
-// Minimal backfill (copied/adapted from migrate-professional-complete.js for self-contained)
+// Comprehensive backfill to correct provider/source for free/edge/xai/el/cloned, and ensure isPublic/isActive
+// This fixes existing prod docs that have wrong provider (e.g. edge voices with provider=xai) or missing isPublic/isActive
 async function backfillVoiceFields() {
-  console.log("\n=== Backfilling voice provider/model/costTier for rebrand ===");
+  console.log("\n=== Backfilling voice provider/model/costTier/isPublic/isActive for rebrand compatibility ===");
 
-  // Ensure provider
-  const noProv = await Voice.find({ provider: { $exists: false } }).select("_id tier source elevenlabsVoiceId type");
-  let fixed = 0;
-  for (const v of noProv) {
-    let prov = "xai";
-    if ((v.tier || "") === "free") prov = "free";
-    else if (v.elevenlabsVoiceId || (v.source === "elevenlabs")) prov = "elevenlabs";
-    else if (v.source === "edge" || (v.tier || "") === "free") prov = "free";
-    if (v.type === "cloned" && (v.elevenlabsVoiceId || v.source === "elevenlabs")) prov = "elevenlabs";
-    await Voice.updateOne({ _id: v._id }, { $set: { provider: prov } });
-    fixed++;
+  // 1. Set provider based on data for ALL voices (force correct even if currently set wrong, e.g. tier=free but provider=xai)
+  let fixedProv = 0;
+  const allVoices = await Voice.find({}).select("_id tier source elevenlabsVoiceId xaiVoiceId type provider");
+  for (const v of allVoices) {
+    let prov = v.provider || "xai";
+    let src = v.source || "";
+    if (v.type === "cloned") {
+      if (v.elevenlabsVoiceId || (v.source === "elevenlabs") || (v.xaiVoiceId && v.xaiVoiceId.length > 20)) {
+        prov = "elevenlabs";
+        src = src || "elevenlabs";
+      } else {
+        prov = "xai";
+        src = src || "xai";
+      }
+    } else if (v.elevenlabsVoiceId || v.provider === "elevenlabs" || v.source === "elevenlabs") {
+      prov = "elevenlabs";
+      src = src || "elevenlabs";
+    } else if ((v.tier || "") === "free" || v.source === "edge") {
+      prov = "free";
+      src = src || "edge";
+    } else if (v.source === "xai" || v.xaiVoiceId) {
+      prov = "xai";
+      src = src || "xai";
+    }
+    const updates = {};
+    if (prov !== v.provider) updates.provider = prov;
+    if (src && src !== v.source) updates.source = src;
+    if (Object.keys(updates).length) {
+      await Voice.updateOne({ _id: v._id }, { $set: updates });
+      fixedProv++;
+    }
   }
-  console.log(`Backfilled provider on ${fixed} voices.`);
+  console.log(`Backfilled/corrected provider/source on ${fixedProv} voices.`);
 
-  // Fix el voices
+  // 2. Ensure isPublic and isActive true for all stock / public voices (old docs may miss the fields entirely)
+  const toFixPublicActive = await Voice.find({
+    $or: [
+      { isPublic: { $ne: true } },
+      { isActive: { $ne: true } },
+      { isPublic: { $exists: false } },
+      { isActive: { $exists: false } }
+    ]
+  }).select("_id type isPublic isActive");
+  if (toFixPublicActive.length) {
+    await Voice.updateMany(
+      { _id: { $in: toFixPublicActive.map(v => v._id) } },
+      { $set: { isPublic: true, isActive: true } }
+    );
+    console.log(`Set isPublic=true, isActive=true on ${toFixPublicActive.length} voices (was missing or false).`);
+  }
+
+  // 3. Specific fixes for el that have id but wrong provider
   const elFix = await Voice.find({ elevenlabsVoiceId: { $ne: "" }, provider: { $ne: "elevenlabs" } }).select("_id");
   if (elFix.length) {
-    await Voice.updateMany({ _id: { $in: elFix.map(x => x._id) } }, { $set: { provider: "elevenlabs" } });
-    console.log(`Fixed provider on ${elFix.length} existing EL voices.`);
+    await Voice.updateMany({ _id: { $in: elFix.map(x => x._id) } }, { $set: { provider: "elevenlabs", source: "elevenlabs" } });
+    console.log(`Fixed provider on ${elFix.length} EL voices.`);
   }
 
-  // Ensure cloned are el if they have el id
-  const clonedFix = await Voice.find({ type: "cloned", elevenlabsVoiceId: { $ne: "" }, provider: { $ne: "elevenlabs" } }).limit(1000);
-  if (clonedFix.length) {
-    await Voice.updateMany({ _id: { $in: clonedFix.map(x=>x._id)} }, { $set: { provider: "elevenlabs", tier: "pro" } });
-    console.log(`Fixed ${clonedFix.length} cloned EL voices.`);
+  // 4. Cloned el
+  const clonedEl = await Voice.find({ type: "cloned", elevenlabsVoiceId: { $ne: "" }, provider: { $ne: "elevenlabs" } }).limit(1000);
+  if (clonedEl.length) {
+    await Voice.updateMany({ _id: { $in: clonedEl.map(x=>x._id)} }, { $set: { provider: "elevenlabs", source: "elevenlabs", tier: "pro" } });
+    console.log(`Fixed ${clonedEl.length} cloned EL voices.`);
   }
 
-  // Backfill costTier / model for EL if missing (based on name or previous)
-  const elNoModel = await Voice.find({ provider: "elevenlabs", $or: [ { model: { $exists: false } }, { model: "" } ] }).select("_id name metadata");
-  for (const v of elNoModel) {
-    const isHigh = (v.name || "").toLowerCase().includes("v3") || (v.metadata && v.metadata.use_case === "narration");
-    await Voice.updateOne({ _id: v._id }, { $set: { model: isHigh ? "multilingual_v3" : "flash", costTier: isHigh ? "high" : "medium" } });
-  }
-  if (elNoModel.length) console.log(`Backfilled model/costTier on ${elNoModel.length} EL voices.`);
+  // 5. Backfill model/costTier based on provider (if missing)
+  const xaiNoModel = await Voice.updateMany(
+    { provider: "xai", $or: [{ model: { $exists: false } }, { model: "" }] },
+    { $set: { model: "voice_api", costTier: "low" } }
+  );
+  if (xaiNoModel.modifiedCount) console.log(`Backfilled xAI model/costTier: ${xaiNoModel.modifiedCount}`);
+
+  const elNoModel = await Voice.updateMany(
+    { provider: "elevenlabs", $or: [{ model: { $exists: false } }, { model: "" }] },
+    { $set: { model: "flash", costTier: "medium" } }
+  );
+  if (elNoModel.modifiedCount) console.log(`Backfilled EL (flash) model/costTier: ${elNoModel.modifiedCount}`);
+
+  const freeNoModel = await Voice.updateMany(
+    { provider: "free", $or: [{ model: { $exists: false } }, { model: "" }] },
+    { $set: { model: "edge", costTier: "low" } }
+  );
+  if (freeNoModel.modifiedCount) console.log(`Backfilled free model/costTier: ${freeNoModel.modifiedCount}`);
+
+  console.log("Backfill complete.");
 }
 
 async function seedBillingProfiles() {

@@ -124,6 +124,7 @@ async function syncXaiVoices() {
       languages,
       tags,
       tier: "pro",
+      provider: "xai",
       type: "stock",
       source: "xai",
       isPublic: true,
@@ -131,6 +132,8 @@ async function syncXaiVoices() {
       isCoreVoice: isCore,
       creator: "xAI",
       description: xv.description || `${xv.name || voiceId} — ${langInfo.language} voice powered by xAI.`,
+      costTier: "low",
+      model: "voice_api",
     };
 
     await Voice.findOneAndUpdate(
